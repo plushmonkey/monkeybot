@@ -60,14 +60,18 @@ struct Coord {
 };
 
 tostream& operator<<(tostream& out, const Coord& coord);
+bool operator==(const Coord& first, const Coord& second);
+bool operator!=(const Coord& first, const Coord& second);
 
 namespace Colors {
     extern const Pixel RadarColor;
     extern const Pixel RadarEnd;
+    extern const Pixel RadarBorder;
     extern const Pixel SafeColor;
     extern const Pixel EnemyColor;
     extern const Pixel EnemyBallColor;
     extern const Pixel EnergyColor[2];
+    extern const Pixel XRadarOff;
 }
 
 #endif

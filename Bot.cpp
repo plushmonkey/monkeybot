@@ -81,17 +81,22 @@ void Bot::GrabRadar() {
 
     while (radarend == 0) {
         m_Grabber->Update();
-
-        for (int y = m_Grabber->GetHeight() / 2; y < m_Grabber->GetHeight(); y++) {
-            for (int x = m_Grabber->GetWidth() / 2; x < m_Grabber->GetWidth(); x++) {
+        for (int y = static_cast<int>(m_Grabber->GetHeight() / 1.5); y < m_Grabber->GetHeight(); y++) {
+            for (int x = static_cast<int>(m_Grabber->GetWidth() / 1.5); x < m_Grabber->GetWidth(); x++) {
                 Pixel pix = m_Grabber->GetPixel(x, y);
 
-                if (radarstart == 0 && pix == Colors::RadarColor)
+                if (radarstart == 0 && pix == Colors::RadarBorder)
                     radarstart = x;
 
-                if (radarstart != 0 && pix == Colors::RadarEnd) {
-                    radarend = x;
-                    radary = y;
+                if (radarstart != 0 && pix != Colors::RadarBorder) {
+                    radarend = x - 1;
+                    if (radarend - radarstart < 104) {
+                        radarstart = 0;
+                        radarend = 0;
+                        break;
+                    }
+                    radarstart++;
+                    radary = y + 1;
                     x = m_Grabber->GetWidth();
                     y = m_Grabber->GetHeight();
                     break;
@@ -130,12 +135,12 @@ int Bot::Run() {
 
             m_Player = m_Radar->GetArea(m_Radar->GetWidth() / 2 - 1, m_Radar->GetWidth() / 2 - 1, 4, 4);
 
-            if (m_Grabber->GetWidth() == 640) {
-                m_EnergyArea[0] = m_Grabber->GetArea(562, 0, 16, 21);
-                m_EnergyArea[1] = m_Grabber->GetArea(578, 0, 16, 21);
-                m_EnergyArea[2] = m_Grabber->GetArea(594, 0, 16, 21);
-                m_EnergyArea[3] = m_Grabber->GetArea(610, 0, 16, 21);
-            }
+            int width = m_Grabber->GetWidth();
+
+            m_EnergyArea[0] = m_Grabber->GetArea(width - 78, 0, 16, 21);
+            m_EnergyArea[1] = m_Grabber->GetArea(width - 62, 0, 16, 21);
+            m_EnergyArea[2] = m_Grabber->GetArea(width - 46, 0, 16, 21);
+            m_EnergyArea[3] = m_Grabber->GetArea(width - 30, 0, 16, 21);
 
             ready = true;
         } catch (const std::exception& e) {

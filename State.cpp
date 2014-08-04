@@ -6,11 +6,18 @@
 #include <thread>
 #include <iostream>
 
+#define RUNENERGY 400
+#define XRADARENERGY 600
+const Coord NullCoord(0, 0);
+
 State::State(Bot& bot)
     : m_Bot(bot) { }
 
 AggressiveState::AggressiveState(Bot& bot)
-    : State(bot) { }
+    : State(bot), 
+      m_LastEnemyPos(0,0),
+      m_LastEnemyTimer(0),
+      m_EnemyVelocity(0, 0) { }
 
 void AggressiveState::Update() {
     std::shared_ptr<ScreenGrabber> grabber = m_Bot.GetGrabber();
@@ -20,22 +27,40 @@ void AggressiveState::Update() {
     Keyboard& keyboard = m_Bot.GetKeyboard();
 
     bool insafe = Util::PlayerInSafe(player);
-    int tardist = 15, dx, dy;
+    int tardist = 10, dx, dy;
     double dist;
     static bool keydown;
 
     int energy = Util::GetEnergy(m_Bot.GetEnergyAreas());
 
-    if (energy < 600 && !insafe) {
-        tcout << "Switching to run state. Current energy: " << energy << std::endl;
+    if (energy < RUNENERGY && !insafe) {
         m_Bot.SetState(std::shared_ptr<RunState>(new RunState(m_Bot)));
         return;
     }
 
+    if (energy < XRADARENERGY && Util::XRadarOn(grabber))
+        keyboard.Send(VK_END);
+    if (energy >= XRADARENERGY && !Util::XRadarOn(grabber))
+        keyboard.Send(VK_END);
+
     try {
         std::vector<Coord> enemies = Util::GetEnemies(radar);
 
-        Util::GetClosestEnemy(enemies, radar, &dx, &dy, &dist);
+        Coord closest = Util::GetClosestEnemy(enemies, radar, &dx, &dy, &dist);
+
+        if (timeGetTime() > m_LastEnemyTimer + 500) {
+            m_EnemyVelocity.x = closest.x - m_LastEnemyPos.x;
+            m_EnemyVelocity.y = closest.y - m_LastEnemyPos.y;
+            m_LastEnemyTimer = timeGetTime();
+            m_LastEnemyPos = closest;
+        }
+
+        // ignore velocity if it's probably retargeting
+        if (std::abs(m_EnemyVelocity.x) < 15)
+            dx += m_EnemyVelocity.x;
+        if (std::abs(m_EnemyVelocity.y) < 15)
+            dy += m_EnemyVelocity.y;
+
         m_Bot.SetLastEnemy(timeGetTime());
 
         int target = Util::GetTargetRotation(dx, dy);
@@ -68,6 +93,9 @@ void AggressiveState::Update() {
         if (dist > tardist) {
             keyboard.Up(VK_DOWN);
             keyboard.Down(VK_UP);
+        } else if (dist == tardist) {
+            keyboard.Up(VK_UP);
+            keyboard.Up(VK_DOWN);
         } else {
             keyboard.Up(VK_UP);
             keyboard.Down(VK_DOWN);
@@ -98,15 +126,25 @@ void AggressiveState::Update() {
     }
 }
 
-RunState::RunState(Bot& bot) : State(bot) { }
+RunState::RunState(Bot& bot) : State(bot) {
+    Keyboard& keyboard = m_Bot.GetKeyboard();
+    keyboard.Up(VK_LEFT);
+    keyboard.Up(VK_RIGHT);
+    keyboard.Up(VK_UP);
+    keyboard.Up(VK_DOWN);
+    keyboard.Up(VK_CONTROL);
+}
 
 void RunState::Update() {
     Keyboard& keyboard = m_Bot.GetKeyboard();
+    ScreenGrabberPtr grabber = m_Bot.GetGrabber();
 
     int energy = Util::GetEnergy(m_Bot.GetEnergyAreas());
 
-    if (energy > 600) {
-        tcout << "Switching to aggressive state. Current energy: " << energy << std::endl;
+    if (Util::XRadarOn(grabber))
+        keyboard.Send(VK_END);
+
+    if (energy > RUNENERGY) {
         keyboard.Up(VK_DOWN);
         m_Bot.SetState(std::shared_ptr<AggressiveState>(new AggressiveState(m_Bot)));
         return;

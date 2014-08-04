@@ -1,8 +1,16 @@
 #include "Util.h"
 #include "ScreenArea.h"
+#include "ScreenGrabber.h"
 #include <limits>
 
 namespace Util {
+
+bool XRadarOn(const ScreenGrabberPtr& grabber) {
+    int x = grabber->GetWidth() - 8;
+    int y = static_cast<int>(grabber->GetHeight() * .60);
+    
+    return grabber->GetPixel(x, y) != Colors::XRadarOff;
+}
 
 bool PlayerInSafe(const ScreenAreaPtr& player) {
     try {
@@ -13,9 +21,9 @@ bool PlayerInSafe(const ScreenAreaPtr& player) {
     }
 }
 
-void GetClosestEnemy(const std::vector<Coord>& enemies, ScreenAreaPtr& radar, int* dx, int* dy, double* dist) {
+Coord GetClosestEnemy(const std::vector<Coord>& enemies, ScreenAreaPtr& radar, int* dx, int* dy, double* dist) {
     *dist = std::numeric_limits<double>::max();
-
+    Coord closest = enemies.at(0);
     int radar_center = static_cast<int>(std::ceil(radar->GetWidth() / 2.0));
 
     for (unsigned int i = 0; i < enemies.size(); i++) {
@@ -28,9 +36,13 @@ void GetClosestEnemy(const std::vector<Coord>& enemies, ScreenAreaPtr& radar, in
             *dist = cdist;
             *dx = cdx;
             *dy = cdy;
+            closest = enemies.at(i);
         }
     }
+
+    return closest;
 }
+
 int GetTargetRotation(int dx, int dy) {
     double angle = std::atan2(dy, dx) * 180 / M_PI;
     int target = static_cast<int>(angle / 9) + 10;

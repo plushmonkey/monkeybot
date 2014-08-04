@@ -19,6 +19,11 @@ public:
 typedef std::shared_ptr<State> StatePtr;
 
 class AggressiveState : public State {
+private:
+    Coord m_LastEnemyPos;
+    DWORD m_LastEnemyTimer;
+    Coord m_EnemyVelocity;
+
 public:
     AggressiveState(Bot& bot);
     virtual void Update();

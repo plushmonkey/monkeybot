@@ -22,3 +22,11 @@ tostream& operator<<(tostream& out, const Coord& coord) {
     out << "(" << coord.x << ", " << coord.y << ")";
     return out;
 }
+
+bool operator==(const Coord& first, const Coord& second) {
+    return first.x == second.x && first.y == second.y;
+}
+
+bool operator!=(const Coord& first, const Coord& second) {
+    return !(first == second);
+}
