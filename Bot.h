@@ -22,6 +22,7 @@ private:
     std::shared_ptr<ScreenGrabber> m_Grabber;
 
     HWND SelectWindow();
+    void GrabRadar();
 
 public:
     Bot();
@@ -29,7 +30,7 @@ public:
     ScreenAreaPtr& GetRadar();
     ScreenAreaPtr& GetShip();
     ScreenAreaPtr& GetPlayer();
-    std::weak_ptr<ScreenGrabber> GetGrabber();
+    std::shared_ptr<ScreenGrabber> GetGrabber();
     ScreenAreaPtr* GetEnergyAreas() { return m_EnergyArea; }
     Keyboard& GetKeyboard() { return m_Keyboard; }
 

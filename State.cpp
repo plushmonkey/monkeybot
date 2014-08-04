@@ -13,7 +13,7 @@ AggressiveState::AggressiveState(Bot& bot)
     : State(bot) { }
 
 void AggressiveState::Update() {
-    std::weak_ptr<ScreenGrabber> grabber = m_Bot.GetGrabber();
+    std::shared_ptr<ScreenGrabber> grabber = m_Bot.GetGrabber();
     ScreenAreaPtr& radar = m_Bot.GetRadar();
     ScreenAreaPtr& ship = m_Bot.GetShip();
     ScreenAreaPtr& player = m_Bot.GetPlayer();
@@ -26,6 +26,12 @@ void AggressiveState::Update() {
 
     int energy = Util::GetEnergy(m_Bot.GetEnergyAreas());
 
+    if (energy < 600 && !insafe) {
+        tcout << "Switching to run state. Current energy: " << energy << std::endl;
+        m_Bot.SetState(std::shared_ptr<RunState>(new RunState(m_Bot)));
+        return;
+    }
+
     try {
         std::vector<Coord> enemies = Util::GetEnemies(radar);
 
@@ -34,8 +40,6 @@ void AggressiveState::Update() {
 
         int target = Util::GetTargetRotation(dx, dy);
         int rot = Util::GetRotation(ship);
-
-        tcout << rot << " " << target << std::endl;
         
         keydown = true;
 
@@ -61,24 +65,18 @@ void AggressiveState::Update() {
             keyboard.Up(VK_RIGHT);
         }
 
-        if (energy < 600) {
-            m_Bot.SetState(std::shared_ptr<RunState>(new RunState(m_Bot)));
-            return;
+        if (dist > tardist) {
+            keyboard.Up(VK_DOWN);
+            keyboard.Down(VK_UP);
         } else {
-            if (dist > tardist) {
-                keyboard.Up(VK_DOWN);
-                keyboard.Down(VK_UP);
-            } else {
-                keyboard.Up(VK_UP);
-                keyboard.Down(VK_DOWN);
-            }
-
-            if (!insafe)
-                keyboard.Down(VK_CONTROL);
+            keyboard.Up(VK_UP);
+            keyboard.Down(VK_DOWN);
         }
 
         if (insafe)
             keyboard.Up(VK_CONTROL);
+        else
+            keyboard.Down(VK_CONTROL);
 
     } catch (const std::exception&) {
         if (keydown) {
@@ -108,6 +106,8 @@ void RunState::Update() {
     int energy = Util::GetEnergy(m_Bot.GetEnergyAreas());
 
     if (energy > 600) {
+        tcout << "Switching to aggressive state. Current energy: " << energy << std::endl;
+        keyboard.Up(VK_DOWN);
         m_Bot.SetState(std::shared_ptr<AggressiveState>(new AggressiveState(m_Bot)));
         return;
     }

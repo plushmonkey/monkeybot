@@ -31,7 +31,7 @@ ScreenAreaPtr& Bot::GetPlayer() {
     return m_Player;
 }
 
-std::weak_ptr<ScreenGrabber> Bot::GetGrabber() {
+std::shared_ptr<ScreenGrabber> Bot::GetGrabber() {
     return m_Grabber;
 }
 
@@ -74,6 +74,47 @@ void Bot::Update() {
     m_State->Update();
 }
 
+void Bot::GrabRadar() {
+    int radarstart = 0;
+    int radarend = 0;
+    int radary = 0;
+
+    while (radarend == 0) {
+        m_Grabber->Update();
+
+        for (int y = m_Grabber->GetHeight() / 2; y < m_Grabber->GetHeight(); y++) {
+            for (int x = m_Grabber->GetWidth() / 2; x < m_Grabber->GetWidth(); x++) {
+                Pixel pix = m_Grabber->GetPixel(x, y);
+
+                if (radarstart == 0 && pix == Colors::RadarColor)
+                    radarstart = x;
+
+                if (radarstart != 0 && pix == Colors::RadarEnd) {
+                    radarend = x;
+                    radary = y;
+                    x = m_Grabber->GetWidth();
+                    y = m_Grabber->GetHeight();
+                    break;
+                }
+            }
+        }
+
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        tcout << "Finding radar location." << std::endl;
+    }
+
+    int radarwidth = radarend - radarstart;
+
+    tcout << "Creating radar screen with width of " << radarwidth << " at " << radarstart << ", " << radary << "." << std::endl;
+
+    m_Radar = m_Grabber->GetArea(radarstart, radary, radarwidth, radarwidth);
+
+    if (!m_Radar.get()) {
+        tcerr << "Resolution (" << m_Grabber->GetWidth() << "x" << m_Grabber->GetHeight() << ") not supported." << std::endl;
+        std::abort();
+    }
+}
+
 int Bot::Run() {
     bool ready = false;
 
@@ -85,44 +126,7 @@ int Bot::Run() {
             m_Grabber = std::auto_ptr<ScreenGrabber>(new ScreenGrabber(m_Window));
             m_Ship = m_Grabber->GetArea(m_Grabber->GetWidth() / 2 - 18, m_Grabber->GetHeight() / 2 - 18, 36, 36);
 
-            int radarstart = 0;
-            int radarend = 0;
-            int radary = 0;
-
-            while (radarend == 0) {
-                m_Grabber->Update();
-
-                for (int y = m_Grabber->GetHeight() / 2; y < m_Grabber->GetHeight(); y++) {
-                    for (int x = m_Grabber->GetWidth() / 2; x < m_Grabber->GetWidth(); x++) {
-                        Pixel pix = m_Grabber->GetPixel(x, y);
-
-                        if (radarstart == 0 && pix == Colors::RadarColor)
-                            radarstart = x;
-
-                        if (radarstart != 0 && pix == Colors::RadarEnd) {
-                            radarend = x;
-                            radary = y;
-                            x = m_Grabber->GetWidth();
-                            y = m_Grabber->GetHeight();
-                            break;
-                        }
-                    }
-                }
-
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-                tcout << "Finding radar location." << std::endl;
-            }
-
-            int radarwidth = radarend - radarstart;
-
-            tcout << "Creating radar screen with width of " << radarwidth << " at " << radarstart << ", " << radary << "." << std::endl;
-
-            m_Radar = m_Grabber->GetArea(radarstart, radary, radarwidth, radarwidth);
-
-            if (!m_Radar.get()) {
-                tcerr << "Resolution (" << m_Grabber->GetWidth() << "x" << m_Grabber->GetHeight() << ") not supported." << std::endl;
-                std::abort();
-            }
+            GrabRadar();
 
             m_Player = m_Radar->GetArea(m_Radar->GetWidth() / 2 - 1, m_Radar->GetWidth() / 2 - 1, 4, 4);
 
