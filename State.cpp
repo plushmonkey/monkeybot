@@ -19,54 +19,24 @@ void AggressiveState::Update() {
     ScreenAreaPtr& player = m_Bot.GetPlayer();
     Keyboard& keyboard = m_Bot.GetKeyboard();
 
-    bool insafe = false;
-
-    try {
-        player->Find(Colors::SafeColor);
-        insafe = true;
-    } catch (const std::exception&) {
-        insafe = false;
-    }
-
-    int tardist = 15;
-
-    static bool keydown = false;
-
-    if (radar->GetWidth() > 300)
-        tardist = 30;
+    bool insafe = Util::PlayerInSafe(player);
+    int tardist = 15, dx, dy;
+    double dist;
+    static bool keydown;
 
     int energy = Util::GetEnergy(m_Bot.GetEnergyAreas());
 
     try {
         std::vector<Coord> enemies = Util::GetEnemies(radar);
 
+        Util::GetClosestEnemy(enemies, radar, &dx, &dy, &dist);
         m_Bot.SetLastEnemy(timeGetTime());
 
-        int radar_center = static_cast<int>(std::ceil(radar->GetWidth() / 2.0));
-
-        int closest_dx = 0;
-        int closest_dy = 0;
-        double closest_dist = std::numeric_limits<double>::max();
-
-        for (unsigned int i = 0; i < enemies.size(); i++) {
-            int dx = enemies.at(i).x - radar_center;
-            int dy = enemies.at(i).y - radar_center;
-
-            double dist = std::sqrt(dx * dx + dy * dy);
-
-            if (dist < closest_dist) {
-                closest_dist = dist;
-                closest_dx = dx;
-                closest_dy = dy;
-            }
-        }
-
-        double angle = std::atan2(closest_dy, closest_dx) * 180 / M_PI;
-        int target = static_cast<int>(angle / 9) + 10;
-        if (target < 0) target += 40;
-
+        int target = Util::GetTargetRotation(dx, dy);
         int rot = Util::GetRotation(ship);
 
+        tcout << rot << " " << target << std::endl;
+        
         keydown = true;
 
         if (rot != target) {
@@ -92,11 +62,10 @@ void AggressiveState::Update() {
         }
 
         if (energy < 600) {
-            keyboard.Down(VK_DOWN);
-            keyboard.Up(VK_UP);
-            keyboard.Up(VK_CONTROL);
+            m_Bot.SetState(std::shared_ptr<RunState>(new RunState(m_Bot)));
+            return;
         } else {
-            if (closest_dist > tardist) {
+            if (dist > tardist) {
                 keyboard.Up(VK_DOWN);
                 keyboard.Down(VK_UP);
             } else {
@@ -129,4 +98,21 @@ void AggressiveState::Update() {
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+}
+
+RunState::RunState(Bot& bot) : State(bot) { }
+
+void RunState::Update() {
+    Keyboard& keyboard = m_Bot.GetKeyboard();
+
+    int energy = Util::GetEnergy(m_Bot.GetEnergyAreas());
+
+    if (energy > 600) {
+        m_Bot.SetState(std::shared_ptr<AggressiveState>(new AggressiveState(m_Bot)));
+        return;
+    }
+
+    keyboard.Down(VK_DOWN);
+    keyboard.Up(VK_UP);
+    keyboard.Up(VK_CONTROL);
 }

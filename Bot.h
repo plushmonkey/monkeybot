@@ -35,6 +35,8 @@ public:
 
     DWORD GetLastEnemy() const { return m_LastEnemy; }
     void SetLastEnemy(DWORD time) { m_LastEnemy = time; }
+
+    void SetState(StatePtr state) { m_State = state; }
     int Run();
     void Update();
 };

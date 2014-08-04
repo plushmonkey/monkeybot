@@ -1,7 +1,43 @@
 #include "Util.h"
 #include "ScreenArea.h"
+#include <limits>
 
 namespace Util {
+
+bool PlayerInSafe(const ScreenAreaPtr& player) {
+    try {
+        player->Find(Colors::SafeColor);
+        return true;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+void GetClosestEnemy(const std::vector<Coord>& enemies, ScreenAreaPtr& radar, int* dx, int* dy, double* dist) {
+    *dist = std::numeric_limits<double>::max();
+
+    int radar_center = static_cast<int>(std::ceil(radar->GetWidth() / 2.0));
+
+    for (unsigned int i = 0; i < enemies.size(); i++) {
+        int cdx = enemies.at(i).x - radar_center;
+        int cdy = enemies.at(i).y - radar_center;
+
+        double cdist = std::sqrt(cdx * cdx + cdy * cdy);
+
+        if (cdist < *dist) {
+            *dist = cdist;
+            *dx = cdx;
+            *dy = cdy;
+        }
+    }
+}
+int GetTargetRotation(int dx, int dy) {
+    double angle = std::atan2(dy, dx) * 180 / M_PI;
+    int target = static_cast<int>(angle / 9) + 10;
+    if (target < 0) target += 40;
+    return target;
+}
+
 int GetRotation(const ScreenAreaPtr& area) {
     u64 val = 0;
 

@@ -24,5 +24,11 @@ public:
     virtual void Update();
 };
 
+class RunState : public State {
+public:
+    RunState(Bot& bot);
+    virtual void Update();
+};
+
 
 #endif
