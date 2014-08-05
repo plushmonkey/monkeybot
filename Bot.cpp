@@ -5,6 +5,7 @@
 #include "Bot.h"
 #include "ScreenGrabber.h"
 #include "State.h"
+#include "Util.h"
 #include <thread>
 #include <tchar.h>
 #include <iostream>
@@ -71,6 +72,13 @@ void Bot::Update() {
     m_Ship->Update();
     m_Player->Update();
 
+    if (!Util::InShip(m_Grabber)) {
+        m_Keyboard.Up(VK_CONTROL);
+        m_Keyboard.Send(VK_ESCAPE);
+        m_Keyboard.Send(0x38);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+
     m_State->Update();
 }
 
@@ -128,7 +136,7 @@ int Bot::Run() {
             if (!m_Window)
                 m_Window = SelectWindow();
 
-            m_Grabber = std::auto_ptr<ScreenGrabber>(new ScreenGrabber(m_Window));
+            m_Grabber = std::shared_ptr<ScreenGrabber>(new ScreenGrabber(m_Window));
             m_Ship = m_Grabber->GetArea(m_Grabber->GetWidth() / 2 - 18, m_Grabber->GetHeight() / 2 - 18, 36, 36);
 
             GrabRadar();

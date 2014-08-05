@@ -3,6 +3,8 @@
 #include "ScreenGrabber.h"
 #include <limits>
 
+static const int ShipRadius[8] = { 15, 15, 30, 30, 21, 21, 39 ,11 };
+
 namespace Util {
 
 bool XRadarOn(const ScreenGrabberPtr& grabber) {
@@ -19,6 +21,13 @@ bool PlayerInSafe(const ScreenAreaPtr& player) {
     } catch (const std::exception&) {
         return false;
     }
+}
+
+bool InShip(const ScreenGrabberPtr& grabber) {
+    int x = grabber->GetWidth() - 8;
+    int y = 25;
+
+    return grabber->GetPixel(x, y) == Pixel(99, 90, 148, 0);
 }
 
 Coord GetClosestEnemy(const std::vector<Coord>& enemies, ScreenAreaPtr& radar, int* dx, int* dy, double* dist) {
@@ -64,6 +73,26 @@ int GetRotation(const ScreenAreaPtr& area) {
     }
 
     return -1;
+}
+
+int GetShip(const ScreenAreaPtr& ship) {
+    u64 val = 0;
+
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++)
+            val = ship->GetPixel(16 + j, 16 + i) + val;
+    }
+
+    for(int i = 0; i < 8; i++) {
+        for (int j = 0; j < 40; j++)
+            if (Ships::Rotations[i][j] == val) return i + 1;
+    }
+
+    return 1;
+}
+
+int GetShipRadius(int n) {
+    return ShipRadius[n - 1];
 }
 
 bool InSafe(const ScreenArea::Ptr& area, Coord coord) {

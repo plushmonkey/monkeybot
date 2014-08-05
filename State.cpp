@@ -1,6 +1,7 @@
 #include "State.h"
 #include "Keyboard.h"
 #include "ScreenArea.h"
+#include "ScreenGrabber.h"
 #include "Util.h"
 #include "Bot.h"
 #include <thread>
@@ -65,7 +66,7 @@ void AggressiveState::Update() {
 
         int target = Util::GetTargetRotation(dx, dy);
         int rot = Util::GetRotation(ship);
-        
+
         keydown = true;
 
         if (rot != target) {
@@ -117,9 +118,11 @@ void AggressiveState::Update() {
         }
 
         if (timeGetTime() > m_Bot.GetLastEnemy() + 1000 * 60) {
+            keyboard.Send(VK_END);
             keyboard.Send(VK_INSERT);
             keyboard.Send(VK_RIGHT);
             m_Bot.SetLastEnemy(timeGetTime());
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));

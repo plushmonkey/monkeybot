@@ -14,6 +14,9 @@ namespace Util {
     int GetTargetRotation(int dx, int dy);
     bool PlayerInSafe(const ScreenAreaPtr& player);
     bool XRadarOn(const ScreenGrabberPtr& grabber);
+    int GetShip(const ScreenAreaPtr& ship);
+    int GetShipRadius(int n);
+    bool InShip(const ScreenGrabberPtr& grabber);
 }
 
 #endif
