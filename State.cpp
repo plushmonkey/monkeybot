@@ -35,8 +35,9 @@ void AggressiveState::Update() {
     int energy = Util::GetEnergy(m_Bot.GetEnergyAreas());
 
     if (energy < RUNENERGY && !insafe) {
-        m_Bot.SetState(std::shared_ptr<RunState>(new RunState(m_Bot)));
-        return;
+        tardist = 30;
+        //m_Bot.SetState(std::shared_ptr<RunState>(new RunState(m_Bot)));
+        //return;
     }
 
     if (energy < XRADARENERGY && Util::XRadarOn(grabber))
@@ -56,21 +57,26 @@ void AggressiveState::Update() {
             m_LastEnemyPos = closest;
         }
 
-        // ignore velocity if it's probably retargeting
-        if (std::abs(m_EnemyVelocity.x) < 15)
-            dx += m_EnemyVelocity.x;
-        if (std::abs(m_EnemyVelocity.y) < 15)
-            dy += m_EnemyVelocity.y;
+        int dxchange = static_cast<int>(m_EnemyVelocity.x * (dist / 10));
+        int dychange = static_cast<int>(m_EnemyVelocity.y * (dist / 10));
 
-        m_Bot.SetLastEnemy(timeGetTime());
+        if (std::abs(m_EnemyVelocity.x) < 15)
+            dx += dxchange;
+        if (std::abs(m_EnemyVelocity.y) < 15)
+            dy += dychange;
 
         int target = Util::GetTargetRotation(dx, dy);
         int rot = Util::GetRotation(ship);
+        int away = std::abs(rot - target);
+
+        if (away > 20)
+            target = Util::GetTargetRotation(dx - dxchange, dy - dychange);
+
+        m_Bot.SetLastEnemy(timeGetTime());
 
         keydown = true;
 
-        if (rot != target) {
-            int away = std::abs(rot - target);
+        if (rot != target) {    
             int dir = 0;
 
             if (away < 20 && rot < target) dir = 1;
@@ -102,10 +108,14 @@ void AggressiveState::Update() {
             keyboard.Down(VK_DOWN);
         }
 
-        if (insafe)
+        if (energy < RUNENERGY) {
             keyboard.Up(VK_CONTROL);
-        else
-            keyboard.Down(VK_CONTROL);
+        } else {
+            if (insafe)
+                keyboard.Up(VK_CONTROL);
+            else
+                keyboard.Down(VK_CONTROL);
+        }
 
     } catch (const std::exception&) {
         if (keydown) {
