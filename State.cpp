@@ -40,25 +40,35 @@ void AggressiveState::Update() {
         //return;
     }
 
-    if (energy < XRADARENERGY && Util::XRadarOn(grabber))
-        keyboard.Send(VK_END);
-    if (energy >= XRADARENERGY && !Util::XRadarOn(grabber))
-        keyboard.Send(VK_END);
+    if (energy < XRADARENERGY && Util::XRadarOn(grabber)) {
+        keyboard.Down(VK_END);
+        keyboard.Up(VK_END);
+    }
+    if (energy >= XRADARENERGY && !Util::XRadarOn(grabber)) {
+        keyboard.Down(VK_END);
+        keyboard.Up(VK_END);
+    }
 
     try {
         std::vector<Coord> enemies = Util::GetEnemies(radar);
 
         Coord closest = Util::GetClosestEnemy(enemies, radar, &dx, &dy, &dist);
 
-        if (timeGetTime() > m_LastEnemyTimer + 500) {
+        if (timeGetTime() > m_LastEnemyTimer + 250) {
             m_EnemyVelocity.x = closest.x - m_LastEnemyPos.x;
             m_EnemyVelocity.y = closest.y - m_LastEnemyPos.y;
             m_LastEnemyTimer = timeGetTime();
             m_LastEnemyPos = closest;
         }
 
-        int dxchange = static_cast<int>(m_EnemyVelocity.x * (dist / 10));
-        int dychange = static_cast<int>(m_EnemyVelocity.y * (dist / 10));
+        int radar_center = static_cast<int>(std::ceil(radar->GetWidth() / 2.0));
+        int ldx = m_LastEnemyPos.x - radar_center;
+        int ldy = m_LastEnemyPos.y - radar_center;
+
+        double ldist = std::sqrt(ldx * ldx + ldy * ldy);
+
+        int dxchange = static_cast<int>(m_EnemyVelocity.x * (ldist / 10));
+        int dychange = static_cast<int>(m_EnemyVelocity.y * (ldist / 10));
 
         if (std::abs(m_EnemyVelocity.x) < 15)
             dx += dxchange;
@@ -68,9 +78,6 @@ void AggressiveState::Update() {
         int target = Util::GetTargetRotation(dx, dy);
         int rot = Util::GetRotation(ship);
         int away = std::abs(rot - target);
-
-        if (away > 20)
-            target = Util::GetTargetRotation(dx - dxchange, dy - dychange);
 
         m_Bot.SetLastEnemy(timeGetTime());
 
@@ -100,9 +107,6 @@ void AggressiveState::Update() {
         if (dist > tardist) {
             keyboard.Up(VK_DOWN);
             keyboard.Down(VK_UP);
-        } else if (dist == tardist) {
-            keyboard.Up(VK_UP);
-            keyboard.Up(VK_DOWN);
         } else {
             keyboard.Up(VK_UP);
             keyboard.Down(VK_DOWN);
@@ -129,6 +133,7 @@ void AggressiveState::Update() {
 
         if (timeGetTime() > m_Bot.GetLastEnemy() + 1000 * 60) {
             keyboard.Send(VK_END);
+            std::this_thread::sleep_for(std::chrono::milliseconds(300));
             keyboard.Send(VK_INSERT);
             keyboard.Send(VK_RIGHT);
             m_Bot.SetLastEnemy(timeGetTime());

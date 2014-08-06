@@ -20,12 +20,14 @@ private:
     ScreenAreaPtr m_Ship;
     ScreenAreaPtr m_Player;
     std::shared_ptr<ScreenGrabber> m_Grabber;
+    int m_ShipNum;
 
     HWND SelectWindow();
+    void SelectShip();
     void GrabRadar();
 
 public:
-    Bot();
+    Bot(int ship);
 
     ScreenAreaPtr& GetRadar();
     ScreenAreaPtr& GetShip();

@@ -12,12 +12,13 @@
 #include <map>
 #include <string>
 
-Bot::Bot()
+Bot::Bot(int ship)
     : m_Finder(_T("Continuum")),
       m_Window(0),
       m_Keyboard(),
       m_LastEnemy(timeGetTime()),
-      m_State(new AggressiveState(*this))
+      m_State(new AggressiveState(*this)),
+      m_ShipNum(ship)
 {}
 
 ScreenAreaPtr& Bot::GetRadar() {
@@ -56,14 +57,31 @@ HWND Bot::SelectWindow() {
 
     int selection = _tstoi(input.c_str());
 
-    if (selection < 1 || selection >= i) {
-        tcerr << "Error with window selection." << std::endl;
-        return 0;
-    }
+    if (selection < 1 || selection >= i)
+        throw std::runtime_error("Error with window selection.");
 
     tcout << "Running bot on window " << select_map[selection]->second << "." << std::endl;
 
     return select_map[selection]->first;
+}
+
+void Bot::SelectShip() {
+    static bool selected;
+
+    if (selected == true) return;
+
+    selected = true;
+    tcout << "Ship number: ";
+
+    std::string input;
+    std::cin >> input;
+    
+    if (input.length() != 1 || input[0] < 0x31 || input[0] > 0x38) {
+        tcout << "Defaulting to ship 8." << std::endl;
+        return;
+    }
+
+    m_ShipNum = input[0] - 0x30;
 }
 
 void Bot::Update() {
@@ -75,7 +93,7 @@ void Bot::Update() {
     if (!Util::InShip(m_Grabber)) {
         m_Keyboard.Up(VK_CONTROL);
         m_Keyboard.Send(VK_ESCAPE);
-        m_Keyboard.Send(0x38);
+        m_Keyboard.Send(0x30 + m_ShipNum);
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
@@ -135,6 +153,8 @@ int Bot::Run() {
         try {
             if (!m_Window)
                 m_Window = SelectWindow();
+
+            SelectShip();
 
             m_Grabber = std::shared_ptr<ScreenGrabber>(new ScreenGrabber(m_Window));
             m_Ship = m_Grabber->GetArea(m_Grabber->GetWidth() / 2 - 18, m_Grabber->GetHeight() / 2 - 18, 36, 36);
