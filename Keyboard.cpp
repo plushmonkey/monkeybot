@@ -23,6 +23,8 @@ void Keyboard::Send(int keycode) {
 
     input.ki.dwFlags = KEYEVENTF_KEYUP;
     SendInput(1, &input, sizeof(INPUT));
+
+    m_Keys[keycode] = false;
 }
 
 void Keyboard::Up(int keycode) {
@@ -38,4 +40,27 @@ void Keyboard::Down(int keycode) {
 
     SendInput(1, &input, sizeof(INPUT));
     m_Keys[keycode] = true;
+}
+
+void Keyboard::ToggleDown() {
+    for (auto& kv : m_Keys) {
+        if (kv.second) {
+            INPUT input = GetInput(kv.first);
+            if (!m_Toggled)
+                input.ki.dwFlags = KEYEVENTF_KEYUP;
+            SendInput(1, &input, sizeof(INPUT));
+        }
+    }
+    m_Toggled = !m_Toggled;
+}
+
+void Keyboard::ReleaseAll() {
+    for (auto& kv : m_Keys) {
+        if (kv.second) {
+            INPUT input = GetInput(kv.first);
+            input.ki.dwFlags = KEYEVENTF_KEYUP;
+            SendInput(1, &input, sizeof(INPUT));
+            kv.second = false;
+        }
+    }
 }

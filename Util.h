@@ -11,6 +11,7 @@ namespace Util {
     std::vector<Coord> GetEnemies(ScreenAreaPtr& radar);
     bool InSafe(const ScreenAreaPtr& area, Coord coord);
     Coord GetClosestEnemy(const std::vector<Coord>& enemies, ScreenAreaPtr& radar, int* dx, int* dy, double* dist);
+    void GetDistance(Coord from, Coord to, int *dx, int *dy, double* dist);
     int GetTargetRotation(int dx, int dy);
     bool PlayerInSafe(const ScreenAreaPtr& player);
     bool XRadarOn(const ScreenGrabberPtr& grabber);

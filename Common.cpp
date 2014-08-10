@@ -30,3 +30,9 @@ bool operator==(const Coord& first, const Coord& second) {
 bool operator!=(const Coord& first, const Coord& second) {
     return !(first == second);
 }
+
+bool operator<(const Coord& first, const Coord& second) {
+    if (first.y < second.y) return true;
+    if (first.y == second.y) return first.x < second.x;
+    return false;
+}

@@ -2,6 +2,8 @@
 #include "ScreenArea.h"
 #include "ScreenGrabber.h"
 #include <limits>
+#include <iostream>
+#include <map>
 
 static const int ShipRadius[8] = { 15, 15, 30, 30, 21, 21, 39 ,11 };
 
@@ -30,16 +32,23 @@ bool InShip(const ScreenGrabberPtr& grabber) {
     return grabber->GetPixel(x, y) == Pixel(99, 90, 148, 0);
 }
 
+void GetDistance(Coord from, Coord to, int *dx, int *dy, double* dist) {
+    *dx = from.x - to.x;
+    *dy = from.y - to.y;
+
+    *dist = std::sqrt(*dx * *dx + *dy * *dy);
+}
+
 Coord GetClosestEnemy(const std::vector<Coord>& enemies, ScreenAreaPtr& radar, int* dx, int* dy, double* dist) {
     *dist = std::numeric_limits<double>::max();
     Coord closest = enemies.at(0);
     int radar_center = static_cast<int>(std::ceil(radar->GetWidth() / 2.0));
 
     for (unsigned int i = 0; i < enemies.size(); i++) {
-        int cdx = enemies.at(i).x - radar_center;
-        int cdy = enemies.at(i).y - radar_center;
+        int cdx, cdy;
+        double cdist;
 
-        double cdist = std::sqrt(cdx * cdx + cdy * cdy);
+        GetDistance(enemies.at(i), Coord(radar_center, radar_center), &cdx, &cdy, &cdist);
 
         if (cdist < *dist) {
             *dist = cdist;
@@ -145,22 +154,22 @@ std::vector<Coord> GetEnemies(ScreenArea::Ptr& radar) {
     for (int y = 0; y < radar->GetWidth(); y++) {
         for (int x = 0; x < radar->GetWidth(); x++) {
             Pixel pix = radar->GetPixel(x, y);
-            if (pix == Colors::EnemyColor || pix == Colors::EnemyBallColor) {
+            if (pix == Colors::EnemyColor[0] || pix == Colors::EnemyColor[1] || pix == Colors::EnemyBallColor) {
                 int count = 0;
                 try {
                     Pixel pixel;
 
                     // right
                     pixel = radar->GetPixel(x + 1, y);
-                    if (pixel == Colors::EnemyColor || pixel == Colors::EnemyBallColor)
+                    if (pixel == Colors::EnemyColor[0] || pixel == Colors::EnemyColor[1] || pixel == Colors::EnemyBallColor)
                         count++;
                     // bottom-right
                     pixel = radar->GetPixel(x + 1, y + 1);
-                    if (pixel == Colors::EnemyColor || pixel == Colors::EnemyBallColor)
+                    if (pixel == Colors::EnemyColor[0] || pixel == Colors::EnemyColor[1] || pixel == Colors::EnemyBallColor)
                         count++;
                     // bottom
                     pixel = radar->GetPixel(x, y + 1);
-                    if (pixel == Colors::EnemyColor || pixel == Colors::EnemyBallColor)
+                    if (pixel == Colors::EnemyColor[0] || pixel == Colors::EnemyColor[1] || pixel == Colors::EnemyBallColor)
                         count++;
                 } catch (std::exception&) {}
 

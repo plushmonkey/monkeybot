@@ -6,9 +6,8 @@
 #include "Bot.h"
 #include <thread>
 #include <iostream>
+#include <tchar.h>
 
-#define RUNENERGY 400
-#define XRADARENERGY 600
 const Coord NullCoord(0, 0);
 
 State::State(Bot& bot)
@@ -18,7 +17,9 @@ AggressiveState::AggressiveState(Bot& bot)
     : State(bot), 
       m_LastEnemyPos(0,0),
       m_LastEnemyTimer(0),
-      m_EnemyVelocity(0, 0) { }
+      m_EnemyVelocity(0, 0),
+      m_LastBomb(0),
+      m_LastNonSafeTime(0) { }
 
 void AggressiveState::Update() {
     std::shared_ptr<ScreenGrabber> grabber = m_Bot.GetGrabber();
@@ -27,70 +28,87 @@ void AggressiveState::Update() {
     ScreenAreaPtr& player = m_Bot.GetPlayer();
     Keyboard& keyboard = m_Bot.GetKeyboard();
 
+    const int runpercent = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
+    const int xpercent = m_Bot.GetConfig().Get<int>(_T("XPercent"));
+    const int saferesettime = m_Bot.GetConfig().Get<int>(_T("SafeResetTime"));
+    const int targetdist = m_Bot.GetConfig().Get<int>(_T("TargetDistance"));
+    const int rundist = m_Bot.GetConfig().Get<int>(_T("RunDistance"));
+    const int stopbombing = m_Bot.GetConfig().Get<int>(_T("StopBombing"));
+    const int bombtime = m_Bot.GetConfig().Get<int>(_T("BombTime"));
+    const bool firebombs = m_Bot.GetConfig().Get<bool>(_T("FireBombs"));
+    const bool fireguns = m_Bot.GetConfig().Get<bool>(_T("FireGuns"));
+
     bool insafe = Util::PlayerInSafe(player);
-    int tardist = 10, dx, dy;
-    double dist;
+    int tardist = targetdist;
     static bool keydown;
 
-    int energy = Util::GetEnergy(m_Bot.GetEnergyAreas());
+    int energypct = m_Bot.GetEnergyPercent();
 
-    if (energy < RUNENERGY && !insafe) {
-        tardist = 30;
-        //m_Bot.SetState(std::shared_ptr<RunState>(new RunState(m_Bot)));
-        //return;
-    }
+    if (energypct < runpercent && !insafe)
+        tardist = rundist;
 
-    if (energy < XRADARENERGY && Util::XRadarOn(grabber)) {
-        keyboard.Down(VK_END);
-        keyboard.Up(VK_END);
-    }
-    if (energy >= XRADARENERGY && !Util::XRadarOn(grabber)) {
-        keyboard.Down(VK_END);
-        keyboard.Up(VK_END);
-    }
+    bool xon = Util::XRadarOn(grabber);
 
-    try {
-        std::vector<Coord> enemies = Util::GetEnemies(radar);
+    if (energypct < xpercent && xon)
+        keyboard.Send(VK_END);
 
-        Coord closest = Util::GetClosestEnemy(enemies, radar, &dx, &dy, &dist);
+    if (energypct > xpercent && !xon)
+        keyboard.Send(VK_END);
 
-        if (timeGetTime() > m_LastEnemyTimer + 250) {
-            m_EnemyVelocity.x = closest.x - m_LastEnemyPos.x;
-            m_EnemyVelocity.y = closest.y - m_LastEnemyPos.y;
-            m_LastEnemyTimer = timeGetTime();
-            m_LastEnemyPos = closest;
+    Coord target = m_Bot.GetEnemyTarget();
+
+    DWORD cur_time = timeGetTime();
+
+    if (target != NullCoord) {
+        TargetInfo info = m_Bot.GetEnemyTargetInfo();
+        double dist = info.dist;
+        int dx = info.dx;
+        int dy = info.dy;
+        
+        if (cur_time > m_LastEnemyTimer + 500) {
+            m_EnemyVelocity.x = target.x - m_LastEnemyPos.x;
+            m_EnemyVelocity.y = target.y - m_LastEnemyPos.y;
+            m_LastEnemyTimer = cur_time;
+            m_LastEnemyPos = target;
         }
 
-        int radar_center = static_cast<int>(std::ceil(radar->GetWidth() / 2.0));
-        int ldx = m_LastEnemyPos.x - radar_center;
-        int ldy = m_LastEnemyPos.y - radar_center;
+        if (!insafe)
+            m_LastNonSafeTime = cur_time;
 
-        double ldist = std::sqrt(ldx * ldx + ldy * ldy);
+        if (saferesettime > 0 && insafe && cur_time >= m_LastNonSafeTime + saferesettime) {
+            if (xon)
+                keyboard.Send(VK_END);
+            std::this_thread::sleep_for(std::chrono::milliseconds(150));
+            keyboard.Send(VK_INSERT);
+            m_LastNonSafeTime = cur_time;
+        }
 
-        int dxchange = static_cast<int>(m_EnemyVelocity.x * (ldist / 10));
-        int dychange = static_cast<int>(m_EnemyVelocity.y * (ldist / 10));
+        m_Bot.SetLastEnemy(cur_time);
+
+        int dxchange = static_cast<int>(m_EnemyVelocity.x * (dist / 10));
+        int dychange = static_cast<int>(m_EnemyVelocity.y * (dist / 10));
 
         if (std::abs(m_EnemyVelocity.x) < 15)
             dx += dxchange;
         if (std::abs(m_EnemyVelocity.y) < 15)
             dy += dychange;
 
-        int target = Util::GetTargetRotation(dx, dy);
-        int rot = Util::GetRotation(ship);
-        int away = std::abs(rot - target);
+        TargetInfo move_info = m_Bot.GetTargetInfo();
 
-        m_Bot.SetLastEnemy(timeGetTime());
+        int target_rot = Util::GetTargetRotation(dx, dy);
+        int rot = Util::GetRotation(ship);
+        int away = std::abs(rot - target_rot);
 
         keydown = true;
 
-        if (rot != target) {    
+        if (rot != target_rot) {
             int dir = 0;
 
-            if (away < 20 && rot < target) dir = 1;
-            if (away < 20 && rot > target) dir = 0;
+            if (away < 20 && rot < target_rot) dir = 1;
+            if (away < 20 && rot > target_rot) dir = 0;
 
-            if (away > 20 && rot < target) dir = 0;
-            if (away > 20 && rot > target) dir = 1;
+            if (away > 20 && rot < target_rot) dir = 0;
+            if (away > 20 && rot > target_rot) dir = 1;
 
             if (dir == 0) {
                 keyboard.Up(VK_RIGHT);
@@ -104,6 +122,18 @@ void AggressiveState::Update() {
             keyboard.Up(VK_RIGHT);
         }
 
+        if (firebombs && cur_time > m_LastBomb + bombtime && energypct >= stopbombing) {
+            keyboard.ToggleDown();
+            keyboard.Up(VK_CONTROL);
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            keyboard.Down(VK_TAB);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            keyboard.Up(VK_TAB);
+            m_LastBomb = cur_time;
+
+            keyboard.ToggleDown();
+        }
+
         if (dist > tardist) {
             keyboard.Up(VK_DOWN);
             keyboard.Down(VK_UP);
@@ -112,16 +142,18 @@ void AggressiveState::Update() {
             keyboard.Down(VK_DOWN);
         }
 
-        if (energy < RUNENERGY) {
+        if (energypct < runpercent) {
             keyboard.Up(VK_CONTROL);
         } else {
-            if (insafe)
+            if (insafe) {
                 keyboard.Up(VK_CONTROL);
-            else
-                keyboard.Down(VK_CONTROL);
+            } else {
+                if (fireguns)
+                    keyboard.Down(VK_CONTROL);
+            }
         }
-
-    } catch (const std::exception&) {
+    } else {
+        m_LastNonSafeTime = cur_time;
         if (keydown) {
             keyboard.Up(VK_LEFT);
             keyboard.Up(VK_RIGHT);
@@ -131,12 +163,14 @@ void AggressiveState::Update() {
             keydown = false;
         }
 
-        if (timeGetTime() > m_Bot.GetLastEnemy() + 1000 * 60) {
-            keyboard.Send(VK_END);
+        if (cur_time > m_Bot.GetLastEnemy() + 1000 * 60) {
+            if (xon)
+                keyboard.Send(VK_END);
+
             std::this_thread::sleep_for(std::chrono::milliseconds(300));
             keyboard.Send(VK_INSERT);
             keyboard.Send(VK_RIGHT);
-            m_Bot.SetLastEnemy(timeGetTime());
+            m_Bot.SetLastEnemy(cur_time);
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
@@ -154,15 +188,16 @@ RunState::RunState(Bot& bot) : State(bot) {
 }
 
 void RunState::Update() {
-    Keyboard& keyboard = m_Bot.GetKeyboard();
+    /*Keyboard& keyboard = m_Bot.GetKeyboard();
     ScreenGrabberPtr grabber = m_Bot.GetGrabber();
 
-    int energy = Util::GetEnergy(m_Bot.GetEnergyAreas());
+    int energy = m_Bot.GetEnergy();
+    int energypct = m_Bot.GetEnergyPercent();
 
     if (Util::XRadarOn(grabber))
         keyboard.Send(VK_END);
 
-    if (energy > RUNENERGY) {
+    if (energypct > RUNPERCENT) {
         keyboard.Up(VK_DOWN);
         m_Bot.SetState(std::shared_ptr<AggressiveState>(new AggressiveState(m_Bot)));
         return;
@@ -170,5 +205,5 @@ void RunState::Update() {
 
     keyboard.Down(VK_DOWN);
     keyboard.Up(VK_UP);
-    keyboard.Up(VK_CONTROL);
+    keyboard.Up(VK_CONTROL);*/
 }

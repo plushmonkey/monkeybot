@@ -13,12 +13,21 @@
 #define tcin std::wcin
 #define tcerr std::wcerr
 #define tostream std::wostream
+#define tifstream std::wifstream
+#define tregex std::wregex
+#define tsmatch std::wsmatch
+#define tsregex_iterator std::wsregex_iterator
 #else
 #define tstring std::string
 #define tcout std::cout
 #define tcin std::cin
 #define tcerr std::cerr
 #define tostream std::ostream
+#define tfilebuf std::filebuf
+#define tifstream std::ifstream
+#define tregex std::regex
+#define tsmatch std::smatch
+#define tsregex_iterator std::sregex_iterator
 #endif
 
 typedef uint8_t u8;
@@ -56,19 +65,22 @@ struct Coord {
     int x;
     int y;
 
+    Coord() : x(0), y(0) { }
     Coord(int x, int y) : x(x), y(y) { }
 };
 
 tostream& operator<<(tostream& out, const Coord& coord);
 bool operator==(const Coord& first, const Coord& second);
 bool operator!=(const Coord& first, const Coord& second);
+bool operator<(const Coord& first, const Coord& second);
 
 namespace Colors {
     extern const Pixel RadarColor;
     extern const Pixel RadarEnd;
     extern const Pixel RadarBorder;
+    extern const Pixel RadarWall;
     extern const Pixel SafeColor;
-    extern const Pixel EnemyColor;
+    extern const Pixel EnemyColor[2];
     extern const Pixel EnemyBallColor;
     extern const Pixel EnergyColor[2];
     extern const Pixel XRadarOff;

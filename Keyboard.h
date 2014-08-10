@@ -7,13 +7,15 @@
 class Keyboard {
 private:
     std::map<int, bool> m_Keys;
-
+    bool m_Toggled;
     INPUT GetInput(int keycode);
 
 public:
     void Send(int keycode);
     void Up(int keycode);
     void Down(int keycode);
+    void ToggleDown();
+    void ReleaseAll();
 };
 
 

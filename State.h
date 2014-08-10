@@ -23,6 +23,8 @@ private:
     Coord m_LastEnemyPos;
     DWORD m_LastEnemyTimer;
     Coord m_EnemyVelocity;
+    DWORD m_LastBomb;
+    DWORD m_LastNonSafeTime;
 
 public:
     AggressiveState(Bot& bot);

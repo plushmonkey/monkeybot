@@ -7,6 +7,15 @@
 #include "State.h"
 #include <vector>
 #include <Windows.h>
+#include "Config.h"
+
+struct TargetInfo {
+    int dx;
+    int dy;
+    double dist;
+
+    TargetInfo(int dx, int dy, double dist) : dx(dx), dy(dy), dist(dist) { }
+};
 
 class Bot {
 private:
@@ -21,6 +30,14 @@ private:
     ScreenAreaPtr m_Player;
     std::shared_ptr<ScreenGrabber> m_Grabber;
     int m_ShipNum;
+    Coord m_EnemyTarget;
+    Coord m_Target;
+    TargetInfo m_TargetInfo;
+    TargetInfo m_EnemyTargetInfo;
+    std::vector<Coord> m_Path;
+    int m_MaxEnergy;
+    int m_Energy;
+    Config m_Config;
 
     HWND SelectWindow();
     void SelectShip();
@@ -38,6 +55,22 @@ public:
 
     DWORD GetLastEnemy() const { return m_LastEnemy; }
     void SetLastEnemy(DWORD time) { m_LastEnemy = time; }
+
+    Coord GetEnemyTarget() const { return m_EnemyTarget; }
+    TargetInfo GetEnemyTargetInfo() const { return m_EnemyTargetInfo; }
+
+    Coord GetTarget() const { return m_Target; }
+    TargetInfo GetTargetInfo() const { return m_TargetInfo; }
+
+    const std::vector<Coord>& GetPath() const { return m_Path; }
+    int GetEnergy() const { return m_Energy; }
+    int GetMaxEnergy() const { return m_MaxEnergy; }
+    int GetEnergyPercent() const { 
+        if (m_MaxEnergy == 0) return 100;
+        return static_cast<int>((m_Energy / (float)m_MaxEnergy) * 100);
+    }
+
+    const Config& GetConfig() const { return m_Config; }
 
     void SetState(StatePtr state) { m_State = state; }
     int Run();

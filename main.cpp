@@ -1,5 +1,8 @@
 ﻿#include "Common.h"
 #include "Bot.h"
+#include "Config.h"
+#include <tchar.h>
+#include <iostream>
 
 #pragma comment(lib, "winmm.lib")
 
