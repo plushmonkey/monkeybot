@@ -37,6 +37,9 @@ void AggressiveState::Update() {
     const int bombtime = m_Bot.GetConfig().Get<int>(_T("BombTime"));
     const bool firebombs = m_Bot.GetConfig().Get<bool>(_T("FireBombs"));
     const bool fireguns = m_Bot.GetConfig().Get<bool>(_T("FireGuns"));
+    int distfactor = m_Bot.GetConfig().Get<int>(_T("DistanceFactor"));
+
+    if (distfactor < 1) distfactor = 10;
 
     bool insafe = Util::PlayerInSafe(player);
     int tardist = targetdist;
@@ -87,8 +90,8 @@ void AggressiveState::Update() {
 
         m_Bot.SetLastEnemy(cur_time);
 
-        int dxchange = static_cast<int>(m_EnemyVelocity.x * (dist / 10));
-        int dychange = static_cast<int>(m_EnemyVelocity.y * (dist / 10));
+        int dxchange = static_cast<int>(m_EnemyVelocity.x * (dist / distfactor));
+        int dychange = static_cast<int>(m_EnemyVelocity.y * (dist / distfactor));
 
         if (std::abs(m_EnemyVelocity.x) < 15)
             dx += dxchange;

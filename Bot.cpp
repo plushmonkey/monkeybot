@@ -303,6 +303,7 @@ int Bot::Run() {
         m_Config.Set(_T("BombTime"),        _T("5000"));
         m_Config.Set(_T("FireBombs"),       _T("true"));
         m_Config.Set(_T("FireGuns"),        _T("true"));
+        m_Config.Set(_T("DistanceFactor"),  _T("10"));
     }
 
     while (true)
