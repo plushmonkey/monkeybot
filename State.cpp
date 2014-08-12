@@ -44,8 +44,10 @@ void AggressiveState::Update() {
 
     int energypct = m_Bot.GetEnergyPercent();
 
-    if (energypct < runpercent && !insafe)
+    if (energypct < runpercent && !insafe) {
         tardist = rundist;
+        keyboard.ReleaseAll();
+    }
 
     bool xon = Util::XRadarOn(grabber);
 
@@ -101,7 +103,7 @@ void AggressiveState::Update() {
 
         keydown = true;
 
-        if (rot != target_rot) {
+        if (rot != -1 && rot != target_rot) {
             int dir = 0;
 
             if (away < 20 && rot < target_rot) dir = 1;
