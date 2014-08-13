@@ -28,16 +28,16 @@ void AggressiveState::Update() {
     ScreenAreaPtr& player = m_Bot.GetPlayer();
     Keyboard& keyboard = m_Bot.GetKeyboard();
 
-    const int runpercent = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
-    const int xpercent = m_Bot.GetConfig().Get<int>(_T("XPercent"));
-    const int saferesettime = m_Bot.GetConfig().Get<int>(_T("SafeResetTime"));
-    const int targetdist = m_Bot.GetConfig().Get<int>(_T("TargetDistance"));
-    const int rundist = m_Bot.GetConfig().Get<int>(_T("RunDistance"));
-    const int stopbombing = m_Bot.GetConfig().Get<int>(_T("StopBombing"));
-    const int bombtime = m_Bot.GetConfig().Get<int>(_T("BombTime"));
-    const bool firebombs = m_Bot.GetConfig().Get<bool>(_T("FireBombs"));
-    const bool fireguns = m_Bot.GetConfig().Get<bool>(_T("FireGuns"));
-    int distfactor = m_Bot.GetConfig().Get<int>(_T("DistanceFactor"));
+    const int runpercent        = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
+    const int xpercent          = m_Bot.GetConfig().Get<int>(_T("XPercent"));
+    const int saferesettime     = m_Bot.GetConfig().Get<int>(_T("SafeResetTime"));
+    const int targetdist        = m_Bot.GetConfig().Get<int>(_T("TargetDistance"));
+    const int rundist           = m_Bot.GetConfig().Get<int>(_T("RunDistance"));
+    const int stopbombing       = m_Bot.GetConfig().Get<int>(_T("StopBombing"));
+    const int bombtime          = m_Bot.GetConfig().Get<int>(_T("BombTime"));
+    const bool firebombs        = m_Bot.GetConfig().Get<bool>(_T("FireBombs"));
+    const bool fireguns         = m_Bot.GetConfig().Get<bool>(_T("FireGuns"));
+    int distfactor              = m_Bot.GetConfig().Get<int>(_T("DistanceFactor"));
 
     if (distfactor < 1) distfactor = 10;
 

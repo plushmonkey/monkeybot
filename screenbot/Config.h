@@ -12,6 +12,9 @@ namespace Convert {
 }
 
 class Config {
+public:
+    typedef std::map<tstring, tstring>::const_iterator const_iterator;
+
 private:
     std::map<tstring, tstring> m_Variables;
 
@@ -29,6 +32,9 @@ public:
     }
 
     void Set(const tstring& var, const tstring& val);
+
+    const_iterator begin() const { return m_Variables.begin(); }
+    const_iterator end() const { return m_Variables.end(); }
 };
 
 #endif

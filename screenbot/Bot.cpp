@@ -291,20 +291,22 @@ int Bot::Run() {
 
     tcout << "Loading config file bot.conf" << std::endl;
 
-    if (!m_Config.Load(_T("bot.conf"))) {
+    m_Config.Set(_T("XPercent"), _T("75"));
+    m_Config.Set(_T("RunPercent"), _T("35"));
+    m_Config.Set(_T("SafeResetTime"), _T("10000"));
+    m_Config.Set(_T("TargetDistance"), _T("10"));
+    m_Config.Set(_T("RunDistance"), _T("30"));
+    m_Config.Set(_T("StopBombing"), _T("90"));
+    m_Config.Set(_T("BombTime"), _T("5000"));
+    m_Config.Set(_T("FireBombs"), _T("true"));
+    m_Config.Set(_T("FireGuns"), _T("true"));
+    m_Config.Set(_T("DistanceFactor"), _T("10"));
+
+    if (!m_Config.Load(_T("bot.conf")))
         tcout << "Could not load bot.conf. Using default values." << std::endl;
 
-        m_Config.Set(_T("XPercent"),        _T("75"));
-        m_Config.Set(_T("RunPercent"),      _T("35"));
-        m_Config.Set(_T("SafeResetTime"),   _T("10000"));
-        m_Config.Set(_T("TargetDistance"),  _T("10"));
-        m_Config.Set(_T("RunDistance"),     _T("30"));
-        m_Config.Set(_T("StopBombing"),     _T("90"));
-        m_Config.Set(_T("BombTime"),        _T("5000"));
-        m_Config.Set(_T("FireBombs"),       _T("true"));
-        m_Config.Set(_T("FireGuns"),        _T("true"));
-        m_Config.Set(_T("DistanceFactor"),  _T("10"));
-    }
+    for (auto iter = m_Config.begin(); iter != m_Config.end(); ++iter)
+        tcout << iter->first << ": " << iter->second << std::endl;
 
     while (true)
         Update();

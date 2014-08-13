@@ -44,7 +44,10 @@ namespace Convert {
 }
 
 void Config::Set(const tstring& var, const tstring& val) {
-    m_Variables[var] = val;
+    tstring out;
+    out.resize(var.length());
+    std::transform(var.begin(), var.end(), out.begin(), _totlower);
+    m_Variables[out] = val;
 }
 
 bool Config::Load(const tstring& filename) {
@@ -70,13 +73,7 @@ bool Config::Load(const tstring& filename) {
     for (tsregex_iterator iter = begin; iter != end; ++iter) {
         tsmatch match = *iter;
 
-        tstring var = match[1];
-
-        var.resize(match[1].length());
-
-        std::transform(var.begin(), var.end(), var.begin(), _totlower);
-
-        m_Variables[var] = match[2];
+        Set(match[1], match[2]);
     }
 
     return true;
