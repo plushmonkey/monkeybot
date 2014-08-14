@@ -54,11 +54,15 @@ void AggressiveState::Update() {
 
     bool xon = Util::XRadarOn(grabber);
 
-    if (energypct < xpercent && xon)
+    if (energypct < xpercent && xon) {
         keyboard.Send(VK_END);
+        xon = !xon;
+    }
 
-    if (energypct > xpercent && !xon)
+    if (energypct > xpercent && !xon) {
         keyboard.Send(VK_END);
+        xon = !xon;
+    }
 
     Coord target = m_Bot.GetEnemyTarget();
 
@@ -81,8 +85,10 @@ void AggressiveState::Update() {
             m_LastNonSafeTime = cur_time;
 
         if (saferesettime > 0 && insafe && cur_time >= m_LastNonSafeTime + saferesettime) {
-            if (xon)
+            if (xon) {
                 keyboard.Send(VK_END);
+                xon = !xon;
+            }
             std::this_thread::sleep_for(std::chrono::milliseconds(150));
             keyboard.Send(VK_INSERT);
             m_LastNonSafeTime = cur_time;
@@ -127,16 +133,17 @@ void AggressiveState::Update() {
             keyboard.Up(VK_RIGHT);
         }
 
-        if (firebombs && cur_time > m_LastBomb + bombtime && energypct >= stopbombing) {
+        if (!insafe && firebombs && cur_time > m_LastBomb + bombtime && energypct > stopbombing) {
             keyboard.ToggleDown();
-            keyboard.Up(VK_CONTROL);
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
             keyboard.Down(VK_TAB);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             keyboard.Up(VK_TAB);
-            m_LastBomb = cur_time;
 
             keyboard.ToggleDown();
+
+            m_LastBomb = cur_time;
         }
 
         if (dist > tardist) {
@@ -169,8 +176,10 @@ void AggressiveState::Update() {
         }
 
         if (cur_time > m_Bot.GetLastEnemy() + 1000 * 60) {
-            if (xon)
+            if (xon) {
                 keyboard.Send(VK_END);
+                xon = !xon;
+            }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(300));
             keyboard.Send(VK_INSERT);

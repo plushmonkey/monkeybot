@@ -23,8 +23,6 @@ void Keyboard::Send(int keycode) {
 
     input.ki.dwFlags = KEYEVENTF_KEYUP;
     SendInput(1, &input, sizeof(INPUT));
-
-    m_Keys[keycode] = false;
 }
 
 void Keyboard::Up(int keycode) {
