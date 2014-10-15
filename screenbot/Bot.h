@@ -8,6 +8,7 @@
 #include <vector>
 #include <Windows.h>
 #include "Config.h"
+#include "Level.h"
 
 struct TargetInfo {
     int dx;
@@ -38,6 +39,11 @@ private:
     int m_MaxEnergy;
     int m_Energy;
     Config m_Config;
+    Level m_Level;
+
+    HANDLE m_ProcessHandle;
+
+    unsigned int m_PosAddr;
 
     HWND SelectWindow();
     void SelectShip();
@@ -70,11 +76,22 @@ public:
         return static_cast<int>((m_Energy / (float)m_MaxEnergy) * 100);
     }
 
+    unsigned int GetX() const;
+    unsigned int GetY() const;
+
+    const Level& GetLevel() const { return m_Level; }
+
+    HANDLE GetProcessHandle() const { return m_ProcessHandle; }
+    unsigned int GetPosAddress() const { return m_PosAddr; }
+
+    void SetPosAddress(unsigned int addr) { m_PosAddr = addr; }
+
     const Config& GetConfig() const { return m_Config; }
 
     void SetState(StatePtr state) { m_State = state; }
     int Run();
     void Update();
+
 };
 
 

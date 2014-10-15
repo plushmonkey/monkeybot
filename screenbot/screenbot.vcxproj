@@ -149,7 +149,10 @@
     <ClCompile Include="Common.cpp" />
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="Keyboard.cpp" />
+    <ClCompile Include="Level.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Memory.cpp" />
+    <ClCompile Include="Random.cpp" />
     <ClCompile Include="ScreenArea.cpp" />
     <ClCompile Include="ScreenGrabber.cpp" />
     <ClCompile Include="Ships.cpp" />
@@ -162,6 +165,9 @@
     <ClInclude Include="Common.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="Keyboard.h" />
+    <ClInclude Include="Level.h" />
+    <ClInclude Include="Memory.h" />
+    <ClInclude Include="Random.h" />
     <ClInclude Include="ScreenArea.h" />
     <ClInclude Include="ScreenGrabber.h" />
     <ClInclude Include="State.h" />

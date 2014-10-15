@@ -9,6 +9,7 @@
 #include <io.h>
 #include <fcntl.h>
 #define tstring std::wstring
+#define tstringstream std::wstringstream
 #define tcout std::wcout
 #define tcin std::wcin
 #define tcerr std::wcerr
@@ -17,8 +18,11 @@
 #define tregex std::wregex
 #define tsmatch std::wsmatch
 #define tsregex_iterator std::wsregex_iterator
+
+#define to_tstring std::to_wstring
 #else
 #define tstring std::string
+#define tstringstream std::stringstream
 #define tcout std::cout
 #define tcin std::cin
 #define tcerr std::cerr
@@ -28,6 +32,8 @@
 #define tregex std::regex
 #define tsmatch std::smatch
 #define tsregex_iterator std::sregex_iterator
+
+#define to_tstring std::to_string
 #endif
 
 typedef uint8_t u8;
