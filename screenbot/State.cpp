@@ -275,7 +275,10 @@ void AggressiveState::Update() {
         }
 
         /* Only fire weapons if pointing at enemy*/
-        if (rot != target_rot) return;
+        if (rot != target_rot) {
+            keyboard.Up(VK_CONTROL);
+            return;
+        }
 
         /* Handle bombing */
         if (!insafe && firebombs && timeGetTime() > m_LastBomb + bombtime && energypct > stopbombing) {
