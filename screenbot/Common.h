@@ -89,6 +89,7 @@ namespace Colors {
     extern const Pixel EnemyColor[2];
     extern const Pixel EnemyBallColor;
     extern const Pixel EnergyColor[2];
+    extern const Pixel XRadarOn;
     extern const Pixel XRadarOff;
 }
 

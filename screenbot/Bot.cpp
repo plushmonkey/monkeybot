@@ -105,6 +105,19 @@ void Bot::SelectShip() {
     m_ShipNum = input[0] - 0x30;
 }
 
+void Bot::SetXRadar(bool on) {
+    int count = 0;
+    /* Try to toggle xradar, timeout after 50 tries */
+    while (Util::XRadarOn(m_Grabber) != on && count < 50) {
+        m_Keyboard.Down(VK_END);
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        m_Keyboard.Up(VK_END);
+        count++;
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        m_Grabber->Update();
+    }
+}
+
 std::vector<Coord> GetNeighbors(Coord pos, int rwidth) {
     std::vector<Coord> neighbors;
     neighbors.resize(4);
@@ -299,7 +312,7 @@ int Bot::Run() {
    // if (m_ProcessHandle)
     //    this->SetState(std::shared_ptr<MemoryState>(new MemoryState(*this)));
     //else
-        this->SetState(std::shared_ptr<AggressiveState>(new AggressiveState(*this)));
+      //  this->SetState(std::shared_ptr<AggressiveState>(new AggressiveState(*this)));
 
     while (true)
         Update();

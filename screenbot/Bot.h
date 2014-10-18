@@ -92,6 +92,7 @@ public:
     int Run();
     void Update();
 
+    void SetXRadar(bool on);
 };
 
 

@@ -13,7 +13,12 @@ bool XRadarOn(const ScreenGrabberPtr& grabber) {
     int x = grabber->GetWidth() - 8;
     int y = static_cast<int>(grabber->GetHeight() * .60);
     
-    return grabber->GetPixel(x, y) != Colors::XRadarOff;
+    Pixel pixel = grabber->GetPixel(x, y);
+
+    if (pixel == Colors::XRadarOff) return false;
+
+    /* Only handle x radar if the ship has x radar */
+    return true;
 }
 
 bool PlayerInSafe(const ScreenAreaPtr& player) {

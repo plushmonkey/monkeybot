@@ -182,10 +182,6 @@ void AggressiveState::Update() {
     int tardist = targetdist;
     static bool keydown;
 
-    int tid = m_Bot.GetLevel().GetTileID(m_Bot.GetX(), m_Bot.GetY());
-
-   // tcout << "Pos: " << m_Bot.GetX() << ", " << m_Bot.GetY() << " Tile: " << tid << "\n";
-
     int energypct = m_Bot.GetEnergyPercent();
 
     if (energypct < runpercent && !insafe) {
@@ -198,22 +194,14 @@ void AggressiveState::Update() {
     else
         m_CurrentBulletDelay = bulletdelay;
 
-    bool xon = Util::XRadarOn(grabber);
-
-    if (energypct < xpercent && xon) {
-        keyboard.Down(VK_END);
-        keyboard.Up(VK_END);
-        xon = !xon;
-    } else if (energypct > xpercent && !xon) {
-        keyboard.Down(VK_END);
-        keyboard.Up(VK_END);
-        xon = !xon;
-    }
+    /* Turn off x if energy low, turn back on when high */
+    m_Bot.SetXRadar(energypct > xpercent);
 
     Coord target = m_Bot.GetEnemyTarget();
 
     DWORD cur_time = timeGetTime();
 
+    /* Only update if there is a target enemy */
     if (target != NullCoord) {
         TargetInfo info = m_Bot.GetEnemyTargetInfo();
         double dist = info.dist;
@@ -230,13 +218,10 @@ void AggressiveState::Update() {
         if (!insafe)
             m_LastNonSafeTime = cur_time;
 
+        /* Handle trying to get out of safe */
         if (saferesettime > 0 && insafe && cur_time >= m_LastNonSafeTime + saferesettime) {
-            if (xon) {
-                keyboard.Down(VK_END);
-                keyboard.Up(VK_END);
-                xon = !xon;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(150));
+            m_Bot.SetXRadar(false);
+            std::this_thread::sleep_for(std::chrono::milliseconds(300));
             keyboard.Send(VK_INSERT);
             m_LastNonSafeTime = cur_time;
         }
@@ -258,7 +243,7 @@ void AggressiveState::Update() {
         int away = std::abs(rot - target_rot);
 
         keydown = true;
-
+        /* Handle rotation */
         if (rot != -1 && rot != target_rot) {
             int dir = 0;
 
@@ -280,6 +265,19 @@ void AggressiveState::Update() {
             keyboard.Up(VK_RIGHT);
         }
 
+        /* Handle distance movement */
+        if (dist > tardist) {
+            keyboard.Up(VK_DOWN);
+            keyboard.Down(VK_UP);
+        } else {
+            keyboard.Up(VK_UP);
+            keyboard.Down(VK_DOWN);
+        }
+
+        /* Only fire weapons if pointing at enemy*/
+        if (rot != target_rot) return;
+
+        /* Handle bombing */
         if (!insafe && firebombs && timeGetTime() > m_LastBomb + bombtime && energypct > stopbombing) {
             keyboard.ToggleDown();
 
@@ -293,14 +291,7 @@ void AggressiveState::Update() {
             m_LastBomb = timeGetTime();
         }
 
-        if (dist > tardist) {
-            keyboard.Up(VK_DOWN);
-            keyboard.Down(VK_UP);
-        } else {
-            keyboard.Up(VK_UP);
-            keyboard.Down(VK_DOWN);
-        }
-
+        /* Handle gunning */
         if (energypct < runpercent) {
             if (dist <= 7)
                 keyboard.Down(VK_CONTROL);
@@ -327,6 +318,7 @@ void AggressiveState::Update() {
         }
 
     } else {
+        /* Clear input when there is no enemy */
         m_LastNonSafeTime = cur_time;
         if (keydown) {
             keyboard.Up(VK_LEFT);
@@ -337,12 +329,9 @@ void AggressiveState::Update() {
             keydown = false;
         }
 
+        /* Warp to keep the bot in game */
         if (cur_time > m_Bot.GetLastEnemy() + 1000 * 60) {
-            if (xon) {
-                keyboard.Down(VK_END);
-                keyboard.Up(VK_END);
-                xon = !xon;
-            }
+            m_Bot.SetXRadar(false);
 
             std::this_thread::sleep_for(std::chrono::milliseconds(300));
             keyboard.Send(VK_INSERT);
