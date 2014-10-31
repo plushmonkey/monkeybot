@@ -62,3 +62,7 @@ int Level::GetTileID(unsigned short x, unsigned short y) const {
     if (x >= 1024 || y >= 1024) return 0;
     return m_Tiles[y * 1024 + x];
 }
+
+bool Level::IsSolid(unsigned short x, unsigned short y) const {
+    return Level::IsSolid(GetTileID(x, y));
+}

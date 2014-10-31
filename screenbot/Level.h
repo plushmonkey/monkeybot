@@ -22,6 +22,8 @@ public:
     bool Load(const tstring& filename);
 
     static bool IsSolid(int id);
+
+    bool IsSolid(unsigned short x, unsigned short y) const;
     int GetTileID(unsigned short x, unsigned short y) const;
 };
 

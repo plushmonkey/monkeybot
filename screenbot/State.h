@@ -32,6 +32,7 @@ private:
     DWORD m_LastBomb;
     DWORD m_LastNonSafeTime;
     DWORD m_LastBullet;
+    DWORD m_NearWall;
     bool m_FiringGun;
     int m_CurrentBulletDelay;
 

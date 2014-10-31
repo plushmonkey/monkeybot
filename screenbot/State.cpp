@@ -70,13 +70,14 @@ void MemoryState::Update() {
             FindMap::iterator this_iter = it;
             ++it;
             // Get the new value at this address
-            unsigned int check = Memory::GetU32(m_Bot.GetProcessHandle(), kv.first);
+            unsigned int x = Memory::GetU32(m_Bot.GetProcessHandle(), kv.first - 4);
+            unsigned int y = Memory::GetU32(m_Bot.GetProcessHandle(), kv.first);
 
             // Remove the address from the list if it doesn't match the movement
-            if (check == kv.second)
+            if (y == kv.second || y < 8000 || y > 8500 || x < 8000 || x > 8500)
                 m_FindSpace.erase(this_iter);
             else
-                m_FindSpace[kv.first] = check; // Set the new value of the address
+                m_FindSpace[kv.first] = y; // Set the new value of the address
         }
     }
 
@@ -84,18 +85,41 @@ void MemoryState::Update() {
 
     /* Restart the search and make sure it's in the safe zone */
     if (m_FindSpace.size() == 0) {
+        m_Bot.SetXRadar(false);
         keyboard.Send(VK_INSERT);
         return;
     }
 
     if (m_FindSpace.size() <= 5) {
+        keyboard.Send(VK_CONTROL); // Stop moving
+        for (int i = 0; i < 5; ++i) {
+            for (auto it = m_FindSpace.begin(); it != m_FindSpace.end();) {
+                unsigned int x = Memory::GetU32(m_Bot.GetProcessHandle(), it->first - 4);
+                unsigned int y = Memory::GetU32(m_Bot.GetProcessHandle(), it->first);
+                auto this_it = it;
+                ++it;
+
+                if (x < 8000 || x > 8500 || y < 8000 || y > 8500) {
+                    // Remove this address because it's out of range
+                    m_FindSpace.erase(this_it);
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+
+        // All of the addresses were discarded in the check loop
+        if (m_FindSpace.size() == 0) {
+            m_Bot.SetXRadar(false);
+            keyboard.Send(VK_INSERT);
+            return;
+        }
+
         auto iter = m_FindSpace.begin();
-        ++iter;
         m_Bot.SetPosAddress(iter->first - 4);
         
-        std::cout << "Position location found at " << std::hex << m_Bot.GetPosAddress() << std::endl;
+        std::cout << "Position location found at " << std::hex << m_Bot.GetPosAddress() << std::dec << std::endl;
 
-        m_Bot.SetState(std::shared_ptr<AggressiveState>(new AggressiveState(m_Bot)));
+        m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
     }
 }
 
@@ -154,6 +178,18 @@ void FollowState::Update() {
 
 }
 
+bool NearWall(unsigned x, unsigned y, const Level& level) {
+    bool nw = level.IsSolid(x - 1, y - 1);
+    bool n = level.IsSolid(x, y - 1);
+    bool ne = level.IsSolid(x + 1, y - 1);
+    bool e = level.IsSolid(x + 1, y);
+    bool se = level.IsSolid(x + 1, y + 1);
+    bool s = level.IsSolid(x, y + 1);
+    bool sw = level.IsSolid(x - 1, y + 1);
+    bool w = level.IsSolid(x - 1, y);
+    return nw || n || ne || e || se || s || sw || w;
+}
+
 AggressiveState::AggressiveState(Bot& bot)
     : State(bot), 
       m_LastEnemyPos(0,0),
@@ -161,7 +197,8 @@ AggressiveState::AggressiveState(Bot& bot)
       m_EnemyVelocity(0, 0),
       m_LastBomb(0),
       m_LastNonSafeTime(timeGetTime()),
-      m_LastBullet(0) 
+      m_LastBullet(0),
+      m_NearWall(0)
 {
     m_RunPercent    = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
     m_XPercent      = m_Bot.GetConfig().Get<int>(_T("XPercent"));
@@ -185,14 +222,36 @@ void AggressiveState::Update() {
     ScreenAreaPtr& ship = m_Bot.GetShip();
     ScreenAreaPtr& player = m_Bot.GetPlayer();
     Keyboard& keyboard = m_Bot.GetKeyboard();
+    static DWORD last_timer = timeGetTime();
+
+    unsigned int x = m_Bot.GetX();
+    unsigned int y = m_Bot.GetY();
+    //std::cout << x << ", " << y << std::endl;
 
     /* Warp back to center if bot is dragged out */
     if (!m_Bot.InCenter()) {
+        std::cout << "Warping because position is " << x << ", " << y << std::endl;
         m_Bot.SetXRadar(false);
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
         keyboard.Send(VK_INSERT);
         return;
     }
+
+    /*if (NearWall(x, y, m_Bot.GetLevel())) {
+        m_NearWall += timeGetTime() - last_timer;
+        // Player has been near a wall for 5 seconds 
+        if (m_NearWall >= 5000) {
+            m_Bot.SetXRadar(false);
+            std::this_thread::sleep_for(std::chrono::milliseconds(300));
+            keyboard.Send(VK_INSERT);
+            last_timer = timeGetTime();
+            std::cout << "warping cuz near wall\n";
+            return;
+        }
+    } else {
+        m_NearWall = 0;
+    }*/
+
 
     bool insafe = Util::PlayerInSafe(player);
     int tardist = m_TargetDist;
@@ -217,6 +276,7 @@ void AggressiveState::Update() {
     if (insafe && energypct < 50) {
         keyboard.Send(VK_CONTROL);
         keyboard.ReleaseAll();
+        last_timer = timeGetTime();
         return;
     }
 
@@ -300,6 +360,7 @@ void AggressiveState::Update() {
         /* Only fire weapons if pointing at enemy*/
         if (rot != target_rot) {
             keyboard.Up(VK_CONTROL);
+            last_timer = timeGetTime();
             return;
         }
 
@@ -368,6 +429,8 @@ void AggressiveState::Update() {
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+
+    last_timer = timeGetTime();
 }
 
 RunState::RunState(Bot& bot) : State(bot) {
