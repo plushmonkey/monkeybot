@@ -93,6 +93,14 @@ public:
     void Update();
 
     void SetXRadar(bool on);
+
+    bool InCenter() const {
+        if (m_PosAddr == 0) return true;
+        unsigned x = GetX();
+        unsigned y = GetY();
+
+        return x > 320 && x < 703 && y > 320 && y < 703;
+    }
 };
 
 

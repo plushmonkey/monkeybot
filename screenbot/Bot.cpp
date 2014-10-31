@@ -20,7 +20,7 @@ Bot::Bot(int ship)
     m_Window(0),
     m_Keyboard(),
     m_LastEnemy(timeGetTime()),
-    m_State(new AggressiveState(*this)),
+    m_State(nullptr),
     m_ShipNum(ship),
     m_Target(0, 0),
     m_TargetInfo(0, 0, 0),
@@ -28,7 +28,8 @@ Bot::Bot(int ship)
     m_Energy(0),
     m_MaxEnergy(0),
     m_PosAddr(0),
-    m_Level()
+    m_Level(),
+    m_ProcessHandle(nullptr)
 { }
 
 unsigned int Bot::GetX() const {
@@ -161,7 +162,7 @@ void Bot::Update() {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         m_Keyboard.Send(0x30 + m_ShipNum);
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }   
+    }
 
     m_Energy = Util::GetEnergy(GetEnergyAreas());
 
@@ -235,6 +236,26 @@ void Bot::GrabRadar() {
     }
 }
 
+bool GetDebugPrivileges() {
+    HANDLE token = nullptr;
+    bool success = false;
+
+    if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &token)) {
+        TOKEN_PRIVILEGES privileges;
+
+        LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &privileges.Privileges[0].Luid);
+        privileges.PrivilegeCount = 1;
+        privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+        if (AdjustTokenPrivileges(token, FALSE, &privileges, sizeof(TOKEN_PRIVILEGES), 0, 0))
+            success = true;
+
+        CloseHandle(token);
+    }
+
+    return success;
+}
+
 int Bot::Run() {
     bool ready = false;
 
@@ -242,15 +263,6 @@ int Bot::Run() {
         try {
             if (!m_Window)
                 m_Window = SelectWindow();
-
-           // DWORD pid;
-         //   GetWindowThreadProcessId(m_Window, &pid);
-
-            //m_ProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
-         //   m_ProcessHandle = 0;
-           /* if (!m_ProcessHandle) {
-                tcerr << "Could not open process for reading.\n";
-            }*/
 
             SelectShip();
 
@@ -290,6 +302,7 @@ int Bot::Run() {
     m_Config.Set(_T("Level"),           _T("C:\\Program Files (x86)\\Continuum\\zones\\SSCE Hyperspace\\pub20140727.lvl"));
     m_Config.Set(_T("BulletDelay"),     _T("20"));
     m_Config.Set(_T("ScaleDelay"),      _T("True"));
+    m_Config.Set(_T("MemoryScanning"),  _T("True"));
 
     if (!m_Config.Load(_T("bot.conf")))
         tcout << "Could not load bot.conf. Using default values." << std::endl;
@@ -301,18 +314,30 @@ int Bot::Run() {
     if (!m_Config.Load(ss.str()))
         tcout << "Could not load " << ss.str() << ". Not overriding any ship specific configurations." << std::endl;
 
-
     for (auto iter = m_Config.begin(); iter != m_Config.end(); ++iter)
         tcout << iter->first << ": " << iter->second << std::endl;
 
     if (!m_Level.Load(m_Config.Get<tstring>(_T("Level"))))
         tcerr << "Could not load level " << m_Config.Get<tstring>(_T("Level")) << "\n";
 
-    /* *** TODO: Fix memorystate. Disable until fixed. *** */
-   // if (m_ProcessHandle)
-    //    this->SetState(std::shared_ptr<MemoryState>(new MemoryState(*this)));
-    //else
-      //  this->SetState(std::shared_ptr<AggressiveState>(new AggressiveState(*this)));
+    if (m_Config.Get<bool>(_T("MemoryScanning"))) {
+        if (GetDebugPrivileges()) {
+            DWORD pid;
+            GetWindowThreadProcessId(m_Window, &pid);
+
+            m_ProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+
+            if (!m_ProcessHandle)
+                tcerr << "Could not open process for reading.\n";
+        } else {
+            std::cerr << "Could not get Windows debug privileges." << std::endl;
+        }
+    }
+
+    if (m_ProcessHandle)
+        this->SetState(std::make_shared<MemoryState>(*this));
+    else
+        this->SetState(std::make_shared<AggressiveState>(*this));
 
     while (true)
         Update();

@@ -58,34 +58,44 @@ void MemoryState::Update() {
             m_FindSpace[found[i]] = value;
         }
     } else {
-        std::vector<unsigned int> erase_list;
+        typedef std::map<unsigned, unsigned> FindMap;
+
+        FindMap::iterator it = m_FindSpace.begin();
+        FindMap::iterator end = m_FindSpace.end();
 
         // Loop through the found values and remove ones that don't match the movement
-        for (auto& kv : m_FindSpace) {
+        while (it != end) {
+            auto kv = *it;
+            
+            FindMap::iterator this_iter = it;
+            ++it;
             // Get the new value at this address
             unsigned int check = Memory::GetU32(m_Bot.GetProcessHandle(), kv.first);
 
             // Remove the address from the list if it doesn't match the movement
             if (check == kv.second)
-                erase_list.push_back(kv.first);
-
-            // Set the new value of the address
-            m_FindSpace[kv.first] = check;
+                m_FindSpace.erase(this_iter);
+            else
+                m_FindSpace[kv.first] = check; // Set the new value of the address
         }
-
-        for (unsigned int i = 0; i < erase_list.size(); ++i)
-            m_FindSpace.erase(erase_list[i]);
     }
 
-    tcout << "Find space size: " << m_FindSpace.size() << std::endl;
+    tcout << "Possible memory locations: " << m_FindSpace.size() << std::endl;
+
+    /* Restart the search and make sure it's in the safe zone */
+    if (m_FindSpace.size() == 0) {
+        keyboard.Send(VK_INSERT);
+        return;
+    }
 
     if (m_FindSpace.size() <= 5) {
         auto iter = m_FindSpace.begin();
         ++iter;
         m_Bot.SetPosAddress(iter->first - 4);
         
-        //m_Bot.SetState(std::shared_ptr<AggressiveState>(new AggressiveState(m_Bot)));
-        m_Bot.SetState(std::shared_ptr<FollowState>(new FollowState(m_Bot)));
+        std::cout << "Position location found at " << std::hex << m_Bot.GetPosAddress() << std::endl;
+
+        m_Bot.SetState(std::shared_ptr<AggressiveState>(new AggressiveState(m_Bot)));
     }
 }
 
@@ -150,10 +160,23 @@ AggressiveState::AggressiveState(Bot& bot)
       m_LastEnemyTimer(0),
       m_EnemyVelocity(0, 0),
       m_LastBomb(0),
-      m_LastNonSafeTime(0),
+      m_LastNonSafeTime(timeGetTime()),
       m_LastBullet(0) 
 {
-    
+    m_RunPercent    = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
+    m_XPercent      = m_Bot.GetConfig().Get<int>(_T("XPercent"));
+    m_SafeResetTime = m_Bot.GetConfig().Get<int>(_T("SafeResetTime"));
+    m_TargetDist    = m_Bot.GetConfig().Get<int>(_T("TargetDistance"));
+    m_RunDist       = m_Bot.GetConfig().Get<int>(_T("RunDistance"));
+    m_StopBombing   = m_Bot.GetConfig().Get<int>(_T("StopBombing"));
+    m_BombTime      = m_Bot.GetConfig().Get<int>(_T("BombTime"));
+    m_FireBombs     = m_Bot.GetConfig().Get<bool>(_T("FireBombs"));
+    m_FireGuns      = m_Bot.GetConfig().Get<bool>(_T("FireGuns"));
+    m_DistFactor    = m_Bot.GetConfig().Get<int>(_T("DistanceFactor"));
+    m_BulletDelay   = m_Bot.GetConfig().Get<int>(_T("BulletDelay")) * 10;
+    m_ScaleDelay    = m_Bot.GetConfig().Get<bool>(_T("ScaleDelay"));
+
+    if (m_DistFactor < 1) m_DistFactor = 10;
 }
 
 void AggressiveState::Update() {
@@ -163,39 +186,39 @@ void AggressiveState::Update() {
     ScreenAreaPtr& player = m_Bot.GetPlayer();
     Keyboard& keyboard = m_Bot.GetKeyboard();
 
-    const int runpercent        = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
-    const int xpercent          = m_Bot.GetConfig().Get<int>(_T("XPercent"));
-    const int saferesettime     = m_Bot.GetConfig().Get<int>(_T("SafeResetTime"));
-    const int targetdist        = m_Bot.GetConfig().Get<int>(_T("TargetDistance"));
-    const int rundist           = m_Bot.GetConfig().Get<int>(_T("RunDistance"));
-    const int stopbombing       = m_Bot.GetConfig().Get<int>(_T("StopBombing"));
-    const int bombtime          = m_Bot.GetConfig().Get<int>(_T("BombTime"));
-    const bool firebombs        = m_Bot.GetConfig().Get<bool>(_T("FireBombs"));
-    const bool fireguns         = m_Bot.GetConfig().Get<bool>(_T("FireGuns"));
-    int distfactor              = m_Bot.GetConfig().Get<int>(_T("DistanceFactor"));
-    int bulletdelay             = m_Bot.GetConfig().Get<int>(_T("BulletDelay")) * 10;
-    const bool scaledelay       = m_Bot.GetConfig().Get<bool>(_T("ScaleDelay"));
-
-    if (distfactor < 1) distfactor = 10;
+    /* Warp back to center if bot is dragged out */
+    if (!m_Bot.InCenter()) {
+        m_Bot.SetXRadar(false);
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        keyboard.Send(VK_INSERT);
+        return;
+    }
 
     bool insafe = Util::PlayerInSafe(player);
-    int tardist = targetdist;
+    int tardist = m_TargetDist;
     static bool keydown;
 
     int energypct = m_Bot.GetEnergyPercent();
 
-    if (energypct < runpercent && !insafe) {
-        tardist = rundist;
+    if (energypct < m_RunPercent && !insafe) {
+        tardist = m_RunDist;
         keyboard.ReleaseAll();
     }
 
-    if (scaledelay)
-        m_CurrentBulletDelay = static_cast<int>(std::ceil(bulletdelay * (1.0f + (100.0f - energypct) / 100)));
+    if (m_ScaleDelay)
+        m_CurrentBulletDelay = static_cast<int>(std::ceil(m_BulletDelay * (1.0f + (100.0f - energypct) / 100)));
     else
-        m_CurrentBulletDelay = bulletdelay;
+        m_CurrentBulletDelay = m_BulletDelay;
 
     /* Turn off x if energy low, turn back on when high */
-    m_Bot.SetXRadar(energypct > xpercent);
+    m_Bot.SetXRadar(energypct > m_XPercent);
+
+    /* Wait in safe for energy */
+    if (insafe && energypct < 50) {
+        keyboard.Send(VK_CONTROL);
+        keyboard.ReleaseAll();
+        return;
+    }
 
     Coord target = m_Bot.GetEnemyTarget();
 
@@ -219,7 +242,7 @@ void AggressiveState::Update() {
             m_LastNonSafeTime = cur_time;
 
         /* Handle trying to get out of safe */
-        if (saferesettime > 0 && insafe && cur_time >= m_LastNonSafeTime + saferesettime) {
+        if (m_SafeResetTime > 0 && insafe && cur_time >= m_LastNonSafeTime + m_SafeResetTime) {
             m_Bot.SetXRadar(false);
             std::this_thread::sleep_for(std::chrono::milliseconds(300));
             keyboard.Send(VK_INSERT);
@@ -228,8 +251,8 @@ void AggressiveState::Update() {
 
         m_Bot.SetLastEnemy(cur_time);
 
-        int dxchange = static_cast<int>(m_EnemyVelocity.x * (dist / distfactor));
-        int dychange = static_cast<int>(m_EnemyVelocity.y * (dist / distfactor));
+        int dxchange = static_cast<int>(m_EnemyVelocity.x * (dist / m_DistFactor));
+        int dychange = static_cast<int>(m_EnemyVelocity.y * (dist / m_DistFactor));
 
         if (std::abs(m_EnemyVelocity.x) < 15)
             dx += dxchange;
@@ -281,7 +304,7 @@ void AggressiveState::Update() {
         }
 
         /* Handle bombing */
-        if (!insafe && firebombs && timeGetTime() > m_LastBomb + bombtime && energypct > stopbombing) {
+        if (!insafe && m_FireBombs && timeGetTime() > m_LastBomb + m_BombTime && energypct > m_StopBombing) {
             keyboard.ToggleDown();
 
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -295,7 +318,7 @@ void AggressiveState::Update() {
         }
 
         /* Handle gunning */
-        if (energypct < runpercent) {
+        if (energypct < m_RunPercent) {
             if (dist <= 7)
                 keyboard.Down(VK_CONTROL);
             else

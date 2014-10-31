@@ -35,6 +35,20 @@ private:
     bool m_FiringGun;
     int m_CurrentBulletDelay;
 
+    // Config
+    int m_RunPercent;
+    int m_XPercent;
+    int m_SafeResetTime;
+    int m_TargetDist;
+    int m_RunDist;
+    int m_StopBombing;
+    int m_BombTime;
+    bool m_FireBombs;
+    bool m_FireGuns;
+    int m_DistFactor;
+    int m_BulletDelay;
+    bool m_ScaleDelay;
+
 public:
     AggressiveState(Bot& bot);
     virtual void Update();
