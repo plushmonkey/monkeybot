@@ -90,7 +90,7 @@ public:
 
     void SetState(StatePtr state) { m_State = state; }
     int Run();
-    void Update();
+    void Update(DWORD dt);
 
     void SetXRadar(bool on);
 

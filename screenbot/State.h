@@ -3,6 +3,7 @@
 
 #include "Keyboard.h"
 #include "Common.h"
+#include <vector>
 
 class Bot;
 
@@ -14,14 +15,14 @@ public:
     State(Bot& bot);
     virtual ~State() { }
 
-    virtual void Update() = 0;
+    virtual void Update(DWORD dt) = 0;
 };
 typedef std::shared_ptr<State> StatePtr;
 
 class FollowState : public State {
 public:
     FollowState(Bot& bot);
-    virtual void Update();
+    virtual void Update(DWORD dt);
 };
 
 class AggressiveState : public State {
@@ -35,6 +36,7 @@ private:
     DWORD m_NearWall;
     bool m_FiringGun;
     int m_CurrentBulletDelay;
+    DWORD m_TotalTimer;
 
     // Config
     int m_RunPercent;
@@ -49,16 +51,22 @@ private:
     int m_DistFactor;
     int m_BulletDelay;
     bool m_ScaleDelay;
+    bool m_MemoryScanning;
+    bool m_OnlyCenter;
+    
+    std::vector<unsigned> m_PossibleAddr;
 
 public:
     AggressiveState(Bot& bot);
-    virtual void Update();
+    virtual void Update(DWORD dt);
+
+    void SetPossibleAddr(std::vector<unsigned> addr) { m_PossibleAddr = addr; }
 };
 
 class RunState : public State {
 public:
     RunState(Bot& bot);
-    virtual void Update();
+    virtual void Update(DWORD dt);
 };
 
 class MemoryState : public State {
@@ -70,7 +78,7 @@ private:
 
 public:
     MemoryState(Bot& bot);
-    virtual void Update();
+    virtual void Update(DWORD dt);
 };
 
 #endif

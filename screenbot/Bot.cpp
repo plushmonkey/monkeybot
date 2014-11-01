@@ -150,7 +150,7 @@ std::vector<Coord> GetNeighbors(Coord pos, int rwidth) {
     return neighbors;
 }
 
-void Bot::Update() {
+void Bot::Update(DWORD dt) {
     m_Grabber->Update();
     m_Radar->Update();
     m_Ship->Update();
@@ -187,7 +187,7 @@ void Bot::Update() {
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    m_State->Update();
+    m_State->Update(dt);
 }
 
 void Bot::GrabRadar() {
@@ -266,7 +266,7 @@ int Bot::Run() {
 
             SelectShip();
 
-            m_Grabber = std::shared_ptr<ScreenGrabber>(new ScreenGrabber(m_Window));
+            m_Grabber = std::make_shared<ScreenGrabber>(m_Window);
             m_Ship = m_Grabber->GetArea(m_Grabber->GetWidth() / 2 - 18, m_Grabber->GetHeight() / 2 - 18, 36, 36);
 
             GrabRadar();
@@ -303,6 +303,7 @@ int Bot::Run() {
     m_Config.Set(_T("BulletDelay"),     _T("20"));
     m_Config.Set(_T("ScaleDelay"),      _T("True"));
     m_Config.Set(_T("MemoryScanning"),  _T("True"));
+    m_Config.Set(_T("OnlyCenter"),      _T("True"));
 
     if (!m_Config.Load(_T("bot.conf")))
         tcout << "Could not load bot.conf. Using default values." << std::endl;
@@ -339,8 +340,14 @@ int Bot::Run() {
     else
         this->SetState(std::make_shared<AggressiveState>(*this));
 
-    while (true)
-        Update();
+    DWORD last_update = timeGetTime();
+
+    while (true) {
+        DWORD dt = timeGetTime() - last_update;
+
+        last_update = timeGetTime();
+        Update(dt);
+    }
 
     return 0;
 }

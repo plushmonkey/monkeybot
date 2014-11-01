@@ -17,7 +17,7 @@ MemoryState::MemoryState(Bot& bot) : State(bot) {
 
 }
 
-void MemoryState::Update() {
+void MemoryState::Update(DWORD dt) {
     Keyboard& keyboard = m_Bot.GetKeyboard();
 
     int rot = Util::GetRotation(m_Bot.GetShip());
@@ -86,13 +86,14 @@ void MemoryState::Update() {
     /* Restart the search and make sure it's in the safe zone */
     if (m_FindSpace.size() == 0) {
         m_Bot.SetXRadar(false);
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
         keyboard.Send(VK_INSERT);
         return;
     }
 
     if (m_FindSpace.size() <= 5) {
-        keyboard.Send(VK_CONTROL); // Stop moving
-        for (int i = 0; i < 5; ++i) {
+        keyboard.Down(VK_CONTROL); // Stop moving
+        for (int i = 0; i < 25; ++i) {
             for (auto it = m_FindSpace.begin(); it != m_FindSpace.end();) {
                 unsigned int x = Memory::GetU32(m_Bot.GetProcessHandle(), it->first - 4);
                 unsigned int y = Memory::GetU32(m_Bot.GetProcessHandle(), it->first);
@@ -104,8 +105,10 @@ void MemoryState::Update() {
                     m_FindSpace.erase(this_it);
                 }
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
+
+        keyboard.Up(VK_CONTROL);
 
         // All of the addresses were discarded in the check loop
         if (m_FindSpace.size() == 0) {
@@ -113,13 +116,23 @@ void MemoryState::Update() {
             keyboard.Send(VK_INSERT);
             return;
         }
+        std::vector<unsigned> possible;
+        
+        possible.reserve(m_FindSpace.size());
 
-        auto iter = m_FindSpace.begin();
-        m_Bot.SetPosAddress(iter->first - 4);
+        for (auto &kv : m_FindSpace)
+            possible.push_back(kv.first);
+
+        // Subtract 4 to get the x position address instead of y
+        m_Bot.SetPosAddress(m_FindSpace.begin()->first - 4);
         
         std::cout << "Position location found at " << std::hex << m_Bot.GetPosAddress() << std::dec << std::endl;
 
-        m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
+        auto state = std::make_shared<AggressiveState>(m_Bot);
+
+        state->SetPossibleAddr(possible);
+
+        m_Bot.SetState(state);
     }
 }
 
@@ -129,7 +142,7 @@ State::State(Bot& bot)
 
 FollowState::FollowState(Bot& bot) : State(bot) { }
 
-void FollowState::Update() {
+void FollowState::Update(DWORD dt) {
     Keyboard& keyboard = m_Bot.GetKeyboard();
 
     std::shared_ptr<ScreenGrabber> grabber = m_Bot.GetGrabber();
@@ -190,6 +203,37 @@ bool NearWall(unsigned x, unsigned y, const Level& level) {
     return nw || n || ne || e || se || s || sw || w;
 }
 
+bool PointingAtWall(int rot, unsigned x, unsigned y, const Level& level) {
+    bool solid = false;
+
+    if (rot >= 7 && rot <= 12) {
+        // East
+        solid = level.IsSolid(x + 1, y + 0);
+    } else if (rot >= 13 && rot <= 17) {
+        // South-east
+        solid = level.IsSolid(x + 1, y + 1);
+    } else if (rot >= 18 && rot <= 22) {
+        // South
+        solid = level.IsSolid(x + 0, y + 1);
+    } else if (rot >= 23 && rot <= 27) {
+        // South-west
+        solid = level.IsSolid(x - 1, y + 1);
+    } else if (rot >= 28 && rot <= 32) {
+        // West
+        solid = level.IsSolid(x - 1, y + 0);
+    } else if (rot >= 33 && rot <= 37) {
+        // North-west
+        solid = level.IsSolid(x - 1, y - 1);
+    } else if (rot >= 3 && rot <= 6) {
+        // North-east
+        solid = level.IsSolid(x + 1, y - 1);
+    } else {
+        // North
+        solid = level.IsSolid(x + 0, y - 1);
+    }
+    return solid;
+}
+
 AggressiveState::AggressiveState(Bot& bot)
     : State(bot), 
       m_LastEnemyPos(0,0),
@@ -198,60 +242,54 @@ AggressiveState::AggressiveState(Bot& bot)
       m_LastBomb(0),
       m_LastNonSafeTime(timeGetTime()),
       m_LastBullet(0),
-      m_NearWall(0)
+      m_NearWall(0),
+      m_TotalTimer(0)
 {
-    m_RunPercent    = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
-    m_XPercent      = m_Bot.GetConfig().Get<int>(_T("XPercent"));
-    m_SafeResetTime = m_Bot.GetConfig().Get<int>(_T("SafeResetTime"));
-    m_TargetDist    = m_Bot.GetConfig().Get<int>(_T("TargetDistance"));
-    m_RunDist       = m_Bot.GetConfig().Get<int>(_T("RunDistance"));
-    m_StopBombing   = m_Bot.GetConfig().Get<int>(_T("StopBombing"));
-    m_BombTime      = m_Bot.GetConfig().Get<int>(_T("BombTime"));
-    m_FireBombs     = m_Bot.GetConfig().Get<bool>(_T("FireBombs"));
-    m_FireGuns      = m_Bot.GetConfig().Get<bool>(_T("FireGuns"));
-    m_DistFactor    = m_Bot.GetConfig().Get<int>(_T("DistanceFactor"));
-    m_BulletDelay   = m_Bot.GetConfig().Get<int>(_T("BulletDelay")) * 10;
-    m_ScaleDelay    = m_Bot.GetConfig().Get<bool>(_T("ScaleDelay"));
+    m_RunPercent     = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
+    m_XPercent       = m_Bot.GetConfig().Get<int>(_T("XPercent"));
+    m_SafeResetTime  = m_Bot.GetConfig().Get<int>(_T("SafeResetTime"));
+    m_TargetDist     = m_Bot.GetConfig().Get<int>(_T("TargetDistance"));
+    m_RunDist        = m_Bot.GetConfig().Get<int>(_T("RunDistance"));
+    m_StopBombing    = m_Bot.GetConfig().Get<int>(_T("StopBombing"));
+    m_BombTime       = m_Bot.GetConfig().Get<int>(_T("BombTime"));
+    m_FireBombs      = m_Bot.GetConfig().Get<bool>(_T("FireBombs"));
+    m_FireGuns       = m_Bot.GetConfig().Get<bool>(_T("FireGuns"));
+    m_DistFactor     = m_Bot.GetConfig().Get<int>(_T("DistanceFactor"));
+    m_BulletDelay    = m_Bot.GetConfig().Get<int>(_T("BulletDelay")) * 10;
+    m_ScaleDelay     = m_Bot.GetConfig().Get<bool>(_T("ScaleDelay"));
+    m_MemoryScanning = m_Bot.GetConfig().Get<bool>(_T("MemoryScanning"));
+    m_OnlyCenter     = m_Bot.GetConfig().Get<bool>(_T("OnlyCenter"));
 
     if (m_DistFactor < 1) m_DistFactor = 10;
 }
 
-void AggressiveState::Update() {
+void AggressiveState::Update(DWORD dt) {
     std::shared_ptr<ScreenGrabber> grabber = m_Bot.GetGrabber();
     ScreenAreaPtr& radar = m_Bot.GetRadar();
     ScreenAreaPtr& ship = m_Bot.GetShip();
     ScreenAreaPtr& player = m_Bot.GetPlayer();
     Keyboard& keyboard = m_Bot.GetKeyboard();
-    static DWORD last_timer = timeGetTime();
 
     unsigned int x = m_Bot.GetX();
     unsigned int y = m_Bot.GetY();
-    //std::cout << x << ", " << y << std::endl;
 
-    /* Warp back to center if bot is dragged out */
-    if (!m_Bot.InCenter()) {
-        std::cout << "Warping because position is " << x << ", " << y << std::endl;
-        m_Bot.SetXRadar(false);
-        std::this_thread::sleep_for(std::chrono::milliseconds(300));
-        keyboard.Send(VK_INSERT);
-        return;
-    }
+    m_TotalTimer += dt;
 
-    /*if (NearWall(x, y, m_Bot.GetLevel())) {
-        m_NearWall += timeGetTime() - last_timer;
-        // Player has been near a wall for 5 seconds 
-        if (m_NearWall >= 5000) {
+    /* Warp back to center if bot is dragged out. Only warp if the bot has been active for more than 10 seconds. */
+    if (m_OnlyCenter && !m_Bot.InCenter()) {
+        if (m_TotalTimer > 10000 || m_PossibleAddr.size() == 0) {
+            std::cout << "Warping because position is out of center (" << x << ", " << y << ")." << std::endl;
             m_Bot.SetXRadar(false);
             std::this_thread::sleep_for(std::chrono::milliseconds(300));
             keyboard.Send(VK_INSERT);
-            last_timer = timeGetTime();
-            std::cout << "warping cuz near wall\n";
             return;
+        } else {
+            // The position address is probably wrong. Let's try the next one
+            std::cout << "Bot appears to be out of center. The position address is probably wrong, trying next one." << std::endl;
+            m_PossibleAddr.erase(m_PossibleAddr.begin());
+            m_Bot.SetPosAddress(m_PossibleAddr.at(0));
         }
-    } else {
-        m_NearWall = 0;
-    }*/
-
+    }
 
     bool insafe = Util::PlayerInSafe(player);
     int tardist = m_TargetDist;
@@ -276,7 +314,6 @@ void AggressiveState::Update() {
     if (insafe && energypct < 50) {
         keyboard.Send(VK_CONTROL);
         keyboard.ReleaseAll();
-        last_timer = timeGetTime();
         return;
     }
 
@@ -325,6 +362,31 @@ void AggressiveState::Update() {
         int rot = Util::GetRotation(ship);
         int away = std::abs(rot - target_rot);
 
+        /* Move bot if it's stuck at a wall */
+        if (m_MemoryScanning && PointingAtWall(rot, x, y, m_Bot.GetLevel())) {
+            m_NearWall += dt;
+            if (m_NearWall >= 1000) {
+                // Bot has been near a wall for too long
+                keyboard.Down(VK_DOWN);
+
+                int dir = Random::GetU32(0, 1) ? VK_LEFT : VK_RIGHT;
+                keyboard.Down(dir);
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(250));
+                keyboard.Up(dir);
+                std::this_thread::sleep_for(std::chrono::milliseconds(250));
+                keyboard.Down(dir);
+                std::this_thread::sleep_for(std::chrono::milliseconds(250));
+
+                keyboard.Up(VK_DOWN);
+                keyboard.Up(dir);
+
+                m_NearWall = 0;
+            }
+        } else {
+            m_NearWall = 0;
+        }
+
         keydown = true;
         /* Handle rotation */
         if (rot != -1 && rot != target_rot) {
@@ -360,22 +422,23 @@ void AggressiveState::Update() {
         /* Only fire weapons if pointing at enemy*/
         if (rot != target_rot) {
             keyboard.Up(VK_CONTROL);
-            last_timer = timeGetTime();
             return;
         }
 
         /* Handle bombing */
         if (!insafe && m_FireBombs && timeGetTime() > m_LastBomb + m_BombTime && energypct > m_StopBombing) {
-            keyboard.ToggleDown();
+            if (!PointingAtWall(rot, x, y, m_Bot.GetLevel()) && dist >= 7) {
+                keyboard.ToggleDown();
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            keyboard.Down(VK_TAB);
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            keyboard.Up(VK_TAB);
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                keyboard.Down(VK_TAB);
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                keyboard.Up(VK_TAB);
 
-            keyboard.ToggleDown();
+                keyboard.ToggleDown();
 
-            m_LastBomb = timeGetTime();
+                m_LastBomb = timeGetTime();
+            }
         }
 
         /* Handle gunning */
@@ -429,8 +492,6 @@ void AggressiveState::Update() {
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-
-    last_timer = timeGetTime();
 }
 
 RunState::RunState(Bot& bot) : State(bot) {
@@ -442,7 +503,7 @@ RunState::RunState(Bot& bot) : State(bot) {
     keyboard.Up(VK_CONTROL);
 }
 
-void RunState::Update() {
+void RunState::Update(DWORD dt) {
     /*Keyboard& keyboard = m_Bot.GetKeyboard();
     ScreenGrabberPtr grabber = m_Bot.GetGrabber();
 
