@@ -119,67 +119,6 @@ void Bot::SetXRadar(bool on) {
     }
 }
 
-std::vector<Coord> GetNeighbors(Coord pos) {
-    const int width = 1024;
-    std::vector<Coord> neighbors;
-    neighbors.resize(8);
-    int x, y;
-
-    for (int i = 0; i < 4; i++)
-        neighbors[i] = Coord(0, 0);
-
-    x = pos.x;
-    y = pos.y - 1;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[0] = Coord(x, y);
-
-    x = pos.x + 1;
-    y = pos.y;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[1] = Coord(x, y);
-
-    x = pos.x;
-    y = pos.y + 1;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[2] = Coord(x, y);
-
-    x = pos.x - 1;
-    y = pos.y;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[3] = Coord(x, y);
-
-    x = pos.x - 1;
-    y = pos.y + 1;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[4] = Coord(x, y);
-
-    x = pos.x + 1;
-    y = pos.y + 1;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[5] = Coord(x, y);
-
-    x = pos.x - 1;
-    y = pos.y - 1;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[6] = Coord(x, y);
-
-    x = pos.x + 1;
-    y = pos.y - 1;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[7] = Coord(x, y);
-
-    return neighbors;
-}
-
-struct PriorityCoord {
-    Coord coord;
-    int priority;
-    PriorityCoord(Coord c, int p) : coord(c), priority(p) { }
-};
-bool operator<(const PriorityCoord& lhs, const PriorityCoord& rhs) {
-    return lhs.priority < rhs.priority;
-}
-
 void Bot::Update(DWORD dt) {
     m_Grabber->Update();
     m_Radar->Update();
@@ -383,7 +322,7 @@ int Bot::Run() {
             else
                 memory_enabled = true;
         } else {
-            std::cerr << "Could not get Windows debug privileges." << std::endl;
+            tcerr << "Could not get Windows debug privileges." << std::endl;
         }
     }
 

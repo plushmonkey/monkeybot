@@ -126,7 +126,7 @@ void MemoryState::Update(DWORD dt) {
         // Subtract 4 to get the x position address instead of y
         m_Bot.SetPosAddress(m_FindSpace.begin()->first - 4);
         
-        std::cout << "Position location found at " << std::hex << m_Bot.GetPosAddress() << std::dec << std::endl;
+        tcout << "Position location found at " << std::hex << m_Bot.GetPosAddress() << std::dec << std::endl;
 
         if (m_Bot.GetConfig().Get<bool>("Patrol")) {
             auto state = std::make_shared<PatrolState>(m_Bot);
@@ -171,9 +171,6 @@ void FollowState::Update(DWORD dt) {
 
         int rot = Util::GetRotation(ship);
         int target_rot = Util::GetTargetRotation(dx, dy);
-
-        //std::cout << "Rot: " << rot << " Target: " << target_rot << " D: " << dx << ", " << dy << std::endl;
-      //  return;
 
         int away = std::abs(rot - target_rot);
 
@@ -304,9 +301,6 @@ void PatrolState::Update(DWORD dt) {
     int rot = Util::GetRotation(ship);
     int target_rot = Util::GetTargetRotation(dx, dy);
 
-    //std::cout << "Rot: " << rot << " Target: " << target_rot << " D: " << dx << ", " << dy << std::endl;
-    //  return;
-
     int away = std::abs(rot - target_rot);
 
     if (rot != -1 && rot != target_rot) {
@@ -421,14 +415,14 @@ void AggressiveState::Update(DWORD dt) {
     /* Warp back to center if bot is dragged out. Only warp if the bot has been active for more than 10 seconds. */
     if (m_OnlyCenter && !m_Bot.InCenter()) {
         if (m_TotalTimer > 10000 || m_PossibleAddr.size() == 0) {
-            std::cout << "Warping because position is out of center (" << x << ", " << y << ")." << std::endl;
+            tcout << "Warping because position is out of center (" << x << ", " << y << ")." << std::endl;
             m_Bot.SetXRadar(false);
             std::this_thread::sleep_for(std::chrono::milliseconds(300));
             keyboard.Send(VK_INSERT);
             return;
         } else {
             // The position address is probably wrong. Let's try the next one
-            std::cout << "Bot appears to be out of center. The position address is probably wrong, trying next one." << std::endl;
+            tcout << "Bot appears to be out of center. The position address is probably wrong, trying next one." << std::endl;
             m_PossibleAddr.erase(m_PossibleAddr.begin());
             m_Bot.SetPosAddress(m_PossibleAddr.at(0));
         }
