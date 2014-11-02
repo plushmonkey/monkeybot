@@ -104,10 +104,11 @@ std::vector<Coord> Graph::GetPath(const Coord& start, const Coord& goal) {
 
         std::vector<Coord> neighbors = GetNeighbors(Coord(current.x, current.y));
         for (Coord& next : neighbors) {
+            if (next == Coord(0, 0)) continue;
             if (!m_Level.IsSolid(next.x, next.y) && // middle
                 !m_Level.IsSolid(next.x + 1, next.y) && // right
                 !m_Level.IsSolid(next.x, next.y - 1) && // upper
-                !m_Level.IsSolid(next.x, next.y - 1) && // lower
+                !m_Level.IsSolid(next.x, next.y + 1) && // lower
                 !m_Level.IsSolid(next.x - 1, next.y - 1) && // upper-left
                 !m_Level.IsSolid(next.x + 1, next.y - 1) && // upper-right
                 !m_Level.IsSolid(next.x + 1, next.y + 1) && // lower-right

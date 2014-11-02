@@ -4,7 +4,6 @@
 #include "Keyboard.h"
 #include "Common.h"
 #include <vector>
-#include <queue>
 #include "Pathing.h"
 
 class Bot;
@@ -40,7 +39,7 @@ public:
 class PatrolState : public State {
 private:
     Path::Graph m_Graph;
-    std::queue<Coord> m_Waypoints;
+    std::vector<Coord> m_Waypoints;
     DWORD m_LastBullet;
     bool m_Patrol;
 
@@ -48,9 +47,9 @@ private:
     DWORD m_StuckTimer;
 
 public:
-    PatrolState(Bot& bot, std::queue<Coord> waypoints = std::queue<Coord>());
+    PatrolState(Bot& bot, std::vector<Coord> waypoints = std::vector<Coord>());
     virtual void Update(DWORD dt);
-    void ResetWaypoints();
+    void ResetWaypoints(bool full = true);
     virtual StateType GetType() const { return StateType::PatrolState; }
 };
 
@@ -65,7 +64,7 @@ private:
     DWORD m_NearWall;
     bool m_FiringGun;
     int m_CurrentBulletDelay;
-    DWORD m_TotalTimer;
+    Path::Graph m_Graph;
 
     // Config
     int m_RunPercent;
@@ -83,14 +82,11 @@ private:
     bool m_MemoryScanning;
     bool m_OnlyCenter;
     bool m_Patrol;
-    
-    std::vector<unsigned> m_PossibleAddr;
 
 public:
     AggressiveState(Bot& bot);
     virtual void Update(DWORD dt);
 
-    void SetPossibleAddr(std::vector<unsigned> addr) { m_PossibleAddr = addr; }
     virtual StateType GetType() const { return StateType::AggressiveState; }
 };
 

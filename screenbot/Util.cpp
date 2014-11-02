@@ -4,6 +4,7 @@
 #include <limits>
 #include <iostream>
 #include <map>
+#include "Level.h"
 
 static const int ShipRadius[8] = { 15, 15, 30, 30, 21, 21, 39 ,11 };
 
@@ -256,5 +257,98 @@ int GetEnergy(ScreenAreaPtr* energyarea) {
 
     return (first * 1000) + (second * 100) + (third * 10) + fourth;
 }
+
+bool FitsOnMap(int x, int y, int radius, const Level& level) {
+    int startTileX = (x - radius) >> 4;
+    int endTileX = (x + radius) >> 4;
+
+    int startTileY = (y - radius) >> 4;
+    int endTileY = (y + radius) >> 4;
+
+    for (int x_ = startTileX; x_ <= endTileX; ++x_) {
+        for (int y_ = startTileY; y_ <= endTileY; ++y_) {
+            if (level.IsSolid(x_, y_))
+                return false;
+        }
+    }
+
+    return true;
+}
+
+bool IsClearPath(Coord from, Coord target, int radius, const Level& level) {
+    const int PathClearIncrease = 8;
+    int numpixels;
+    int d, dinc1, dinc2;
+    int x, xinc1, xinc2;
+    int y, yinc1, yinc2;
+
+    from.x *= 16;
+    from.y *= 16;
+    target.x *= 16;
+    target.y *= 16;
+
+    int dx = target.x - from.x;
+    int dy = target.y - from.y;
+
+    if (dx < 0) dx = -dx;
+    if (dy < 0) dy = -dy;
+
+    if (dx > dy) {
+        numpixels = dx + 1;
+        d = (2 * dy) - dx;
+        dinc1 = dy << 1;
+        dinc2 = (dy - dx) << 1;
+        xinc1 = 1;
+        xinc2 = 1;
+        yinc1 = 0;
+        yinc2 = 1;
+    } else {
+        numpixels = dy + 1;
+        d = (2 * dx) - dy;
+        dinc1 = dx << 1;
+        dinc2 = (dx - dy) << 1;
+        xinc1 = 0;
+        xinc2 = 1;
+        yinc1 = 1;
+        yinc2 = 1;
+    }
+
+    if (from.x > target.x) {
+        xinc1 = -xinc1;
+        xinc2 = -xinc2;
+    }
+    if (from.y > target.y) {
+        yinc1 = -yinc1;
+        yinc2 = -yinc2;
+    }
+
+    dinc1 *= PathClearIncrease;
+    dinc2 *= PathClearIncrease;
+    xinc1 *= PathClearIncrease;
+    xinc2 *= PathClearIncrease;
+    yinc1 *= PathClearIncrease;
+    yinc2 *= PathClearIncrease;
+
+    x = from.x;
+    y = from.y;
+
+    for (int i = 1; i < numpixels; i += PathClearIncrease) {
+        if (!FitsOnMap(x, y, radius, level))
+            return false;
+
+        if (d < 0) {
+            d += dinc1;
+            x += xinc1;
+            y += yinc1;
+        } else {
+            d += dinc2;
+            x += xinc2;
+            y += yinc2;
+        }
+    }
+
+    return true;
+}
+
 
 }

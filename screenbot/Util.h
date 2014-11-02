@@ -4,6 +4,8 @@
 #include "Common.h"
 #include <vector>
 
+class Level;
+
 namespace Util {
     int GetEnergy(ScreenAreaPtr* energyarea);
     int GetEnergyDigit(int digit, ScreenAreaPtr* energyarea);
@@ -18,6 +20,7 @@ namespace Util {
     int GetShip(const ScreenAreaPtr& ship);
     int GetShipRadius(int n);
     bool InShip(const ScreenGrabberPtr& grabber);
+    bool IsClearPath(Coord from, Coord target, int radius, const Level& level);
 }
 
 #endif

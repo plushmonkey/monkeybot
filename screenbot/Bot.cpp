@@ -29,7 +29,8 @@ Bot::Bot(int ship)
     m_MaxEnergy(0),
     m_PosAddr(0),
     m_Level(),
-    m_ProcessHandle(nullptr)
+    m_ProcessHandle(nullptr),
+    m_AliveTime(0)
 { }
 
 unsigned int Bot::GetX() const {
@@ -142,6 +143,23 @@ void Bot::Update(DWORD dt) {
     double dist;
 
     bool reset_target = false;
+
+    if (m_PosAddr && GetStateType() != StateType::MemoryState) {
+        m_AliveTime += dt;
+
+        if (!InCenter()) {
+            if (m_AliveTime < 10000 && m_PossibleAddr.size() > 1) {
+                tcout << "Bot appears to be out of center. The position address is probably wrong, trying next one." << std::endl;
+                m_PossibleAddr.erase(m_PossibleAddr.begin());
+                SetPosAddress(m_PossibleAddr.at(0));
+            } else if (m_Config.Get<bool>("OnlyCenter")) {
+                tcout << "Warping because position is out of center (" << GetX() << ", " << GetY() << ")." << std::endl;
+                SetXRadar(false);
+                std::this_thread::sleep_for(std::chrono::milliseconds(300));
+                m_Keyboard.Send(VK_INSERT);
+            }
+        }
+    }
 
     try {
         std::vector<Coord> enemies = Util::GetEnemies(m_Radar);

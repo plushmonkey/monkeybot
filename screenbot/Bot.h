@@ -40,11 +40,13 @@ private:
     int m_Energy;
     Config m_Config;
     Level m_Level;
+    DWORD m_AliveTime;
 
     std::map<Coord, Coord> m_PathGraph;
 
     HANDLE m_ProcessHandle;
 
+    std::vector<unsigned> m_PossibleAddr;
     unsigned int m_PosAddr;
 
     HWND SelectWindow();
@@ -107,6 +109,8 @@ public:
     StateType GetStateType() const {
         return m_State->GetType();
     }
+
+    void SetPossibleAddr(std::vector<unsigned> addr) { m_PossibleAddr = addr; }
 };
 
 

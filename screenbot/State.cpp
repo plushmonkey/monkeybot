@@ -10,6 +10,9 @@
 #include "Memory.h"
 #include "Random.h"
 #include <cmath>
+#include <limits>
+
+#define RADIUS 1
 
 const Coord NullCoord(0, 0);
 
@@ -128,12 +131,13 @@ void MemoryState::Update(DWORD dt) {
         
         tcout << "Position location found at " << std::hex << m_Bot.GetPosAddress() << std::dec << std::endl;
 
+        m_Bot.SetPossibleAddr(possible);
+
         if (m_Bot.GetConfig().Get<bool>("Patrol")) {
             auto state = std::make_shared<PatrolState>(m_Bot);
             m_Bot.SetState(state);
         } else {
             auto state = std::make_shared<AggressiveState>(m_Bot);
-            state->SetPossibleAddr(possible);
             m_Bot.SetState(state);
         }
     }
@@ -143,7 +147,9 @@ void MemoryState::Update(DWORD dt) {
 State::State(Bot& bot)
     : m_Bot(bot) { }
 
-FollowState::FollowState(Bot& bot) : State(bot) { }
+FollowState::FollowState(Bot& bot) : State(bot) { 
+    m_Bot.GetKeyboard().ReleaseAll();
+}
 
 void FollowState::Update(DWORD dt) {
     Keyboard& keyboard = m_Bot.GetKeyboard();
@@ -152,11 +158,30 @@ void FollowState::Update(DWORD dt) {
     ScreenAreaPtr& radar = m_Bot.GetRadar();
     ScreenAreaPtr& ship = m_Bot.GetShip();
 
-    std::vector<Coord>& path = m_Bot.GetPath();
+    if (m_Bot.GetEnemyTarget() == Coord(0, 0)) {
+        m_Bot.SetState(std::make_shared<PatrolState>(m_Bot));
+        return;
+    }
+
+    Path::Graph graph(m_Bot.GetLevel());
+
+    Coord pos(m_Bot.GetX(), m_Bot.GetY());
+    int edx = m_Bot.GetEnemyTargetInfo().dx;
+    int edy = m_Bot.GetEnemyTargetInfo().dy;
+    int x = pos.x;
+    int y = pos.y;
+    Coord enemy(x + edx * 2, y + edy * 2);
+
+    std::vector<Coord> path = graph.GetPath(pos, enemy);
 
     if (path.size() > 0) {
         Coord next = path.at(path.size() - 1);
-        Coord pos(m_Bot.GetX(), m_Bot.GetY());
+
+        if (Util::IsClearPath(pos, enemy, RADIUS, m_Bot.GetLevel())) {
+            m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
+            return;
+        }
+
         while (next == pos && path.size() > 1) {
             path.erase(path.begin() + path.size() - 1);
             next = path.at(path.size() - 1);
@@ -202,27 +227,54 @@ void FollowState::Update(DWORD dt) {
 
 }
 
-PatrolState::PatrolState(Bot& bot, std::queue<Coord> waypoints) 
+PatrolState::PatrolState(Bot& bot, std::vector<Coord> waypoints) 
     : State(bot), 
       m_Waypoints(waypoints),
       m_Graph(bot.GetLevel()),
       m_LastBullet(timeGetTime()),
       m_StuckTimer(0),
-      m_LastCoord(0, 0)
+        m_LastCoord(0, 0)
 {
-    ResetWaypoints();
+    if (m_Waypoints.size() == 0)
+        ResetWaypoints(false);
+
     m_Bot.GetKeyboard().ReleaseAll();
 
     m_Patrol = m_Bot.GetConfig().Get<bool>(_T("Patrol"));
 }
 
-void PatrolState::ResetWaypoints() {
-    m_Waypoints.emplace(400, 590);
-    m_Waypoints.emplace(640, 623);
-    m_Waypoints.emplace(684, 457);
-    m_Waypoints.emplace(625, 385);
-    m_Waypoints.emplace(510, 413);
-    m_Waypoints.emplace(400, 420);
+void PatrolState::ResetWaypoints(bool full) {
+    m_Waypoints.emplace_back(385, 590);
+    m_Waypoints.emplace_back(511, 596);
+    m_Waypoints.emplace_back(640, 623);
+    m_Waypoints.emplace_back(684, 457);
+    m_Waypoints.emplace_back(625, 385);
+    m_Waypoints.emplace_back(510, 413);
+    m_Waypoints.emplace_back(385, 420);
+
+    if (full) return;
+
+    double closestdist = std::numeric_limits<double>::max();
+    std::vector<Coord>::iterator closest = m_Waypoints.begin();
+
+    Coord pos(m_Bot.GetX(), m_Bot.GetY());
+
+    // Find the closet waypoint that isn't the one just visited
+    for (auto i = m_Waypoints.begin(); i != m_Waypoints.end(); ++i) {
+        int dx, dy;
+        double dist;
+
+        Util::GetDistance(pos, *i, &dx, &dy, &dist);
+
+        if (dist > 25 && dist < closestdist) {
+            closestdist = dist;
+            closest = i;
+        }
+    }
+
+    // Remove all the waypoints before the closest
+    if (closest != m_Waypoints.begin())
+        m_Waypoints.erase(m_Waypoints.begin(), closest);
 }
 
 void PatrolState::Update(DWORD dt) {
@@ -278,7 +330,7 @@ void PatrolState::Update(DWORD dt) {
     }
 
     if (closedist <= 25) {
-        m_Waypoints.pop();
+        m_Waypoints.erase(m_Waypoints.begin());
         return;
     }
 
@@ -342,30 +394,39 @@ bool NearWall(unsigned x, unsigned y, const Level& level) {
 bool PointingAtWall(int rot, unsigned x, unsigned y, const Level& level) {
     bool solid = false;
 
+    auto e = [&]() -> bool { return level.IsSolid(x + 1, y + 0); };
+    auto se = [&]() -> bool { return level.IsSolid(x + 1, y + 1); };
+    auto s = [&]() -> bool { return level.IsSolid(x + 0, y + 1); };
+    auto sw = [&]() -> bool { return level.IsSolid(x - 1, y + 1); };
+    auto w = [&]() -> bool { return level.IsSolid(x - 1, y + 0); };
+    auto nw = [&]() -> bool { return level.IsSolid(x - 1, y - 1); };
+    auto ne = [&]() -> bool { return level.IsSolid(x + 1, y - 1); };
+    auto n = [&]() -> bool { return level.IsSolid(x + 0, y - 1); };
+
     if (rot >= 7 && rot <= 12) {
         // East
-        solid = level.IsSolid(x + 1, y + 0);
+        solid = ne() || e() || se();
     } else if (rot >= 13 && rot <= 17) {
         // South-east
-        solid = level.IsSolid(x + 1, y + 1);
+        solid = e() || se() || s();
     } else if (rot >= 18 && rot <= 22) {
         // South
-        solid = level.IsSolid(x + 0, y + 1);
+        solid = se() || s() || sw();
     } else if (rot >= 23 && rot <= 27) {
         // South-west
-        solid = level.IsSolid(x - 1, y + 1);
+        solid = s() || sw() || w();
     } else if (rot >= 28 && rot <= 32) {
         // West
-        solid = level.IsSolid(x - 1, y + 0);
+        solid = sw() || w() || nw();
     } else if (rot >= 33 && rot <= 37) {
         // North-west
-        solid = level.IsSolid(x - 1, y - 1);
+        solid = w() || nw() || n();
     } else if (rot >= 3 && rot <= 6) {
         // North-east
-        solid = level.IsSolid(x + 1, y - 1);
+        solid = n() || ne() || e();
     } else {
         // North
-        solid = level.IsSolid(x + 0, y - 1);
+        solid = nw() || n() || nw();
     }
     return solid;
 }
@@ -379,7 +440,7 @@ AggressiveState::AggressiveState(Bot& bot)
       m_LastNonSafeTime(timeGetTime()),
       m_LastBullet(0),
       m_NearWall(0),
-      m_TotalTimer(0)
+      m_Graph(bot.GetLevel())
 {
     m_RunPercent     = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
     m_XPercent       = m_Bot.GetConfig().Get<int>(_T("XPercent"));
@@ -397,6 +458,7 @@ AggressiveState::AggressiveState(Bot& bot)
     m_OnlyCenter     = m_Bot.GetConfig().Get<bool>(_T("OnlyCenter"));
     m_Patrol         = m_Bot.GetConfig().Get<bool>(_T("Patrol"));
 
+    m_Bot.GetKeyboard().ReleaseAll();
     if (m_DistFactor < 1) m_DistFactor = 10;
 }
 
@@ -409,24 +471,6 @@ void AggressiveState::Update(DWORD dt) {
 
     unsigned int x = m_Bot.GetX();
     unsigned int y = m_Bot.GetY();
-
-    m_TotalTimer += dt;
-
-    /* Warp back to center if bot is dragged out. Only warp if the bot has been active for more than 10 seconds. */
-    if (m_OnlyCenter && !m_Bot.InCenter()) {
-        if (m_TotalTimer > 10000 || m_PossibleAddr.size() == 0) {
-            tcout << "Warping because position is out of center (" << x << ", " << y << ")." << std::endl;
-            m_Bot.SetXRadar(false);
-            std::this_thread::sleep_for(std::chrono::milliseconds(300));
-            keyboard.Send(VK_INSERT);
-            return;
-        } else {
-            // The position address is probably wrong. Let's try the next one
-            tcout << "Bot appears to be out of center. The position address is probably wrong, trying next one." << std::endl;
-            m_PossibleAddr.erase(m_PossibleAddr.begin());
-            m_Bot.SetPosAddress(m_PossibleAddr.at(0));
-        }
-    }
 
     bool insafe = Util::PlayerInSafe(player);
     int tardist = m_TargetDist;
@@ -464,6 +508,13 @@ void AggressiveState::Update(DWORD dt) {
         double dist = info.dist;
         int dx = info.dx;
         int dy = info.dy;
+        Coord pos(x, y);
+        Coord enemy(x + dx * 2, y + dy * 2);
+
+        if (!Util::IsClearPath(pos, enemy, RADIUS, m_Bot.GetLevel())) {
+            m_Bot.SetState(std::make_shared<FollowState>(m_Bot));
+            return;
+        }
         
         if (cur_time > m_LastEnemyTimer + 500) {
             m_EnemyVelocity.x = target.x - m_LastEnemyPos.x;
