@@ -41,6 +41,8 @@ private:
     Config m_Config;
     Level m_Level;
 
+    std::map<Coord, Coord> m_PathGraph;
+
     HANDLE m_ProcessHandle;
 
     unsigned int m_PosAddr;
@@ -68,7 +70,7 @@ public:
     Coord GetTarget() const { return m_Target; }
     TargetInfo GetTargetInfo() const { return m_TargetInfo; }
 
-    const std::vector<Coord>& GetPath() const { return m_Path; }
+    std::vector<Coord>& GetPath() { return m_Path; }
     int GetEnergy() const { return m_Energy; }
     int GetMaxEnergy() const { return m_MaxEnergy; }
     int GetEnergyPercent() const { 
@@ -100,6 +102,10 @@ public:
         unsigned y = GetY();
 
         return x > 320 && x < 703 && y > 320 && y < 703;
+    }
+
+    StateType GetStateType() const {
+        return m_State->GetType();
     }
 };
 

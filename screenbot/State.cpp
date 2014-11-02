@@ -128,11 +128,14 @@ void MemoryState::Update(DWORD dt) {
         
         std::cout << "Position location found at " << std::hex << m_Bot.GetPosAddress() << std::dec << std::endl;
 
-        auto state = std::make_shared<AggressiveState>(m_Bot);
-
-        state->SetPossibleAddr(possible);
-
-        m_Bot.SetState(state);
+        if (m_Bot.GetConfig().Get<bool>("Patrol")) {
+            auto state = std::make_shared<PatrolState>(m_Bot);
+            m_Bot.SetState(state);
+        } else {
+            auto state = std::make_shared<AggressiveState>(m_Bot);
+            state->SetPossibleAddr(possible);
+            m_Bot.SetState(state);
+        }
     }
 }
 
@@ -149,19 +152,28 @@ void FollowState::Update(DWORD dt) {
     ScreenAreaPtr& radar = m_Bot.GetRadar();
     ScreenAreaPtr& ship = m_Bot.GetShip();
 
-    std::vector<Coord> path = m_Bot.GetPath();
+    std::vector<Coord>& path = m_Bot.GetPath();
 
     if (path.size() > 0) {
         Coord next = path.at(path.size() - 1);
         Coord pos(m_Bot.GetX(), m_Bot.GetY());
+        while (next == pos && path.size() > 1) {
+            path.erase(path.begin() + path.size() - 1);
+            next = path.at(path.size() - 1);
+        }
+        
         int dx, dy;
         double dist;
 
         Util::GetDistance(pos, next, &dx, &dy, &dist);
+        dx = -dx;
+        dy = -dy;
 
         int rot = Util::GetRotation(ship);
-
         int target_rot = Util::GetTargetRotation(dx, dy);
+
+        //std::cout << "Rot: " << rot << " Target: " << target_rot << " D: " << dx << ", " << dy << std::endl;
+      //  return;
 
         int away = std::abs(rot - target_rot);
 
@@ -186,9 +198,139 @@ void FollowState::Update(DWORD dt) {
             keyboard.Up(VK_RIGHT);
         }
 
-        keyboard.Up(VK_UP);
+        keyboard.Down(VK_UP);
+    } else {
+        keyboard.ReleaseAll();
     }
 
+}
+
+PatrolState::PatrolState(Bot& bot, std::queue<Coord> waypoints) 
+    : State(bot), 
+      m_Waypoints(waypoints),
+      m_Graph(bot.GetLevel()),
+      m_LastBullet(timeGetTime()),
+      m_StuckTimer(0),
+      m_LastCoord(0, 0)
+{
+    ResetWaypoints();
+    m_Bot.GetKeyboard().ReleaseAll();
+
+    m_Patrol = m_Bot.GetConfig().Get<bool>(_T("Patrol"));
+}
+
+void PatrolState::ResetWaypoints() {
+    m_Waypoints.emplace(400, 590);
+    m_Waypoints.emplace(640, 623);
+    m_Waypoints.emplace(684, 457);
+    m_Waypoints.emplace(625, 385);
+    m_Waypoints.emplace(510, 413);
+    m_Waypoints.emplace(400, 420);
+}
+
+void PatrolState::Update(DWORD dt) {
+    Keyboard& keyboard = m_Bot.GetKeyboard();
+
+    std::shared_ptr<ScreenGrabber> grabber = m_Bot.GetGrabber();
+    ScreenAreaPtr& radar = m_Bot.GetRadar();
+    ScreenAreaPtr& ship = m_Bot.GetShip();
+
+    if (!m_Patrol || m_Bot.GetEnemyTarget() != Coord(0, 0)) {
+        // Target found, switch to aggressive
+        m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
+        return;
+    }
+
+    m_Bot.SetXRadar(true);
+
+    if (m_Waypoints.size() == 0) {
+        ResetWaypoints();
+        return;
+    }
+
+    if (timeGetTime() >= m_LastBullet + 60000) {
+        keyboard.Send(VK_CONTROL);
+        m_LastBullet = timeGetTime();
+    }
+
+    Coord target = m_Waypoints.front();
+    Coord pos(m_Bot.GetX(), m_Bot.GetY());
+    int closedx, closedy;
+    double closedist;
+    Util::GetDistance(pos, target, &closedx, &closedy, &closedist);
+
+    m_StuckTimer += dt;
+
+    // Check if stuck every 2.5 seconds
+    if (m_StuckTimer >= 2500) {
+        int stuckdx, stuckdy;
+        double stuckdist;
+
+        Util::GetDistance(pos, m_LastCoord, &stuckdx, &stuckdy, &stuckdist);
+
+        if (stuckdist <= 10) {
+            // Stuck
+            keyboard.Up(VK_UP);
+            keyboard.Down(VK_DOWN);
+            std::this_thread::sleep_for(std::chrono::milliseconds(750));
+            keyboard.Up(VK_DOWN);
+        }
+
+        m_LastCoord = pos;
+        m_StuckTimer = 0;
+    }
+
+    if (closedist <= 25) {
+        m_Waypoints.pop();
+        return;
+    }
+
+    std::vector<Coord> path = m_Graph.GetPath(pos, target);
+
+    Coord next = path.at(path.size() - 1);
+
+    while (next == pos && path.size() > 1) {
+        path.erase(path.begin() + path.size() - 1);
+        next = path.at(path.size() - 1);
+    }
+
+    int dx, dy;
+    double dist;
+
+    Util::GetDistance(pos, next, &dx, &dy, &dist);
+    dx = -dx;
+    dy = -dy;
+
+    int rot = Util::GetRotation(ship);
+    int target_rot = Util::GetTargetRotation(dx, dy);
+
+    //std::cout << "Rot: " << rot << " Target: " << target_rot << " D: " << dx << ", " << dy << std::endl;
+    //  return;
+
+    int away = std::abs(rot - target_rot);
+
+    if (rot != -1 && rot != target_rot) {
+        int dir = 0;
+
+        if (away < 20 && rot < target_rot) dir = 1;
+        if (away < 20 && rot > target_rot) dir = 0;
+
+        if (away > 20 && rot < target_rot) dir = 0;
+        if (away > 20 && rot > target_rot) dir = 1;
+
+        if (dir == 0) {
+            keyboard.Up(VK_RIGHT);
+            keyboard.Down(VK_LEFT);
+        } else {
+            keyboard.Up(VK_LEFT);
+            keyboard.Down(VK_RIGHT);
+        }
+    } else {
+        keyboard.Up(VK_LEFT);
+        keyboard.Up(VK_RIGHT);
+    }
+
+    keyboard.Down(VK_UP);
 }
 
 bool NearWall(unsigned x, unsigned y, const Level& level) {
@@ -259,6 +401,7 @@ AggressiveState::AggressiveState(Bot& bot)
     m_ScaleDelay     = m_Bot.GetConfig().Get<bool>(_T("ScaleDelay"));
     m_MemoryScanning = m_Bot.GetConfig().Get<bool>(_T("MemoryScanning"));
     m_OnlyCenter     = m_Bot.GetConfig().Get<bool>(_T("OnlyCenter"));
+    m_Patrol         = m_Bot.GetConfig().Get<bool>(_T("Patrol"));
 
     if (m_DistFactor < 1) m_DistFactor = 10;
 }
@@ -478,6 +621,9 @@ void AggressiveState::Update(DWORD dt) {
             keyboard.Up(VK_CONTROL);
             keydown = false;
         }
+        
+        if (m_Patrol)
+            m_Bot.SetState(std::make_shared<PatrolState>(m_Bot));
 
         /* Warp to keep the bot in game */
         if (cur_time > m_Bot.GetLastEnemy() + 1000 * 60) {

@@ -119,9 +119,10 @@ void Bot::SetXRadar(bool on) {
     }
 }
 
-std::vector<Coord> GetNeighbors(Coord pos, int rwidth) {
+std::vector<Coord> GetNeighbors(Coord pos) {
+    const int width = 1024;
     std::vector<Coord> neighbors;
-    neighbors.resize(4);
+    neighbors.resize(8);
     int x, y;
 
     for (int i = 0; i < 4; i++)
@@ -129,25 +130,54 @@ std::vector<Coord> GetNeighbors(Coord pos, int rwidth) {
 
     x = pos.x;
     y = pos.y - 1;
-    if (x > 0 && x < rwidth && y > 0 && y < rwidth)
+    if (x > 0 && x < width && y > 0 && y < width)
         neighbors[0] = Coord(x, y);
 
     x = pos.x + 1;
     y = pos.y;
-    if (x > 0 && x < rwidth && y > 0 && y < rwidth)
+    if (x > 0 && x < width && y > 0 && y < width)
         neighbors[1] = Coord(x, y);
 
     x = pos.x;
     y = pos.y + 1;
-    if (x > 0 && x < rwidth && y > 0 && y < rwidth)
+    if (x > 0 && x < width && y > 0 && y < width)
         neighbors[2] = Coord(x, y);
 
     x = pos.x - 1;
     y = pos.y;
-    if (x > 0 && x < rwidth && y > 0 && y < rwidth)
+    if (x > 0 && x < width && y > 0 && y < width)
         neighbors[3] = Coord(x, y);
 
+    x = pos.x - 1;
+    y = pos.y + 1;
+    if (x > 0 && x < width && y > 0 && y < width)
+        neighbors[4] = Coord(x, y);
+
+    x = pos.x + 1;
+    y = pos.y + 1;
+    if (x > 0 && x < width && y > 0 && y < width)
+        neighbors[5] = Coord(x, y);
+
+    x = pos.x - 1;
+    y = pos.y - 1;
+    if (x > 0 && x < width && y > 0 && y < width)
+        neighbors[6] = Coord(x, y);
+
+    x = pos.x + 1;
+    y = pos.y - 1;
+    if (x > 0 && x < width && y > 0 && y < width)
+        neighbors[7] = Coord(x, y);
+
     return neighbors;
+}
+
+struct PriorityCoord {
+    Coord coord;
+    int priority;
+    PriorityCoord(Coord c, int p) : coord(c), priority(p) { }
+};
+bool operator<(const PriorityCoord& lhs, const PriorityCoord& rhs) {
+    return lhs.priority < rhs.priority;
 }
 
 void Bot::Update(DWORD dt) {
@@ -168,11 +198,11 @@ void Bot::Update(DWORD dt) {
 
     if (m_Energy > m_MaxEnergy) m_MaxEnergy = m_Energy;
 
-    static DWORD lastpf = 0;
-
     int rwidth = m_Radar->GetWidth();
     int dx, dy;
     double dist;
+
+    bool reset_target = false;
 
     try {
         std::vector<Coord> enemies = Util::GetEnemies(m_Radar);
@@ -181,9 +211,26 @@ void Bot::Update(DWORD dt) {
         m_EnemyTargetInfo.dx = dx;
         m_EnemyTargetInfo.dy = dy;
         m_EnemyTargetInfo.dist = dist;
+
+        if (m_PosAddr) {
+            int x = GetX();
+            int y = GetY();
+
+            Coord enemy(static_cast<int>(x + dx * 2), static_cast<int>(y + dy * 2));
+            if (enemy.x < 320 || enemy.x >= 703 || enemy.y < 320 || enemy.x >= 703)
+                reset_target = true;
+        }
+
     } catch (...) { 
+        reset_target = true;
+    }
+
+    if (reset_target) {
         m_EnemyTarget = Coord(0, 0);
         m_Target = Coord(0, 0);
+
+        if (GetStateType() == StateType::AggressiveState)
+            SetState(std::make_shared<PatrolState>(*this));
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -304,6 +351,7 @@ int Bot::Run() {
     m_Config.Set(_T("ScaleDelay"),      _T("True"));
     m_Config.Set(_T("MemoryScanning"),  _T("True"));
     m_Config.Set(_T("OnlyCenter"),      _T("True"));
+    m_Config.Set(_T("Patrol"),          _T("True"));
 
     if (!m_Config.Load(_T("bot.conf")))
         tcout << "Could not load bot.conf. Using default values." << std::endl;
@@ -321,6 +369,8 @@ int Bot::Run() {
     if (!m_Level.Load(m_Config.Get<tstring>(_T("Level"))))
         tcerr << "Could not load level " << m_Config.Get<tstring>(_T("Level")) << "\n";
 
+    bool memory_enabled = false;
+
     if (m_Config.Get<bool>(_T("MemoryScanning"))) {
         if (GetDebugPrivileges()) {
             DWORD pid;
@@ -330,9 +380,16 @@ int Bot::Run() {
 
             if (!m_ProcessHandle)
                 tcerr << "Could not open process for reading.\n";
+            else
+                memory_enabled = true;
         } else {
             std::cerr << "Could not get Windows debug privileges." << std::endl;
         }
+    }
+
+    if (!memory_enabled) {
+        m_Config.Set(_T("OnlyCenter"), _T("False"));
+        m_Config.Set(_T("Patrol"), _T("False"));
     }
 
     if (m_ProcessHandle)

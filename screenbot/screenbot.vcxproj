@@ -124,6 +124,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -152,6 +153,7 @@
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Memory.cpp" />
+    <ClCompile Include="Pathing.cpp" />
     <ClCompile Include="Random.cpp" />
     <ClCompile Include="ScreenArea.cpp" />
     <ClCompile Include="ScreenGrabber.cpp" />
@@ -167,6 +169,7 @@
     <ClInclude Include="Keyboard.h" />
     <ClInclude Include="Level.h" />
     <ClInclude Include="Memory.h" />
+    <ClInclude Include="Pathing.h" />
     <ClInclude Include="Random.h" />
     <ClInclude Include="ScreenArea.h" />
     <ClInclude Include="ScreenGrabber.h" />

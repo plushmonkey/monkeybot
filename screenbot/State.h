@@ -4,8 +4,18 @@
 #include "Keyboard.h"
 #include "Common.h"
 #include <vector>
+#include <queue>
+#include "Pathing.h"
 
 class Bot;
+
+enum class StateType {
+    MemoryState,
+    FollowState,
+    PatrolState,
+    AggressiveState,
+    RunState
+};
 
 class State {
 protected:
@@ -16,6 +26,7 @@ public:
     virtual ~State() { }
 
     virtual void Update(DWORD dt) = 0;
+    virtual StateType GetType() const = 0;
 };
 typedef std::shared_ptr<State> StatePtr;
 
@@ -23,6 +34,24 @@ class FollowState : public State {
 public:
     FollowState(Bot& bot);
     virtual void Update(DWORD dt);
+    virtual StateType GetType() const { return StateType::FollowState; }
+};
+
+class PatrolState : public State {
+private:
+    Path::Graph m_Graph;
+    std::queue<Coord> m_Waypoints;
+    DWORD m_LastBullet;
+    bool m_Patrol;
+
+    Coord m_LastCoord;
+    DWORD m_StuckTimer;
+
+public:
+    PatrolState(Bot& bot, std::queue<Coord> waypoints = std::queue<Coord>());
+    virtual void Update(DWORD dt);
+    void ResetWaypoints();
+    virtual StateType GetType() const { return StateType::PatrolState; }
 };
 
 class AggressiveState : public State {
@@ -53,6 +82,7 @@ private:
     bool m_ScaleDelay;
     bool m_MemoryScanning;
     bool m_OnlyCenter;
+    bool m_Patrol;
     
     std::vector<unsigned> m_PossibleAddr;
 
@@ -61,12 +91,14 @@ public:
     virtual void Update(DWORD dt);
 
     void SetPossibleAddr(std::vector<unsigned> addr) { m_PossibleAddr = addr; }
+    virtual StateType GetType() const { return StateType::AggressiveState; }
 };
 
 class RunState : public State {
 public:
     RunState(Bot& bot);
     virtual void Update(DWORD dt);
+    virtual StateType GetType() const { return StateType::RunState; }
 };
 
 class MemoryState : public State {
@@ -79,6 +111,7 @@ private:
 public:
     MemoryState(Bot& bot);
     virtual void Update(DWORD dt);
+    virtual StateType GetType() const { return StateType::MemoryState; }
 };
 
 #endif

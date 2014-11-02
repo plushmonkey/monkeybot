@@ -53,6 +53,23 @@ bool Level::Load(const tstring& filename) {
         Tile tile = *reinterpret_cast<Tile *>(buffer + pos);
 
         m_Tiles[tile.y * 1024 + tile.x] = tile.tile;
+
+        if (tile.tile == 219) {
+            // Space station tile, mark the affected tiles as space station
+            for (int y = 0; y < 6; ++y) {
+                for (int x = 0; x < 6; ++x)
+                    m_Tiles[(tile.y + y) * 1024 + (tile.x + x)] = tile.tile;
+            }
+        }
+
+        if (tile.tile == 217) {
+            // Large asteroid, mark the affected tiles as large asteroid
+            for (int y = 0; y < 2; ++y) {
+                for (int x = 0; x < 2; ++x)
+                    m_Tiles[(tile.y + y) * 1024 + (tile.x + x)] = tile.tile;
+            }
+        }
+
         pos += sizeof(Tile);
     }
     return true;
