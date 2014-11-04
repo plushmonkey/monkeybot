@@ -32,17 +32,14 @@ private:
     std::shared_ptr<ScreenGrabber> m_Grabber;
     int m_ShipNum;
     Coord m_EnemyTarget;
-    Coord m_Target;
-    TargetInfo m_TargetInfo;
     TargetInfo m_EnemyTargetInfo;
-    std::vector<Coord> m_Path;
     int m_MaxEnergy;
     int m_Energy;
     Config m_Config;
     Level m_Level;
     DWORD m_AliveTime;
-
-    std::map<Coord, Coord> m_PathGraph;
+    DWORD m_PathTimer;
+    Pathing::Grid<short> m_Grid;
 
     HANDLE m_ProcessHandle;
 
@@ -69,10 +66,8 @@ public:
     Coord GetEnemyTarget() const { return m_EnemyTarget; }
     TargetInfo GetEnemyTargetInfo() const { return m_EnemyTargetInfo; }
 
-    Coord GetTarget() const { return m_Target; }
-    TargetInfo GetTargetInfo() const { return m_TargetInfo; }
+    Pathing::Grid<short>& GetGrid() { return m_Grid; }
 
-    std::vector<Coord>& GetPath() { return m_Path; }
     int GetEnergy() const { return m_Energy; }
     int GetMaxEnergy() const { return m_MaxEnergy; }
     int GetEnergyPercent() const { 

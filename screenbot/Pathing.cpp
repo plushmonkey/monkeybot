@@ -1,139 +1,170 @@
 #include "Pathing.h"
-#include <queue>
 #include <vector>
-#include "Level.h"
+#include <ostream>
 
-namespace Path {
+namespace Pathing {
 
-struct Node {
-    int x;
-    int y;
-    int priority;
-
-    Node(int x, int y, int priority) : x(x), y(y), priority(priority) { }
-
-    bool operator==(const Node& rhs) {
-        return x == rhs.x && y == rhs.y;
-    }
-};
-
-struct NodeCompare {
-    bool operator()(const Node& lhs, const Node& rhs) const {
-        return lhs.priority > rhs.priority;
-    }
-};
-
-bool operator<(const Node& lhs, const Node& rhs) {
-    return lhs.priority < rhs.priority;
+std::ostream& operator<<(std::ostream& out, Grid<short>::Node& node) {
+    out << "(" << node.x << ", " << node.y << ")";
+    return out;
 }
 
-std::vector<Coord> GetNeighbors(Coord pos) {
-    const int width = 1024;
-    std::vector<Coord> neighbors;
-    neighbors.resize(8);
-    int x, y;
+JumpPointSearch::JumpPointSearch(HeuristicFunction heuristic) 
+    : m_Heuristic(heuristic), m_Grid(nullptr), m_Goal(nullptr) { }
 
-    for (int i = 0; i < 4; i++)
-        neighbors[i] = Coord(0, 0);
+JumpPointSearch::Node* JumpPointSearch::Jump(IntType nx, IntType ny, IntType cx, IntType cy) {
+    int dx = nx - cx;
+    int dy = ny - cy;
 
-    x = pos.x;
-    y = pos.y - 1;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[0] = Coord(x, y);
+    if (!m_Grid->IsOpen(nx, ny)) return nullptr;
+    if (m_Grid->GetNode(nx, ny) == m_Goal) return m_Goal;
 
-    x = pos.x + 1;
-    y = pos.y;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[1] = Coord(x, y);
+    int offsetX = nx;
+    int offsetY = ny;
 
-    x = pos.x;
-    y = pos.y + 1;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[2] = Coord(x, y);
-
-    x = pos.x - 1;
-    y = pos.y;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[3] = Coord(x, y);
-
-    x = pos.x - 1;
-    y = pos.y + 1;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[4] = Coord(x, y);
-
-    x = pos.x + 1;
-    y = pos.y + 1;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[5] = Coord(x, y);
-
-    x = pos.x - 1;
-    y = pos.y - 1;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[6] = Coord(x, y);
-
-    x = pos.x + 1;
-    y = pos.y - 1;
-    if (x > 0 && x < width && y > 0 && y < width)
-        neighbors[7] = Coord(x, y);
-
-    return neighbors;
-}
-
-Graph::Graph(const Level& level) : m_Level(level) {
-
-}
-
-std::vector<Coord> Graph::GetPath(const Coord& start, const Coord& goal) {
-    std::priority_queue<Node, std::vector<Node>, NodeCompare> frontier;
-
-    auto heuristic = [](const Coord& a, const Coord& b) {
-        return std::abs(a.x - b.x) + std::abs(a.y - b.y);
-    };
-
-    m_Graph.clear();
-
-    frontier.emplace(start.x, start.y, 0);
-    m_Graph[start] = Coord(0, 0);
-
-    while (!frontier.empty()) {
-        Node current_node = frontier.top();
-        Coord current(current_node.x, current_node.y);
-        frontier.pop();
-
-        if (current == goal) break;
-
-        std::vector<Coord> neighbors = GetNeighbors(Coord(current.x, current.y));
-        for (Coord& next : neighbors) {
-            if (next == Coord(0, 0)) continue;
-            if (!m_Level.IsSolid(next.x, next.y) && // middle
-                !m_Level.IsSolid(next.x + 1, next.y) && // right
-                !m_Level.IsSolid(next.x, next.y - 1) && // upper
-                !m_Level.IsSolid(next.x, next.y + 1) && // lower
-                !m_Level.IsSolid(next.x - 1, next.y - 1) && // upper-left
-                !m_Level.IsSolid(next.x + 1, next.y - 1) && // upper-right
-                !m_Level.IsSolid(next.x + 1, next.y + 1) && // lower-right
-                !m_Level.IsSolid(next.x - 1, next.y + 1)) // lower-left
+    if (dx != 0 && dy != 0) {
+        while (true) {
+            // Check diagonal forced neighbors
+            if ((m_Grid->IsOpen(offsetX - dx, offsetY + dy) && !m_Grid->IsOpen(offsetX - dx, offsetY)) ||
+                (m_Grid->IsOpen(offsetX + dx, offsetY - dy) && !m_Grid->IsOpen(offsetX, offsetY - dy)))
             {
-                if (m_Graph.find(next) == m_Graph.end()) {
-                    int priority = heuristic(goal, next);
-                    frontier.emplace(next.x, next.y, priority);
-                    m_Graph[next] = current;
+                return m_Grid->GetNode(offsetX, offsetY);
+            }
+
+            // Expand horizontally and vertically
+            Node* jx = Jump(offsetX + dx, offsetY, offsetX, offsetY);
+            Node *jy = Jump(offsetX, offsetY + dy, offsetX, offsetY);
+
+            if (jx || jy)
+                return m_Grid->GetNode(offsetX, offsetY);
+
+            offsetX += dx;
+            offsetY += dy;
+
+            if (!m_Grid->IsOpen(offsetX, offsetY)) return nullptr;
+            if (m_Grid->GetNode(offsetX, offsetY) == m_Goal) return m_Goal;
+        }
+    } else {
+        if (dx != 0) {
+            // Check horizontal forced neighbors
+            while (true) {
+                if ((m_Grid->IsOpen(offsetX + dx, ny + 1) && !m_Grid->IsOpen(offsetX, ny + 1)) ||
+                    (m_Grid->IsOpen(offsetX + dx, ny - 1) && !m_Grid->IsOpen(offsetX, ny - 1)))
+                {
+                    return m_Grid->GetNode(offsetX, ny);
                 }
+
+                offsetX += dx;
+
+                if (!m_Grid->IsOpen(offsetX, ny)) return nullptr;
+                if (m_Grid->GetNode(offsetX, ny) == m_Goal) return m_Goal;
+            }
+        } else {
+            // Check vertical forced neighbors
+            while (true) {
+                if ((m_Grid->IsOpen(nx + 1, offsetY + dy) && !m_Grid->IsOpen(nx + 1, offsetY)) ||
+                    (m_Grid->IsOpen(nx - 1, offsetY + dy) && !m_Grid->IsOpen(nx - 1, offsetY)))
+                {
+                    return m_Grid->GetNode(nx, offsetY);
+                }
+
+                offsetY += dy;
+
+                if (!m_Grid->IsOpen(nx, offsetY)) return nullptr;
+                if (m_Grid->GetNode(nx, offsetY) == m_Goal) return m_Goal;
             }
         }
     }
 
-    std::vector<Coord> path;
-    Coord path_goal(goal);
+    return nullptr;
+}
 
-    path.push_back(start);
-    while (path_goal != start) {
-        if (path_goal == Coord(0, 0)) break;
-        path_goal = m_Graph[path_goal];
-        path.push_back(path_goal);
+void JumpPointSearch::IdentifySuccessors(Node* node) {
+    std::vector<Node*> neighbors = m_Grid->GetNeighbors(node);
+
+    int ng = 0;
+
+    for (Node* neighbor : neighbors) {
+        Node* jump_point = Jump(neighbor->x, neighbor->y, node->x, node->y);
+
+        if (jump_point) {
+            if (jump_point->closed) continue;
+
+            int dx = jump_point->x - node->x;
+            int dy = jump_point->y - node->y;
+
+            int dist = static_cast<int>(std::sqrt(dx * dx + dy * dy));
+            ng = node->g + dist;
+
+            if (!jump_point->opened || ng < jump_point->g) {
+                jump_point->parent = node;
+                jump_point->g = ng;
+
+                jump_point->h = m_Heuristic(jump_point, m_Goal);
+
+                if (!jump_point->opened) {
+                    jump_point->opened = true;
+                    m_OpenSet.Push(jump_point);
+                } else {
+                    m_OpenSet.Update();
+                }
+            }
+        }
+    }
+}
+
+void JumpPointSearch::ResetGrid() {
+    int width = m_Grid->GetWidth();
+    int height = m_Grid->GetHeight();
+
+    for (IntType y = 0; y < height; ++y) {
+        for (IntType x = 0; x < width; ++x) {
+            m_Grid->GetNode(x, y)->closed = false;
+            m_Grid->GetNode(x, y)->opened = false;
+            m_Grid->GetNode(x, y)->parent = nullptr;
+            m_Grid->GetNode(x, y)->g = 0;
+            m_Grid->GetNode(x, y)->h = 0;
+        }
+    }
+}
+
+std::vector<JumpPointSearch::Node*> JumpPointSearch::Backtrace(Node* node) {
+    std::vector<Node*> path;
+
+    Node* current = node;
+
+    while (current) {
+        path.push_back(current);
+        current = current->parent;
     }
 
     return path;
 }
 
+std::vector<JumpPointSearch::Node*> JumpPointSearch::operator()(IntType startX, IntType startY, IntType endX, IntType endY, Grid<IntType>& grid) {
+    m_Grid = &grid;
+    m_Goal = m_Grid->GetNode(endX, endY);
+    ResetGrid();
+
+    Node* start = m_Grid->GetNode(startX, startY);
+    Node* end = m_Grid->GetNode(endX, endY);
+
+    start->opened = true;
+
+    m_OpenSet.Push(start);
+
+    while (!m_OpenSet.Empty()) {
+        Node* current = m_OpenSet.Pop();
+
+        current->closed = true;
+
+        if (current == end)
+            return Backtrace(current);
+
+        IdentifySuccessors(current);
+    }
+
+    return std::vector<Node*>();
 }
+
+} // ns

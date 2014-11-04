@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <ostream>
+#include <functional>
 
 #ifdef UNICODE
 #include <io.h>
@@ -74,6 +75,17 @@ struct Coord {
     Coord() : x(0), y(0) { }
     Coord(int x, int y) : x(x), y(y) { }
 };
+
+namespace std {
+    template<>
+    struct hash<Coord> {
+        std::size_t operator()(const Coord& coord) const {
+            typedef unsigned int T;
+            T val = coord.x << 16 | coord.y;
+            return std::hash<T>()(val);
+        }
+    };
+}
 
 tostream& operator<<(tostream& out, const Coord& coord);
 bool operator==(const Coord& first, const Coord& second);

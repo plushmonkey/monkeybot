@@ -12,8 +12,7 @@ enum class StateType {
     MemoryState,
     FollowState,
     PatrolState,
-    AggressiveState,
-    RunState
+    AggressiveState
 };
 
 class State {
@@ -30,6 +29,9 @@ public:
 typedef std::shared_ptr<State> StatePtr;
 
 class FollowState : public State {
+private:
+    Pathing::Plan m_Plan;
+
 public:
     FollowState(Bot& bot);
     virtual void Update(DWORD dt);
@@ -38,8 +40,8 @@ public:
 
 class PatrolState : public State {
 private:
-    Path::Graph m_Graph;
     std::vector<Coord> m_Waypoints;
+    Pathing::Plan m_Plan;
     DWORD m_LastBullet;
     bool m_Patrol;
 
@@ -64,7 +66,6 @@ private:
     DWORD m_NearWall;
     bool m_FiringGun;
     int m_CurrentBulletDelay;
-    Path::Graph m_Graph;
 
     // Config
     int m_RunPercent;
@@ -88,13 +89,6 @@ public:
     virtual void Update(DWORD dt);
 
     virtual StateType GetType() const { return StateType::AggressiveState; }
-};
-
-class RunState : public State {
-public:
-    RunState(Bot& bot);
-    virtual void Update(DWORD dt);
-    virtual StateType GetType() const { return StateType::RunState; }
 };
 
 class MemoryState : public State {

@@ -3,6 +3,7 @@
 
 #include <string>
 #include "Common.h"
+#include "Pathing.h"
 
 #pragma pack(push, 1)
 struct Tile {

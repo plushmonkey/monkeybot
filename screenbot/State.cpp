@@ -12,7 +12,7 @@
 #include <cmath>
 #include <limits>
 
-#define RADIUS 1
+#define RADIUS 0
 
 const Coord NullCoord(0, 0);
 
@@ -159,11 +159,10 @@ void FollowState::Update(DWORD dt) {
     ScreenAreaPtr& ship = m_Bot.GetShip();
 
     if (m_Bot.GetEnemyTarget() == Coord(0, 0)) {
+        keyboard.ReleaseAll();
         m_Bot.SetState(std::make_shared<PatrolState>(m_Bot));
         return;
     }
-
-    Path::Graph graph(m_Bot.GetLevel());
 
     Coord pos(m_Bot.GetX(), m_Bot.GetY());
     int edx = m_Bot.GetEnemyTargetInfo().dx;
@@ -172,68 +171,72 @@ void FollowState::Update(DWORD dt) {
     int y = pos.y;
     Coord enemy(x + edx * 2, y + edy * 2);
 
-    std::vector<Coord> path = graph.GetPath(pos, enemy);
-
-    if (path.size() > 0) {
-        Coord next = path.at(path.size() - 1);
-
-        if (Util::IsClearPath(pos, enemy, RADIUS, m_Bot.GetLevel())) {
-            m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
-            return;
-        }
-
-        while (next == pos && path.size() > 1) {
-            path.erase(path.begin() + path.size() - 1);
-            next = path.at(path.size() - 1);
-        }
-        
-        int dx, dy;
-        double dist;
-
-        Util::GetDistance(pos, next, &dx, &dy, &dist);
-        dx = -dx;
-        dy = -dy;
-
-        int rot = Util::GetRotation(ship);
-        int target_rot = Util::GetTargetRotation(dx, dy);
-
-        int away = std::abs(rot - target_rot);
-
-        if (rot != -1 && rot != target_rot) {
-            int dir = 0;
-
-            if (away < 20 && rot < target_rot) dir = 1;
-            if (away < 20 && rot > target_rot) dir = 0;
-
-            if (away > 20 && rot < target_rot) dir = 0;
-            if (away > 20 && rot > target_rot) dir = 1;
-
-            if (dir == 0) {
-                keyboard.Up(VK_RIGHT);
-                keyboard.Down(VK_LEFT);
-            } else {
-                keyboard.Up(VK_LEFT);
-                keyboard.Down(VK_RIGHT);
-            }
-        } else {
-            keyboard.Up(VK_LEFT);
-            keyboard.Up(VK_RIGHT);
-        }
-
-        keyboard.Down(VK_UP);
-    } else {
-        keyboard.ReleaseAll();
+    if (Util::IsClearPath(pos, enemy, RADIUS, m_Bot.GetLevel())) {
+        m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
+        return;
     }
 
+    Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
+
+    m_Plan = jps(pos.x, pos.y, enemy.x, enemy.y, m_Bot.GetGrid());
+
+    if (m_Plan.size() == 0) {
+        std::cout << "Plan size 0 in follow\n";
+        return;
+    }
+
+    Pathing::JPSNode* next_node = m_Plan.at(m_Plan.size() - 1);
+    Coord next(next_node->x, next_node->y);
+
+    int dx, dy;
+    double dist = 0.0;
+
+    while (next == pos && m_Plan.size() > 1) {
+        m_Plan.erase(m_Plan.begin() + m_Plan.size() - 1);
+        next_node = m_Plan.at(m_Plan.size() - 1);
+        next = Coord(next_node->x, next_node->y);
+    }
+
+    Util::GetDistance(pos, next, &dx, &dy, &dist);
+
+    dx = -dx;
+    dy = -dy;
+
+    int rot = Util::GetRotation(ship);
+    int target_rot = Util::GetTargetRotation(dx, dy);
+
+    int away = std::abs(rot - target_rot);
+
+    if (rot != -1 && rot != target_rot) {
+        int dir = 0;
+
+        if (away < 20 && rot < target_rot) dir = 1;
+        if (away < 20 && rot > target_rot) dir = 0;
+
+        if (away > 20 && rot < target_rot) dir = 0;
+        if (away > 20 && rot > target_rot) dir = 1;
+
+        if (dir == 0) {
+            keyboard.Up(VK_RIGHT);
+            keyboard.Down(VK_LEFT);
+        } else {
+            keyboard.Up(VK_LEFT);
+            keyboard.Down(VK_RIGHT);
+        }
+    } else {
+        keyboard.Up(VK_LEFT);
+        keyboard.Up(VK_RIGHT);
+    }
+
+    keyboard.Down(VK_UP);
 }
 
 PatrolState::PatrolState(Bot& bot, std::vector<Coord> waypoints) 
     : State(bot), 
       m_Waypoints(waypoints),
-      m_Graph(bot.GetLevel()),
       m_LastBullet(timeGetTime()),
       m_StuckTimer(0),
-        m_LastCoord(0, 0)
+      m_LastCoord(0, 0)
 {
     if (m_Waypoints.size() == 0)
         ResetWaypoints(false);
@@ -311,7 +314,7 @@ void PatrolState::Update(DWORD dt) {
     m_StuckTimer += dt;
 
     // Check if stuck every 2.5 seconds
-    if (m_StuckTimer >= 2500) {
+    if (false && m_StuckTimer >= 2500) {
         int stuckdx, stuckdy;
         double stuckdist;
 
@@ -331,22 +334,33 @@ void PatrolState::Update(DWORD dt) {
 
     if (closedist <= 25) {
         m_Waypoints.erase(m_Waypoints.begin());
+        if (m_Waypoints.size() == 0) return;
+    }
+
+    Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
+
+    m_Plan = jps(pos.x, pos.y, target.x, target.y, m_Bot.GetGrid());
+
+    if (m_Plan.size() == 0) {
+        std::cout << "plan size 0 in patrol\n";
         return;
     }
 
-    std::vector<Coord> path = m_Graph.GetPath(pos, target);
-
-    Coord next = path.at(path.size() - 1);
-
-    while (next == pos && path.size() > 1) {
-        path.erase(path.begin() + path.size() - 1);
-        next = path.at(path.size() - 1);
-    }
+    Pathing::JPSNode* next_node = m_Plan.at(m_Plan.size() - 1);
+    Coord next(next_node->x, next_node->y);
 
     int dx, dy;
-    double dist;
+    double dist = 0.0;
 
     Util::GetDistance(pos, next, &dx, &dy, &dist);
+
+    while (dist < 5 && m_Plan.size() > 1) {
+        m_Plan.erase(m_Plan.begin() + m_Plan.size() - 1);
+        next_node = m_Plan.at(m_Plan.size() - 1);
+        next = Coord(next_node->x, next_node->y);
+        Util::GetDistance(pos, next, &dx, &dy, &dist);
+    }
+
     dx = -dx;
     dy = -dy;
 
@@ -354,6 +368,8 @@ void PatrolState::Update(DWORD dt) {
     int target_rot = Util::GetTargetRotation(dx, dy);
 
     int away = std::abs(rot - target_rot);
+
+    bool go = true;
 
     if (rot != -1 && rot != target_rot) {
         int dir = 0;
@@ -371,12 +387,16 @@ void PatrolState::Update(DWORD dt) {
             keyboard.Up(VK_LEFT);
             keyboard.Down(VK_RIGHT);
         }
+        if (dist < 7) go = false;
     } else {
         keyboard.Up(VK_LEFT);
         keyboard.Up(VK_RIGHT);
     }
 
-    keyboard.Down(VK_UP);
+    if (go)
+        keyboard.Down(VK_UP);
+    else
+        keyboard.Up(VK_UP);
 }
 
 bool NearWall(unsigned x, unsigned y, const Level& level) {
@@ -439,8 +459,7 @@ AggressiveState::AggressiveState(Bot& bot)
       m_LastBomb(0),
       m_LastNonSafeTime(timeGetTime()),
       m_LastBullet(0),
-      m_NearWall(0),
-      m_Graph(bot.GetLevel())
+      m_NearWall(0)
 {
     m_RunPercent     = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
     m_XPercent       = m_Bot.GetConfig().Get<int>(_T("XPercent"));
@@ -500,6 +519,12 @@ void AggressiveState::Update(DWORD dt) {
 
     Coord target = m_Bot.GetEnemyTarget();
 
+    if (target == Coord(0, 0)) {
+        m_Bot.SetState(std::make_shared<PatrolState>(m_Bot));
+        keyboard.ReleaseAll();
+        return;
+    }
+
     DWORD cur_time = timeGetTime();
 
     /* Only update if there is a target enemy */
@@ -543,8 +568,6 @@ void AggressiveState::Update(DWORD dt) {
             dx += dxchange;
         if (std::abs(m_EnemyVelocity.y) < 15)
             dy += dychange;
-
-        TargetInfo move_info = m_Bot.GetTargetInfo();
 
         int target_rot = Util::GetTargetRotation(dx, dy);
         int rot = Util::GetRotation(ship);
@@ -683,34 +706,4 @@ void AggressiveState::Update(DWORD dt) {
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-}
-
-RunState::RunState(Bot& bot) : State(bot) {
-    Keyboard& keyboard = m_Bot.GetKeyboard();
-    keyboard.Up(VK_LEFT);
-    keyboard.Up(VK_RIGHT);
-    keyboard.Up(VK_UP);
-    keyboard.Up(VK_DOWN);
-    keyboard.Up(VK_CONTROL);
-}
-
-void RunState::Update(DWORD dt) {
-    /*Keyboard& keyboard = m_Bot.GetKeyboard();
-    ScreenGrabberPtr grabber = m_Bot.GetGrabber();
-
-    int energy = m_Bot.GetEnergy();
-    int energypct = m_Bot.GetEnergyPercent();
-
-    if (Util::XRadarOn(grabber))
-        keyboard.Send(VK_END);
-
-    if (energypct > RUNPERCENT) {
-        keyboard.Up(VK_DOWN);
-        m_Bot.SetState(std::shared_ptr<AggressiveState>(new AggressiveState(m_Bot)));
-        return;
-    }
-
-    keyboard.Down(VK_DOWN);
-    keyboard.Up(VK_UP);
-    keyboard.Up(VK_CONTROL);*/
 }

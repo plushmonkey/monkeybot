@@ -22,15 +22,15 @@ Bot::Bot(int ship)
     m_LastEnemy(timeGetTime()),
     m_State(nullptr),
     m_ShipNum(ship),
-    m_Target(0, 0),
-    m_TargetInfo(0, 0, 0),
     m_EnemyTargetInfo(0, 0, 0),
     m_Energy(0),
     m_MaxEnergy(0),
     m_PosAddr(0),
     m_Level(),
     m_ProcessHandle(nullptr),
-    m_AliveTime(0)
+    m_AliveTime(0),
+    m_PathTimer(0),
+    m_Grid(1024, 1024)
 { }
 
 unsigned int Bot::GetX() const {
@@ -161,6 +161,8 @@ void Bot::Update(DWORD dt) {
         }
     }
 
+    m_PathTimer += dt;
+    const DWORD PathTime = 5000;
     try {
         std::vector<Coord> enemies = Util::GetEnemies(m_Radar);
         m_EnemyTarget = Util::GetClosestEnemy(enemies, m_Radar, &dx, &dy, &dist);
@@ -182,13 +184,10 @@ void Bot::Update(DWORD dt) {
         reset_target = true;
     }
 
-    if (reset_target) {
+    if (reset_target)
         m_EnemyTarget = Coord(0, 0);
-        m_Target = Coord(0, 0);
 
-        if (GetStateType() == StateType::AggressiveState)
-            SetState(std::make_shared<PatrolState>(*this));
-    }
+    if (m_PathTimer >= PathTime) m_PathTimer = 0;
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
     m_State->Update(dt);
@@ -323,8 +322,16 @@ int Bot::Run() {
     for (auto iter = m_Config.begin(); iter != m_Config.end(); ++iter)
         tcout << iter->first << ": " << iter->second << std::endl;
 
-    if (!m_Level.Load(m_Config.Get<tstring>(_T("Level"))))
+    if (!m_Level.Load(m_Config.Get<tstring>(_T("Level")))) {
         tcerr << "Could not load level " << m_Config.Get<tstring>(_T("Level")) << "\n";
+    } else {
+        for (int y = 0; y < 1024; ++y) {
+            for (int x = 0; x < 1024; ++x) {
+                if (m_Level.IsSolid(x, y))
+                    m_Grid.SetSolid(x, y, true);
+            }
+        }
+    }
 
     bool memory_enabled = false;
 
@@ -358,7 +365,7 @@ int Bot::Run() {
 
     while (true) {
         DWORD dt = timeGetTime() - last_update;
-
+        //std::cout << dt << std::endl;
         last_update = timeGetTime();
         Update(dt);
     }

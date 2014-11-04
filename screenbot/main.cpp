@@ -4,6 +4,8 @@
 #include <tchar.h>
 #include <iostream>
 #include <thread>
+#include "Pathing.h"
+#include "Level.h"
 
 #pragma comment(lib, "winmm.lib")
 
@@ -23,7 +25,7 @@ int Application::Run() {
 
 int wmain(int argc, wchar_t* argv[]) {
     Application app;
-
+    
 #ifdef UNICODE
     _setmode(_fileno(stdout), _O_U16TEXT);
 #endif
