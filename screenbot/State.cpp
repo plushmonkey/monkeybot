@@ -273,13 +273,12 @@ PatrolState::PatrolState(Bot& bot, std::vector<Coord> waypoints)
 }
 
 void PatrolState::ResetWaypoints(bool full) {
-    m_Waypoints.emplace_back(385, 590);
-    m_Waypoints.emplace_back(511, 596);
-    m_Waypoints.emplace_back(640, 623);
-    m_Waypoints.emplace_back(684, 457);
-    m_Waypoints.emplace_back(625, 385);
-    m_Waypoints.emplace_back(510, 413);
-    m_Waypoints.emplace_back(385, 420);
+    m_Waypoints.emplace_back(400, 585);
+    m_Waypoints.emplace_back(565, 580);
+    m_Waypoints.emplace_back(600, 475);
+    m_Waypoints.emplace_back(512, 460);
+    m_Waypoints.emplace_back(385, 505);
+    m_Waypoints.emplace_back(425, 460);
 
     if (full) return;
 
@@ -482,7 +481,7 @@ AggressiveState::AggressiveState(Bot& bot)
       m_LastEnemyPos(0,0),
       m_LastEnemyTimer(0),
       m_EnemyVelocity(0, 0),
-      m_LastBomb(0),
+      m_LastBomb(timeGetTime()),
       m_LastNonSafeTime(timeGetTime()),
       m_LastBullet(0),
       m_NearWall(0)
