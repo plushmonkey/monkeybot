@@ -28,6 +28,13 @@ public:
 };
 typedef std::shared_ptr<State> StatePtr;
 
+class PosFindState : public State {
+public:
+    PosFindState(Bot& bot);
+    virtual void Update(DWORD dt);
+    virtual StateType GetType() const { return StateType::AggressiveState; }
+};
+
 class FollowState : public State {
 private:
     Pathing::Plan m_Plan;

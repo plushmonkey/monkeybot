@@ -38,7 +38,6 @@ private:
     Config m_Config;
     Level m_Level;
     DWORD m_AliveTime;
-    DWORD m_PathTimer;
     Pathing::Grid<short> m_Grid;
 
     HANDLE m_ProcessHandle;

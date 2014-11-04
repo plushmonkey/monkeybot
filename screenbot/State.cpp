@@ -16,6 +16,29 @@
 
 const Coord NullCoord(0, 0);
 
+PosFindState::PosFindState(Bot& bot) : State(bot) {
+
+}
+
+void PosFindState::Update(DWORD dt) {
+    Coord target = m_Bot.GetEnemyTarget();
+    
+    if (target == Coord(0, 0)) return;
+
+    TargetInfo info = m_Bot.GetEnemyTargetInfo();
+    int dx = info.dx;
+    int dy = info.dy;
+
+    Coord pos(m_Bot.GetX(), m_Bot.GetY());
+
+    Coord guess = Util::FindTargetPos(pos, target, m_Bot.GetGrabber(), m_Bot.GetRadar(), m_Bot.GetLevel());
+  //  Coord guess(pos.x + dx * 2, pos.y + dy * 2);
+
+    std::cout << "Pos: " << pos << " Guess: " << guess << std::endl;
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+}
+
 MemoryState::MemoryState(Bot& bot) : State(bot) {
 
 }
@@ -140,6 +163,9 @@ void MemoryState::Update(DWORD dt) {
             auto state = std::make_shared<AggressiveState>(m_Bot);
             m_Bot.SetState(state);
         }
+
+        //auto state = std::make_shared<PosFindState>(m_Bot);
+        //m_Bot.SetState(state);
     }
 }
 
@@ -169,31 +195,31 @@ void FollowState::Update(DWORD dt) {
     int edy = m_Bot.GetEnemyTargetInfo().dy;
     int x = pos.x;
     int y = pos.y;
-    Coord enemy(x + edx * 2, y + edy * 2);
+    Coord enemy = Util::FindTargetPos(pos, m_Bot.GetEnemyTarget(), m_Bot.GetGrabber(), m_Bot.GetRadar(), m_Bot.GetLevel());
+    //Coord enemy(x + edx * 2, y + edy * 2);
 
     if (Util::IsClearPath(pos, enemy, RADIUS, m_Bot.GetLevel())) {
         m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
         return;
     }
 
-    Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
+    if (!m_Bot.GetLevel().IsSolid(enemy.x, enemy.y)) {
+        Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
 
-    m_Plan = jps(pos.x, pos.y, enemy.x, enemy.y, m_Bot.GetGrid());
-
-    if (m_Plan.size() == 0) {
-        std::cout << "Plan size 0 in follow\n";
-        return;
+        m_Plan = jps(enemy.x, enemy.y, pos.x, pos.y, m_Bot.GetGrid());
     }
 
-    Pathing::JPSNode* next_node = m_Plan.at(m_Plan.size() - 1);
+    if (m_Plan.size() == 0) return;
+
+    Pathing::JPSNode* next_node = m_Plan.at(0);
     Coord next(next_node->x, next_node->y);
 
     int dx, dy;
     double dist = 0.0;
 
     while (next == pos && m_Plan.size() > 1) {
-        m_Plan.erase(m_Plan.begin() + m_Plan.size() - 1);
-        next_node = m_Plan.at(m_Plan.size() - 1);
+        m_Plan.erase(m_Plan.begin());
+        next_node = m_Plan.at(0);
         next = Coord(next_node->x, next_node->y);
     }
 
@@ -337,16 +363,16 @@ void PatrolState::Update(DWORD dt) {
         if (m_Waypoints.size() == 0) return;
     }
 
-    Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
+    if (!m_Bot.GetLevel().IsSolid(target.x, target.y)) {
+        Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
 
-    m_Plan = jps(pos.x, pos.y, target.x, target.y, m_Bot.GetGrid());
-
-    if (m_Plan.size() == 0) {
-        std::cout << "plan size 0 in patrol\n";
-        return;
+        m_Plan = jps(target.x, target.y, pos.x, pos.y, m_Bot.GetGrid());
     }
 
-    Pathing::JPSNode* next_node = m_Plan.at(m_Plan.size() - 1);
+    if (m_Plan.size() == 0)
+        return;
+
+    Pathing::JPSNode* next_node = m_Plan.at(0);
     Coord next(next_node->x, next_node->y);
 
     int dx, dy;
@@ -355,8 +381,8 @@ void PatrolState::Update(DWORD dt) {
     Util::GetDistance(pos, next, &dx, &dy, &dist);
 
     while (dist < 5 && m_Plan.size() > 1) {
-        m_Plan.erase(m_Plan.begin() + m_Plan.size() - 1);
-        next_node = m_Plan.at(m_Plan.size() - 1);
+        m_Plan.erase(m_Plan.begin());
+        next_node = m_Plan.at(0);
         next = Coord(next_node->x, next_node->y);
         Util::GetDistance(pos, next, &dx, &dy, &dist);
     }

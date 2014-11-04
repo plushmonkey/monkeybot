@@ -12,12 +12,18 @@ std::ostream& operator<<(std::ostream& out, Grid<short>::Node& node) {
 JumpPointSearch::JumpPointSearch(HeuristicFunction heuristic) 
     : m_Heuristic(heuristic), m_Grid(nullptr), m_Goal(nullptr) { }
 
+bool JumpPointSearch::NearGoal(Node* a, Node* b) {
+    int dx = a->x - b->x;
+    int dy = a->y - b->y;
+    return std::sqrt(dx * dx + dy * dy) <= 1;
+}
+
 JumpPointSearch::Node* JumpPointSearch::Jump(IntType nx, IntType ny, IntType cx, IntType cy) {
     int dx = nx - cx;
     int dy = ny - cy;
 
+    if (NearGoal(m_Grid->GetNode(nx, ny), m_Goal)) return m_Grid->GetNode(nx, ny);
     if (!m_Grid->IsOpen(nx, ny)) return nullptr;
-    if (m_Grid->GetNode(nx, ny) == m_Goal) return m_Goal;
 
     int offsetX = nx;
     int offsetY = ny;
@@ -41,8 +47,8 @@ JumpPointSearch::Node* JumpPointSearch::Jump(IntType nx, IntType ny, IntType cx,
             offsetX += dx;
             offsetY += dy;
 
+            if (NearGoal(m_Grid->GetNode(offsetX, offsetY), m_Goal)) return m_Grid->GetNode(offsetX, offsetY);
             if (!m_Grid->IsOpen(offsetX, offsetY)) return nullptr;
-            if (m_Grid->GetNode(offsetX, offsetY) == m_Goal) return m_Goal;
         }
     } else {
         if (dx != 0) {
@@ -56,8 +62,8 @@ JumpPointSearch::Node* JumpPointSearch::Jump(IntType nx, IntType ny, IntType cx,
 
                 offsetX += dx;
 
+                if (NearGoal(m_Grid->GetNode(offsetX, ny), m_Goal)) return m_Grid->GetNode(offsetX, ny);
                 if (!m_Grid->IsOpen(offsetX, ny)) return nullptr;
-                if (m_Grid->GetNode(offsetX, ny) == m_Goal) return m_Goal;
             }
         } else {
             // Check vertical forced neighbors
@@ -70,8 +76,8 @@ JumpPointSearch::Node* JumpPointSearch::Jump(IntType nx, IntType ny, IntType cx,
 
                 offsetY += dy;
 
+                if (NearGoal(m_Grid->GetNode(nx, offsetY), m_Goal)) return m_Grid->GetNode(nx, offsetY);
                 if (!m_Grid->IsOpen(nx, offsetY)) return nullptr;
-                if (m_Grid->GetNode(nx, offsetY) == m_Goal) return m_Goal;
             }
         }
     }
@@ -158,7 +164,7 @@ std::vector<JumpPointSearch::Node*> JumpPointSearch::operator()(IntType startX, 
 
         current->closed = true;
 
-        if (current == end)
+        if (NearGoal(current, end))
             return Backtrace(current);
 
         IdentifySuccessors(current);

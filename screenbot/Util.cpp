@@ -10,9 +10,35 @@ static const int ShipRadius[8] = { 15, 15, 30, 30, 21, 21, 39 ,11 };
 
 namespace Util {
 
+Coord FindTargetPos(Coord bot_pos, Coord radar_coord, const ScreenGrabberPtr& screen, const ScreenAreaPtr& radar, const Level& level) {
+    float guess = 2.0f;
+    if (radar->GetWidth() == 132) guess = 1.6f;
+    int width = radar->GetWidth();
+
+    int rdx = -((width / 2) - radar_coord.x);
+    int rdy = -((width / 2) - radar_coord.y);
+
+    Coord target(static_cast<int>(bot_pos.x + rdx * guess), static_cast<int>(bot_pos.y + rdy * guess));
+
+    if (level.IsSolid(target.x, target.y)) {
+        static std::vector<Coord> directions = {
+                { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
+                { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
+        };
+        for (const Coord& dir : directions) {
+            if (!level.IsSolid(target.x + dir.x, target.y + dir.y)) {
+                target = Coord(target.x + dir.x, target.y + dir.y);
+                break;
+            }
+        }
+    }
+
+    return target;
+}
+
 bool XRadarOn(const ScreenGrabberPtr& grabber) {
     int x = grabber->GetWidth() - 8;
-    int y = static_cast<int>(grabber->GetHeight() * .60);
+    int y = grabber->GetHeight() == 600 ? 363 : 303;
     
     Pixel pixel = grabber->GetPixel(x, y);
 

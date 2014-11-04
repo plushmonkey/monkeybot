@@ -73,11 +73,11 @@ public:
     }
 
     bool IsValid(IntType x, IntType y) const {
-        return x >= 0 && x < m_Width && y >= 0 && y < m_Height;
+        return x >= 320 && x < m_Width && y >= 320 && y < 701;
+        //return x >= 0 && x < m_Width && y >= 0 && y < m_Height;
     }
 
     bool IsOpen(IntType x, IntType y) const {
-        Node* node = GetNode(x, y);
         return IsValid(x, y) && !IsSolid(x, y) && !GetNode(x, y)->near_wall;
     }
 
@@ -188,7 +188,7 @@ private:
     void IdentifySuccessors(Node* node);
     void ResetGrid();
     std::vector<Node*> Backtrace(Node* node);
-
+    bool NearGoal(Node* a, Node* b);
 public:
     JumpPointSearch(HeuristicFunction heuristic);
     std::vector<Node*> operator()(IntType startX, IntType startY, IntType endX, IntType endY, Grid<IntType>& grid);

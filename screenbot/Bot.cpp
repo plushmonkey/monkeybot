@@ -29,7 +29,6 @@ Bot::Bot(int ship)
     m_Level(),
     m_ProcessHandle(nullptr),
     m_AliveTime(0),
-    m_PathTimer(0),
     m_Grid(1024, 1024)
 { }
 
@@ -161,8 +160,6 @@ void Bot::Update(DWORD dt) {
         }
     }
 
-    m_PathTimer += dt;
-    const DWORD PathTime = 5000;
     try {
         std::vector<Coord> enemies = Util::GetEnemies(m_Radar);
         m_EnemyTarget = Util::GetClosestEnemy(enemies, m_Radar, &dx, &dy, &dist);
@@ -174,8 +171,8 @@ void Bot::Update(DWORD dt) {
         if (m_PosAddr) {
             int x = GetX();
             int y = GetY();
-
-            Coord enemy(static_cast<int>(x + dx * 2), static_cast<int>(y + dy * 2));
+            Coord pos(GetX(), GetY());
+            Coord enemy = Util::FindTargetPos(pos, m_EnemyTarget, m_Grabber, m_Radar, m_Level);
             if (enemy.x < 320 || enemy.x >= 703 || enemy.y < 320 || enemy.x >= 703)
                 reset_target = true;
         }
@@ -186,8 +183,6 @@ void Bot::Update(DWORD dt) {
 
     if (reset_target)
         m_EnemyTarget = Coord(0, 0);
-
-    if (m_PathTimer >= PathTime) m_PathTimer = 0;
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
     m_State->Update(dt);
