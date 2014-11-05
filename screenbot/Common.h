@@ -44,9 +44,11 @@ typedef uint64_t u64;
 
 class ScreenArea;
 class ScreenGrabber;
+class Client;
 
 typedef std::shared_ptr<ScreenGrabber> ScreenGrabberPtr;
 typedef std::shared_ptr<ScreenArea> ScreenAreaPtr;
+typedef std::shared_ptr<Client> ClientPtr;
 
 namespace Ships {
     extern const u64 Rotations[8][40];

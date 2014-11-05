@@ -22,14 +22,8 @@ class Bot {
 private:
     WindowFinder m_Finder;
     HWND m_Window;
-    Keyboard m_Keyboard;
-    ScreenAreaPtr m_EnergyArea[4];
-    DWORD m_LastEnemy;
+
     StatePtr m_State;
-    ScreenAreaPtr m_Radar;
-    ScreenAreaPtr m_Ship;
-    ScreenAreaPtr m_Player;
-    std::shared_ptr<ScreenGrabber> m_Grabber;
     int m_ShipNum;
     Coord m_EnemyTarget;
     TargetInfo m_EnemyTargetInfo;
@@ -40,6 +34,10 @@ private:
     DWORD m_AliveTime;
     Pathing::Grid<short> m_Grid;
 
+    DWORD m_LastEnemy;
+
+    ClientPtr m_Client;
+
     HANDLE m_ProcessHandle;
 
     std::vector<unsigned> m_PossibleAddr;
@@ -47,25 +45,18 @@ private:
 
     HWND SelectWindow();
     void SelectShip();
-    void GrabRadar();
 
 public:
     Bot(int ship);
 
-    ScreenAreaPtr& GetRadar();
-    ScreenAreaPtr& GetShip();
-    ScreenAreaPtr& GetPlayer();
-    std::shared_ptr<ScreenGrabber> GetGrabber();
-    ScreenAreaPtr* GetEnergyAreas() { return m_EnergyArea; }
-    Keyboard& GetKeyboard() { return m_Keyboard; }
+    ClientPtr GetClient();
+    const Config& GetConfig() const { return m_Config; }
 
-    DWORD GetLastEnemy() const { return m_LastEnemy; }
-    void SetLastEnemy(DWORD time) { m_LastEnemy = time; }
+    Pathing::Grid<short>& GetGrid() { return m_Grid; }
+    const Level& GetLevel() const { return m_Level; }
 
     Coord GetEnemyTarget() const { return m_EnemyTarget; }
     TargetInfo GetEnemyTargetInfo() const { return m_EnemyTargetInfo; }
-
-    Pathing::Grid<short>& GetGrid() { return m_Grid; }
 
     int GetEnergy() const { return m_Energy; }
     int GetMaxEnergy() const { return m_MaxEnergy; }
@@ -74,23 +65,18 @@ public:
         return static_cast<int>((m_Energy / (float)m_MaxEnergy) * 100);
     }
 
+    HANDLE GetProcessHandle() const { return m_ProcessHandle; }
+
     unsigned int GetX() const;
     unsigned int GetY() const;
-
-    const Level& GetLevel() const { return m_Level; }
-
-    HANDLE GetProcessHandle() const { return m_ProcessHandle; }
+    
     unsigned int GetPosAddress() const { return m_PosAddr; }
-
     void SetPosAddress(unsigned int addr) { m_PosAddr = addr; }
+    void SetPossibleAddr(std::vector<unsigned> addr) { m_PossibleAddr = addr; }
 
-    const Config& GetConfig() const { return m_Config; }
-
-    void SetState(StatePtr state) { m_State = state; }
     int Run();
     void Update(DWORD dt);
-
-    void SetXRadar(bool on);
+    void SetState(StatePtr state) { m_State = state; }
 
     bool InCenter() const {
         if (m_PosAddr == 0) return true;
@@ -104,7 +90,8 @@ public:
         return m_State->GetType();
     }
 
-    void SetPossibleAddr(std::vector<unsigned> addr) { m_PossibleAddr = addr; }
+    DWORD GetLastEnemy() { return m_LastEnemy; }
+    void SetLastEnemy(DWORD last) { m_LastEnemy = last; }
 };
 
 

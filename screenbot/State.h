@@ -28,13 +28,6 @@ public:
 };
 typedef std::shared_ptr<State> StatePtr;
 
-class PosFindState : public State {
-public:
-    PosFindState(Bot& bot);
-    virtual void Update(DWORD dt);
-    virtual StateType GetType() const { return StateType::AggressiveState; }
-};
-
 class FollowState : public State {
 private:
     Pathing::Plan m_Plan;
@@ -67,12 +60,8 @@ private:
     Coord m_LastEnemyPos;
     DWORD m_LastEnemyTimer;
     Coord m_EnemyVelocity;
-    DWORD m_LastBomb;
     DWORD m_LastNonSafeTime;
-    DWORD m_LastBullet;
     DWORD m_NearWall;
-    bool m_FiringGun;
-    int m_CurrentBulletDelay;
 
     // Config
     int m_RunPercent;
@@ -81,12 +70,7 @@ private:
     int m_TargetDist;
     int m_RunDist;
     int m_StopBombing;
-    int m_BombTime;
-    bool m_FireBombs;
-    bool m_FireGuns;
     int m_DistFactor;
-    int m_BulletDelay;
-    bool m_ScaleDelay;
     bool m_MemoryScanning;
     bool m_OnlyCenter;
     bool m_Patrol;

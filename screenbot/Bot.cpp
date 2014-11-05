@@ -7,6 +7,7 @@
 #include "State.h"
 #include "Util.h"
 #include "Memory.h"
+#include "Client.h"
 #include <thread>
 #include <tchar.h>
 #include <iostream>
@@ -17,20 +18,24 @@
 
 Bot::Bot(int ship)
     : m_Finder(_T("Continuum")),
-    m_Window(0),
-    m_Keyboard(),
-    m_LastEnemy(timeGetTime()),
-    m_State(nullptr),
-    m_ShipNum(ship),
-    m_EnemyTargetInfo(0, 0, 0),
-    m_Energy(0),
-    m_MaxEnergy(0),
-    m_PosAddr(0),
-    m_Level(),
-    m_ProcessHandle(nullptr),
-    m_AliveTime(0),
-    m_Grid(1024, 1024)
+      m_Window(0),
+      m_State(nullptr),
+      m_ShipNum(ship),
+      m_EnemyTargetInfo(0, 0, 0),
+      m_Energy(0),
+      m_MaxEnergy(0),
+      m_PosAddr(0),
+      m_Level(),
+      m_ProcessHandle(nullptr),
+      m_AliveTime(0),
+      m_Grid(1024, 1024),
+      m_LastEnemy(0),
+      m_Client(nullptr)
 { }
+
+ClientPtr Bot::GetClient() {
+    return m_Client;
+}
 
 unsigned int Bot::GetX() const {
     if (m_PosAddr == 0) return 0;
@@ -41,22 +46,6 @@ unsigned int Bot::GetY() const {
     if (m_PosAddr == 0) return 0;
 
     return Memory::GetU32(m_ProcessHandle, m_PosAddr + 4) / 16;
-}
-
-ScreenAreaPtr& Bot::GetRadar() {
-    return m_Radar;
-}
-
-ScreenAreaPtr& Bot::GetShip() {
-    return m_Ship;
-}
-
-ScreenAreaPtr& Bot::GetPlayer() {
-    return m_Player;
-}
-
-std::shared_ptr<ScreenGrabber> Bot::GetGrabber() {
-    return m_Grabber;
 }
 
 HWND Bot::SelectWindow() {
@@ -106,38 +95,16 @@ void Bot::SelectShip() {
     m_ShipNum = input[0] - 0x30;
 }
 
-void Bot::SetXRadar(bool on) {
-    int count = 0;
-    /* Try to toggle xradar, timeout after 50 tries */
-    while (Util::XRadarOn(m_Grabber) != on && count < 50) {
-        m_Keyboard.Down(VK_END);
-        std::this_thread::sleep_for(std::chrono::milliseconds(2));
-        m_Keyboard.Up(VK_END);
-        count++;
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
-        m_Grabber->Update();
-    }
-}
-
 void Bot::Update(DWORD dt) {
-    m_Grabber->Update();
-    m_Radar->Update();
-    m_Ship->Update();
-    m_Player->Update();
-
-    if (!Util::InShip(m_Grabber)) {
-        m_Keyboard.Up(VK_CONTROL);
-        m_Keyboard.Send(VK_ESCAPE);
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        m_Keyboard.Send(0x30 + m_ShipNum);
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
-
-    m_Energy = Util::GetEnergy(GetEnergyAreas());
+    m_Client->Update(dt);
+    
+    if (!m_Client->InShip())
+        m_Client->EnterShip(m_ShipNum);
+    
+    m_Energy = m_Client->GetEnergy();
 
     if (m_Energy > m_MaxEnergy) m_MaxEnergy = m_Energy;
 
-    int rwidth = m_Radar->GetWidth();
     int dx, dy;
     double dist;
 
@@ -153,16 +120,15 @@ void Bot::Update(DWORD dt) {
                 SetPosAddress(m_PossibleAddr.at(0));
             } else if (m_Config.Get<bool>("OnlyCenter")) {
                 tcout << "Warping because position is out of center (" << GetX() << ", " << GetY() << ")." << std::endl;
-                SetXRadar(false);
-                std::this_thread::sleep_for(std::chrono::milliseconds(300));
-                m_Keyboard.Send(VK_INSERT);
+
+                m_Client->Warp();
             }
         }
     }
 
     try {
-        std::vector<Coord> enemies = Util::GetEnemies(m_Radar);
-        m_EnemyTarget = Util::GetClosestEnemy(enemies, m_Radar, &dx, &dy, &dist);
+        std::vector<Coord> enemies = m_Client->GetEnemies();
+        m_EnemyTarget = m_Client->GetClosestEnemy(&dx, &dy, &dist);
 
         m_EnemyTargetInfo.dx = dx;
         m_EnemyTargetInfo.dy = dy;
@@ -172,7 +138,7 @@ void Bot::Update(DWORD dt) {
             int x = GetX();
             int y = GetY();
             Coord pos(GetX(), GetY());
-            Coord enemy = Util::FindTargetPos(pos, m_EnemyTarget, m_Grabber, m_Radar, m_Level);
+            Coord enemy = m_Client->GetRealPosition(pos, m_EnemyTarget, m_Level);
             if (enemy.x < 320 || enemy.x >= 703 || enemy.y < 320 || enemy.x >= 703)
                 reset_target = true;
         }
@@ -186,52 +152,6 @@ void Bot::Update(DWORD dt) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
     m_State->Update(dt);
-}
-
-void Bot::GrabRadar() {
-    int radarstart = 0;
-    int radarend = 0;
-    int radary = 0;
-
-    while (radarend == 0) {
-        m_Grabber->Update();
-        for (int y = static_cast<int>(m_Grabber->GetHeight() / 1.5); y < m_Grabber->GetHeight(); y++) {
-            for (int x = static_cast<int>(m_Grabber->GetWidth() / 1.5); x < m_Grabber->GetWidth(); x++) {
-                Pixel pix = m_Grabber->GetPixel(x, y);
-
-                if (radarstart == 0 && pix == Colors::RadarBorder)
-                    radarstart = x;
-
-                if (radarstart != 0 && pix != Colors::RadarBorder) {
-                    radarend = x - 1;
-                    if (radarend - radarstart < 104) {
-                        radarstart = 0;
-                        radarend = 0;
-                        break;
-                    }
-                    radarstart++;
-                    radary = y + 1;
-                    x = m_Grabber->GetWidth();
-                    y = m_Grabber->GetHeight();
-                    break;
-                }
-            }
-        }
-
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        tcout << "Finding radar location." << std::endl;
-    }
-
-    int radarwidth = radarend - radarstart;
-
-    tcout << "Creating radar screen with width of " << radarwidth << " at " << radarstart << ", " << radary << "." << std::endl;
-
-    m_Radar = m_Grabber->GetArea(radarstart, radary, radarwidth, radarwidth);
-
-    if (!m_Radar.get()) {
-        tcerr << "Resolution (" << m_Grabber->GetWidth() << "x" << m_Grabber->GetHeight() << ") not supported." << std::endl;
-        std::abort();
-    }
 }
 
 bool GetDebugPrivileges() {
@@ -264,19 +184,7 @@ int Bot::Run() {
 
             SelectShip();
 
-            m_Grabber = std::make_shared<ScreenGrabber>(m_Window);
-            m_Ship = m_Grabber->GetArea(m_Grabber->GetWidth() / 2 - 18, m_Grabber->GetHeight() / 2 - 18, 36, 36);
-
-            GrabRadar();
-
-            m_Player = m_Radar->GetArea(m_Radar->GetWidth() / 2 - 1, m_Radar->GetWidth() / 2 - 1, 4, 4);
-
-            int width = m_Grabber->GetWidth();
-
-            m_EnergyArea[0] = m_Grabber->GetArea(width - 78, 0, 16, 21);
-            m_EnergyArea[1] = m_Grabber->GetArea(width - 62, 0, 16, 21);
-            m_EnergyArea[2] = m_Grabber->GetArea(width - 46, 0, 16, 21);
-            m_EnergyArea[3] = m_Grabber->GetArea(width - 30, 0, 16, 21);
+            m_Client = std::make_shared<ScreenClient>(m_Window, m_Config);
 
             ready = true;
         } catch (const std::exception& e) {
