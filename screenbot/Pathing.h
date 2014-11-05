@@ -76,8 +76,8 @@ public:
     }
 
     bool IsValid(IntType x, IntType y) const {
-        return x >= 320 && x < m_Width && y >= 320 && y < 701;
-        //return x >= 0 && x < m_Width && y >= 0 && y < m_Height;
+        //return x >= 320 && x < m_Width && y >= 320 && y < 701;
+        return x >= 0 && x < m_Width && y >= 0 && y < m_Height;
     }
 
     bool IsOpen(IntType x, IntType y) const {
@@ -86,8 +86,8 @@ public:
 
     void SetSolid(IntType x, IntType y, bool solid) {
         static std::vector<Grid<short>::Node> directions = {
-                { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
-                { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
+            { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
+            { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
         };
 
         GetNode(x, y)->solid = solid;
@@ -105,8 +105,8 @@ public:
     std::vector<Node*> GetNeighbors(IntType x, IntType y) {
         std::vector<Node*> neighbors;
         static std::vector<Node> directions = {
-                { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
-                { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
+            { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
+            { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
         };
 
         neighbors.reserve(8);

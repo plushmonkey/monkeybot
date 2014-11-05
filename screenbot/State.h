@@ -31,6 +31,8 @@ typedef std::shared_ptr<State> StatePtr;
 class FollowState : public State {
 private:
     Pathing::Plan m_Plan;
+    DWORD m_StuckTimer;
+    Coord m_LastCoord;
 
 public:
     FollowState(Bot& bot);

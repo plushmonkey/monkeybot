@@ -141,7 +141,7 @@ void MemoryState::Update(DWORD dt) {
 State::State(Bot& bot)
     : m_Bot(bot) { }
 
-FollowState::FollowState(Bot& bot) : State(bot) {
+FollowState::FollowState(Bot& bot) : State(bot), m_StuckTimer(0), m_LastCoord(0, 0) {
     m_Bot.GetClient()->ReleaseKeys();
 }
 
@@ -186,6 +186,27 @@ void FollowState::Update(DWORD dt) {
     if (Util::IsClearPath(pos, enemy, RADIUS, m_Bot.GetLevel())) {
         m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
         return;
+    }
+
+    m_StuckTimer += dt;
+
+    // Check if stuck every 3.5 seconds
+    if (m_StuckTimer >= 3500) {
+        int stuckdx, stuckdy;
+        double stuckdist;
+
+        Util::GetDistance(pos, m_LastCoord, &stuckdx, &stuckdy, &stuckdist);
+
+        if (stuckdist <= 10) {
+            // Stuck
+            client->Up(false);
+            client->Down(true);
+            std::this_thread::sleep_for(std::chrono::milliseconds(750));
+            client->Down(false);
+        }
+
+        m_LastCoord = pos;
+        m_StuckTimer = 0;
     }
 
     if (m_Bot.GetGrid().IsOpen(x, y) && m_Bot.GetGrid().IsOpen(enemy.x, enemy.y)) {
