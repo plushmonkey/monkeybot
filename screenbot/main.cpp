@@ -1,11 +1,7 @@
 ﻿#include "Common.h"
 #include "Bot.h"
-#include "Config.h"
 #include <tchar.h>
 #include <iostream>
-#include <thread>
-#include "Pathing.h"
-#include "Level.h"
 
 #pragma comment(lib, "winmm.lib")
 

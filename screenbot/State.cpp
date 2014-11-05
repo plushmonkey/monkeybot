@@ -145,6 +145,28 @@ FollowState::FollowState(Bot& bot) : State(bot) {
     m_Bot.GetClient()->ReleaseKeys();
 }
 
+bool Enclosed(Coord pos, int radius, Pathing::Grid<short>& grid) {
+    Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
+
+    static std::vector<Coord> directions = {
+        { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
+        { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
+    };
+
+    if (grid.IsSolid(pos.x, pos.y)) return true;
+
+    for (Coord& dir : directions) {
+        int solids = 0;
+        for (int i = 0; i < radius; ++i) {
+            if (!grid.IsOpen(pos.x + dir.x * i, pos.y + dir.y * i))
+                solids++;
+        }
+
+        if (solids != radius) return false;
+    }
+    return true;
+}
+
 void FollowState::Update(DWORD dt) {
     ClientPtr client = m_Bot.GetClient();
 
@@ -199,6 +221,11 @@ void FollowState::Update(DWORD dt) {
 
     int away = std::abs(rot - target_rot);
 
+    if (dist < 20)
+        client->Gun(GunState::Tap, m_Bot.GetEnergyPercent());
+
+    bool go = true;
+
     if (rot != -1 && rot != target_rot) {
         int dir = 0;
 
@@ -214,13 +241,14 @@ void FollowState::Update(DWORD dt) {
         } else {
             client->Right(true);
             client->Left(false);
-        }
+        } 
+        //if (dist < 7) go = false;
     } else {
         client->Right(false);
         client->Left(false);
     }
 
-    client->Up(true);
+    client->Up(go);
 }
 
 PatrolState::PatrolState(Bot& bot, std::vector<Coord> waypoints) 
@@ -300,8 +328,8 @@ void PatrolState::Update(DWORD dt) {
 
     m_StuckTimer += dt;
 
-    // Check if stuck every 2.5 seconds
-    if (m_StuckTimer >= 2500) {
+    // Check if stuck every 3.5 seconds
+    if (m_StuckTimer >= 3500) {
         int stuckdx, stuckdy;
         double stuckdist;
 
@@ -324,7 +352,7 @@ void PatrolState::Update(DWORD dt) {
         if (m_Waypoints.size() == 0) return;
     }
 
-    if (!m_Bot.GetLevel().IsSolid(target.x, target.y)) {
+    if (!m_Bot.GetGrid().IsSolid(pos.x, pos.y) && m_Bot.GetGrid().IsOpen(target.x, target.y)) {
         Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
 
         m_Plan = jps(target.x, target.y, pos.x, pos.y, m_Bot.GetGrid());
@@ -380,10 +408,7 @@ void PatrolState::Update(DWORD dt) {
         client->Left(false);
     }
 
-    if (go)
-        client->Up(true);
-    else
-        client->Up(false);
+    client->Up(go);
 }
 
 bool NearWall(unsigned x, unsigned y, const Level& level) {

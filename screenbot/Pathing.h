@@ -1,7 +1,8 @@
 #ifndef PATHING_H_
 #define PATHING_H_
 
-#include <queue>
+#include <algorithm>
+#include <deque>
 #include <vector>
 #include <iosfwd>
 #include <functional>
@@ -50,7 +51,9 @@ public:
     }
 
     Grid(const Grid& other) {
-        m_Nodes = new Node[width * height];
+        m_Width = other.m_Width;
+        m_Height = other.m_Height;
+        m_Nodes = new Node[m_Width * m_Height];
         memcpy(m_Nodes, other.m_Nodes, sizeof(Node) * m_Width * m_Height);
     }
 
@@ -171,26 +174,28 @@ public:
     typedef short IntType;
     typedef Grid<IntType>::Node Node;
     typedef std::function<int(Grid<IntType>::Node* first, Grid<IntType>::Node* second)> HeuristicFunction;
-
-private:
     struct JPSCompare {
         bool operator()(Node* lhs, Node* rhs) const {
             return lhs->g + lhs->h > rhs->g + rhs->h;
         }
     };
-
+private:
+    int m_SearchRadius;
     HeuristicFunction m_Heuristic;
     Grid<IntType>* m_Grid;
     PriorityQueue<Node*, JPSCompare> m_OpenSet;
     Node* m_Goal;
+    Node* m_Start;
 
     Node* Jump(IntType nx, IntType ny, IntType cx, IntType cy);
     void IdentifySuccessors(Node* node);
     void ResetGrid();
     std::vector<Node*> Backtrace(Node* node);
     bool NearGoal(Node* a, Node* b);
+    std::vector<Node*> FindNeighbors(Node* node);
+
 public:
-    JumpPointSearch(HeuristicFunction heuristic);
+    JumpPointSearch(HeuristicFunction heuristic, int search_radius=1024);
     std::vector<Node*> operator()(IntType startX, IntType startY, IntType endX, IntType endY, Grid<IntType>& grid);
 };
 

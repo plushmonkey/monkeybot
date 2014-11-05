@@ -94,5 +94,4 @@ public:
     void SetLastEnemy(DWORD last) { m_LastEnemy = last; }
 };
 
-
 #endif
