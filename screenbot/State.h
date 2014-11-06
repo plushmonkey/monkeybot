@@ -10,7 +10,7 @@ class Bot;
 
 enum class StateType {
     MemoryState,
-    FollowState,
+    ChaseState,
     PatrolState,
     AggressiveState
 };
@@ -30,21 +30,22 @@ public:
 };
 typedef std::shared_ptr<State> StatePtr;
 
-class FollowState : public State {
+class ChaseState : public State {
 private:
     Pathing::Plan m_Plan;
     DWORD m_StuckTimer;
     Coord m_LastCoord;
 
 public:
-    FollowState(Bot& bot);
+    ChaseState(Bot& bot);
     virtual void Update(DWORD dt);
-    virtual StateType GetType() const { return StateType::FollowState; }
+    virtual StateType GetType() const { return StateType::ChaseState; }
 };
 
 class PatrolState : public State {
 private:
     std::vector<Coord> m_Waypoints;
+    std::vector<Coord> m_FullWaypoints;
     Pathing::Plan m_Plan;
     DWORD m_LastBullet;
     bool m_Patrol;
@@ -53,7 +54,7 @@ private:
     DWORD m_StuckTimer;
 
 public:
-    PatrolState(Bot& bot, std::vector<Coord> waypoints = std::vector<Coord>());
+    PatrolState(Bot& bot);
     virtual void Update(DWORD dt);
     void ResetWaypoints(bool full = true);
     virtual StateType GetType() const { return StateType::PatrolState; }

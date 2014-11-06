@@ -227,6 +227,7 @@ int Bot::Run() {
     m_Config.Set(_T("MinGunRange"),     _T("0"));
     m_Config.Set(_T("SpawnX"),          _T("512"));
     m_Config.Set(_T("SpawnY"),          _T("512"));
+    m_Config.Set(_T("Waypoints"),       _T("(400, 585), (565, 580), (600, 475), (512, 460), (425, 460), (385, 505)"));
 
     if (!m_Config.Load(_T("bot.conf")))
         tcout << "Could not load bot.conf. Using default values." << std::endl;

@@ -180,7 +180,6 @@ public:
         }
     };
 private:
-    int m_SearchRadius;
     HeuristicFunction m_Heuristic;
     Grid<IntType>* m_Grid;
     PriorityQueue<Node*, JPSCompare> m_OpenSet;
@@ -195,7 +194,7 @@ private:
     std::vector<Node*> FindNeighbors(Node* node);
 
 public:
-    JumpPointSearch(HeuristicFunction heuristic, int search_radius=1024);
+    JumpPointSearch(HeuristicFunction heuristic);
     std::vector<Node*> operator()(IntType startX, IntType startY, IntType endX, IntType endY, Grid<IntType>& grid);
 };
 

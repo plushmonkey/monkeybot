@@ -10,13 +10,15 @@
 #include <tchar.h>
 #include "Memory.h"
 #include "Random.h"
+#include "Tokenizer.h"
+#include <regex>
 #include <cmath>
 #include <limits>
 
 #define RADIUS 0
 
 std::ostream& operator<<(std::ostream& out, StateType type) {
-    static std::vector<std::string> states = {"Memory", "Follow", "Patrol", "Aggressive"};
+    static std::vector<std::string> states = {"Memory", "Chase", "Patrol", "Aggressive"};
     out << states.at(static_cast<int>(type));
     return out;
 }
@@ -156,7 +158,7 @@ void MemoryState::Update(DWORD dt) {
 State::State(Bot& bot)
     : m_Bot(bot) { }
 
-FollowState::FollowState(Bot& bot) : State(bot), m_StuckTimer(0), m_LastCoord(0, 0) {
+ChaseState::ChaseState(Bot& bot) : State(bot), m_StuckTimer(0), m_LastCoord(0, 0) {
     m_Bot.GetClient()->ReleaseKeys();
 }
 
@@ -182,7 +184,7 @@ bool Enclosed(Coord pos, int radius, Pathing::Grid<short>& grid) {
     return true;
 }
 
-void FollowState::Update(DWORD dt) {
+void ChaseState::Update(DWORD dt) {
     ClientPtr client = m_Bot.GetClient();
 
     if (m_Bot.GetEnemyTarget() == Coord(0, 0)) {
@@ -289,28 +291,37 @@ void FollowState::Update(DWORD dt) {
     client->Up(go);
 }
 
-PatrolState::PatrolState(Bot& bot, std::vector<Coord> waypoints) 
+PatrolState::PatrolState(Bot& bot) 
     : State(bot), 
-      m_Waypoints(waypoints),
       m_LastBullet(timeGetTime()),
       m_StuckTimer(0),
       m_LastCoord(0, 0)
 {
-    if (m_Waypoints.size() == 0)
-        ResetWaypoints(false);
-
     m_Bot.GetClient()->ReleaseKeys();
 
     m_Patrol = m_Bot.GetConfig().Get<bool>(_T("Patrol"));
+
+    std::string waypoints = m_Bot.GetConfig().Get<std::string>(_T("Waypoints"));
+    std::regex coord_re(R"::(\(([0-9]*?),\s*?([0-9]*?)\))::");
+
+    std::sregex_iterator begin(waypoints.begin(), waypoints.end(), coord_re);
+    std::sregex_iterator end;
+
+    for (std::sregex_iterator iter = begin; iter != end; ++iter) {
+        std::smatch match = *iter;
+        std::string xstr = match[1];
+        std::string ystr = match[2];
+        int x = strtol(xstr.c_str(), nullptr, 10);
+        int y = strtol(ystr.c_str(), nullptr, 10);
+
+        m_FullWaypoints.emplace_back(x, y);
+    }
+
+    ResetWaypoints(false);
 }
 
 void PatrolState::ResetWaypoints(bool full) {
-    m_Waypoints.emplace_back(400, 585);
-    m_Waypoints.emplace_back(565, 580);
-    m_Waypoints.emplace_back(600, 475);
-    m_Waypoints.emplace_back(512, 460);
-    m_Waypoints.emplace_back(425, 460);
-    m_Waypoints.emplace_back(385, 505);
+    m_Waypoints = m_FullWaypoints;
 
     if (full) return;
 
@@ -573,7 +584,7 @@ void AggressiveState::Update(DWORD dt) {
         Coord enemy = client->GetRealPosition(pos, m_Bot.GetEnemyTarget(), m_Bot.GetLevel());
 
         if (!Util::IsClearPath(pos, enemy, RADIUS, m_Bot.GetLevel())) {
-            m_Bot.SetState(std::make_shared<FollowState>(m_Bot));
+            m_Bot.SetState(std::make_shared<ChaseState>(m_Bot));
             return;
         }
         

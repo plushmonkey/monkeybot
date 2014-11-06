@@ -10,8 +10,8 @@ std::ostream& operator<<(std::ostream& out, Grid<short>::Node& node) {
     return out;
 }
 
-JumpPointSearch::JumpPointSearch(HeuristicFunction heuristic, int search_radius) 
-    : m_Heuristic(heuristic), m_Grid(nullptr), m_Goal(nullptr), m_Start(nullptr), m_SearchRadius(search_radius) { }
+JumpPointSearch::JumpPointSearch(HeuristicFunction heuristic) 
+    : m_Heuristic(heuristic), m_Grid(nullptr), m_Goal(nullptr), m_Start(nullptr) { }
 
 bool JumpPointSearch::NearGoal(Node* a, Node* b) {
     int dx = a->x - b->x;
@@ -20,50 +20,76 @@ bool JumpPointSearch::NearGoal(Node* a, Node* b) {
 }
 
 JumpPointSearch::Node* JumpPointSearch::Jump(IntType nx, IntType ny, IntType cx, IntType cy) {
-    int dx = nx - cx;
-    int dy = ny - cy;
+    auto clamp = [](int a, int min, int max) {
+        if (a < min) return min;
+        if (a > max) return max;
+        return a;
+    };
+    int dx = clamp(nx - cx, -1, 1);
+    int dy = clamp(ny - cy, -1, 1);
 
-    if (NearGoal(m_Grid->GetNode(nx, ny), m_Goal)) return m_Grid->GetNode(nx, ny);
+    if (m_Grid->IsValid(nx, ny) && NearGoal(m_Grid->GetNode(nx, ny), m_Goal)) return m_Grid->GetNode(nx, ny);
     if (!m_Grid->IsOpen(nx, ny)) return nullptr;
 
-    if (std::abs(nx - m_Start->x) > m_SearchRadius || std::abs(nx - m_Start->y > m_SearchRadius)) return nullptr;
+    int offsetX = nx;
+    int offsetY = ny;
 
     if (dx != 0 && dy != 0) {
-        // Check diagonal forced neighbors
-        if ((m_Grid->IsOpen(nx - dx, ny + dy) && !m_Grid->IsOpen(nx - dx, ny)) ||
-            (m_Grid->IsOpen(nx + dx, ny - dy) && !m_Grid->IsOpen(nx, ny - dy)))
-        {
-            return m_Grid->GetNode(nx, ny);
-        }
+        while (true) {
+            // Check diagonal forced neighbors
+            if ((m_Grid->IsOpen(offsetX - dx, offsetY + dy) && !m_Grid->IsOpen(offsetX - dx, offsetY)) ||
+                (m_Grid->IsOpen(offsetX + dx, offsetY - dy) && !m_Grid->IsOpen(offsetX, offsetY - dy)))
+            {
+                return m_Grid->GetNode(offsetX, offsetY);
+            }
 
-        // Expand horizontally and vertically
-        if (Jump(nx + dx, ny, nx, ny) ||Jump(nx, ny + dy, nx, ny))
-            return m_Grid->GetNode(nx, ny);
+            // Expand horizontally and vertically
+            if (Jump(offsetX + dx, offsetY, offsetX, offsetY) || Jump(offsetX, offsetY + dy, offsetX, offsetY))
+                return m_Grid->GetNode(offsetX, offsetY);
+
+            offsetX += dx;
+            offsetY += dy;
+
+            if (m_Grid->IsValid(offsetX, offsetY) && NearGoal(m_Grid->GetNode(offsetX, offsetY), m_Goal)) return m_Grid->GetNode(offsetX, offsetY);
+            if (!m_Grid->IsOpen(offsetX, offsetY)) return nullptr;
+        }
     } else {
         if (dx != 0) {
-            // Check horizontal forced neighbors
-            if ((m_Grid->IsOpen(nx + dx, ny + 1) && !m_Grid->IsOpen(nx, ny + 1)) ||
-                (m_Grid->IsOpen(nx + dx, ny - 1) && !m_Grid->IsOpen(nx, ny - 1)))
-            {
-                return m_Grid->GetNode(nx, ny);
+            while (true) {
+                // Check horizontal forced neighbors
+                if ((m_Grid->IsOpen(offsetX + dx, offsetY + 1) && !m_Grid->IsOpen(offsetX, offsetY + 1)) ||
+                    (m_Grid->IsOpen(offsetX + dx, offsetY - 1) && !m_Grid->IsOpen(offsetX, offsetY - 1)))
+                {
+                    return m_Grid->GetNode(offsetX, offsetY);
+                }
+
+                offsetX += dx;
+
+                if (m_Grid->IsValid(offsetX, offsetY) && NearGoal(m_Grid->GetNode(offsetX, offsetY), m_Goal)) return m_Grid->GetNode(offsetX, offsetY);
+                if (!m_Grid->IsOpen(offsetX, offsetY)) return nullptr;
             }
         } else {
-            // Check vertical forced neighbors
-            if ((m_Grid->IsOpen(nx + 1, ny + dy) && !m_Grid->IsOpen(nx + 1, ny)) ||
-                (m_Grid->IsOpen(nx - 1, ny + dy) && !m_Grid->IsOpen(nx - 1, ny)))
-            {
-                return m_Grid->GetNode(nx, ny);
+            while (true) {
+                // Check vertical forced neighbors
+                if ((m_Grid->IsOpen(offsetX + 1, offsetY + dy) && !m_Grid->IsOpen(offsetX + 1, offsetY)) ||
+                    (m_Grid->IsOpen(offsetX - 1, offsetY + dy) && !m_Grid->IsOpen(offsetX - 1, offsetY)))
+                {
+                    return m_Grid->GetNode(offsetX, offsetY);
+                }
+
+                offsetY += dy;
+
+                if (m_Grid->IsValid(offsetX, offsetY) && NearGoal(m_Grid->GetNode(offsetX, offsetY), m_Goal)) return m_Grid->GetNode(offsetX, offsetY);
+                if (!m_Grid->IsOpen(offsetX, offsetY)) return nullptr;
             }
         }
     }
-
-    if (m_Grid->IsOpen(nx + dx, ny) || m_Grid->IsOpen(nx, ny + dy))
-        return Jump(nx + dx, ny + dy, nx, ny);
     return nullptr;
 }
 
 std::vector<JPSNode*> JumpPointSearch::FindNeighbors(Node* node) {
     // no pruning if no parent
+    if (!node) return std::vector<JPSNode*>();
     if (!node->parent) return m_Grid->GetNeighbors(node);
 
     std::vector<JPSNode*> neighbors;
@@ -116,11 +142,14 @@ std::vector<JPSNode*> JumpPointSearch::FindNeighbors(Node* node) {
 }
 
 void JumpPointSearch::IdentifySuccessors(Node* node) {
+    if (!node) return;
+
     std::vector<Node*> neighbors = FindNeighbors(node);
 
     int ng = 0;
 
     for (Node* neighbor : neighbors) {
+        if (!neighbor) continue;
         Node* jump_point = Jump(neighbor->x, neighbor->y, node->x, node->y);
 
         if (jump_point) {
@@ -194,6 +223,7 @@ std::vector<JumpPointSearch::Node*> JumpPointSearch::operator()(IntType startX, 
     while (!m_OpenSet.Empty()) {
         Node* current = m_OpenSet.Pop();
 
+        if (!current) continue;
         current->closed = true;
 
         if (NearGoal(current, m_Goal))

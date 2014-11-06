@@ -1,16 +1,17 @@
-#Really bad screen bot for Hyperspace center.
+#Continuum Screen Bot
 
 ##Requirements
 - Opaque large radar.  
-- Windowed mode. 640x480 and 800x600 work best.  
+- Windowed mode. 640x480 and 800x600 only.  
 - Constant window focus.  
 - Default brightness settings.  
 - Default keybindings.  
 
 ##Running
+- Rename one of the conf files to bot.conf
 - Make sure Multi-Fire Starts On is checked in View -> Options -> Other if you want multi-fire.  
 - Sometimes the keys will stick after closing the bot. Just press left, right, up, down, and control to fix it.  
-- Put (public) in Hyperspace folder if you want to use a turret with the bot.  
+- Put (public) in the zone folder if you want to use a turret with the bot.  
 - The bot will need to be restarted if you change items that adjust energy.  
 - You can run the bot in a virtual machine if you want to be able to still use the computer normally.  
 
