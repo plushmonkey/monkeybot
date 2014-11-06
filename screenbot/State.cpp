@@ -15,8 +15,15 @@
 
 #define RADIUS 0
 
-MemoryState::MemoryState(Bot& bot) : State(bot) {
+std::ostream& operator<<(std::ostream& out, StateType type) {
+    static std::vector<std::string> states = {"Memory", "Follow", "Patrol", "Aggressive"};
+    out << states.at(static_cast<int>(type));
+    return out;
+}
 
+MemoryState::MemoryState(Bot& bot) : State(bot) {
+    m_SpawnX = bot.GetConfig().Get<int>("SpawnX");
+    m_SpawnY = bot.GetConfig().Get<int>("SpawnY");
 }
 
 void MemoryState::Update(DWORD dt) {
@@ -44,7 +51,9 @@ void MemoryState::Update(DWORD dt) {
     client->Up(false);
     client->Down(false);
 
-    client->Gun(GunState::Tap);
+    client->Gun(GunState::Constant);
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    client->Gun(GunState::Off);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -72,8 +81,13 @@ void MemoryState::Update(DWORD dt) {
             unsigned int x = Memory::GetU32(m_Bot.GetProcessHandle(), kv.first - 4);
             unsigned int y = Memory::GetU32(m_Bot.GetProcessHandle(), kv.first);
 
+            unsigned short minX = std::max((m_SpawnX * 16) - 300, 0);
+            unsigned short maxX = std::max((m_SpawnX * 16) + 300, 0);
+            unsigned short minY = std::max((m_SpawnY * 16) - 300, 0);
+            unsigned short maxY = std::max((m_SpawnY * 16) + 300, 0);
+
             // Remove the address from the list if it doesn't match the movement
-            if (y == kv.second || y < 8000 || y > 8500 || x < 8000 || x > 8500)
+            if (y == kv.second || y < minY|| y > maxY|| x < minX || x > maxX)
                 m_FindSpace.erase(this_iter);
             else
                 m_FindSpace[kv.first] = y; // Set the new value of the address
@@ -133,6 +147,7 @@ void MemoryState::Update(DWORD dt) {
         } else {
             auto state = std::make_shared<AggressiveState>(m_Bot);
             m_Bot.SetState(state);
+            m_Bot.SetLastEnemy(timeGetTime());
         }
     }
 }
@@ -226,13 +241,13 @@ void FollowState::Update(DWORD dt) {
     int dx, dy;
     double dist = 0.0;
 
-    while (next == pos && m_Plan.size() > 1) {
+    Util::GetDistance(pos, next, &dx, &dy, &dist);
+    while (dist < 3 && m_Plan.size() > 1) {
         m_Plan.erase(m_Plan.begin());
         next_node = m_Plan.at(0);
         next = Coord(next_node->x, next_node->y);
+        Util::GetDistance(pos, next, &dx, &dy, &dist);
     }
-
-    Util::GetDistance(pos, next, &dx, &dy, &dist);
 
     dx = -dx;
     dy = -dy;
@@ -242,8 +257,10 @@ void FollowState::Update(DWORD dt) {
 
     int away = std::abs(rot - target_rot);
 
-    if (dist < 20 && !client->InSafe())
+    if (dist < 20 && !client->InSafe()) {
         client->Gun(GunState::Tap, m_Bot.GetEnergyPercent());
+        client->Gun(GunState::Off);
+    }
 
     bool go = true;
 
@@ -338,6 +355,7 @@ void PatrolState::Update(DWORD dt) {
 
     if (timeGetTime() >= m_LastBullet + 60000) {
         client->Gun(GunState::Tap);
+        client->Gun(GunState::Off);
         m_LastBullet = timeGetTime();
     }
 
@@ -502,6 +520,7 @@ AggressiveState::AggressiveState(Bot& bot)
     m_MemoryScanning = m_Bot.GetConfig().Get<bool>(_T("MemoryScanning"));
     m_OnlyCenter     = m_Bot.GetConfig().Get<bool>(_T("OnlyCenter"));
     m_Patrol         = m_Bot.GetConfig().Get<bool>(_T("Patrol"));
+    m_MinGunRange    = m_Bot.GetConfig().Get<int>(_T("MinGunRange"));
 
     m_Bot.GetClient()->ReleaseKeys();
     
@@ -536,7 +555,7 @@ void AggressiveState::Update(DWORD dt) {
 
     Coord target = m_Bot.GetEnemyTarget();
 
-    if (target == Coord(0, 0)) {
+    if (m_Patrol && target == Coord(0, 0)) {
         m_Bot.SetState(std::make_shared<PatrolState>(m_Bot));
         client->ReleaseKeys();
         return;
@@ -643,7 +662,7 @@ void AggressiveState::Update(DWORD dt) {
             client->Up(false);
         }
 
-        /* Only fire weapons if pointing at enemy*/
+        /* Only fire weapons if pointing at enemy */
         if (rot != target_rot) {
             client->Gun(GunState::Off);
             return;
@@ -653,6 +672,11 @@ void AggressiveState::Update(DWORD dt) {
         if (!insafe && energypct > m_StopBombing) {
             if (!PointingAtWall(rot, x, y, m_Bot.GetLevel()) && dist >= 7)
                 client->Bomb();
+        }
+
+        if (m_MinGunRange != 0 && dist > m_MinGunRange) {
+            client->Gun(GunState::Off);
+            return;
         }
 
         /* Handle gunning */

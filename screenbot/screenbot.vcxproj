@@ -156,9 +156,9 @@
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="Pathing.cpp" />
     <ClCompile Include="Random.cpp" />
+    <ClCompile Include="RotationStore.cpp" />
     <ClCompile Include="ScreenArea.cpp" />
     <ClCompile Include="ScreenGrabber.cpp" />
-    <ClCompile Include="Ships.cpp" />
     <ClCompile Include="State.cpp" />
     <ClCompile Include="Util.cpp" />
     <ClCompile Include="WindowFinder.cpp" />
@@ -175,7 +175,9 @@
     <ClInclude Include="Random.h" />
     <ClInclude Include="ScreenArea.h" />
     <ClInclude Include="ScreenGrabber.h" />
+    <ClInclude Include="RotationStore.h" />
     <ClInclude Include="State.h" />
+    <ClInclude Include="Tokenizer.h" />
     <ClInclude Include="Util.h" />
     <ClInclude Include="WindowFinder.h" />
   </ItemGroup>

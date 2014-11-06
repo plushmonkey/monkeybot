@@ -113,17 +113,28 @@ void Bot::Update(DWORD dt) {
     if (m_PosAddr && GetStateType() != StateType::MemoryState) {
         m_AliveTime += dt;
 
-        if (!InCenter()) {
+        if (!InCenter() && m_Config.Get<bool>("OnlyCenter")) {
             if (m_AliveTime < 10000 && m_PossibleAddr.size() > 1) {
                 tcout << "Bot appears to be out of center. The position address is probably wrong, trying next one." << std::endl;
                 m_PossibleAddr.erase(m_PossibleAddr.begin());
                 SetPosAddress(m_PossibleAddr.at(0));
-            } else if (m_Config.Get<bool>("OnlyCenter")) {
+                m_Client->Warp();
+            } else {
                 tcout << "Warping because position is out of center (" << GetX() << ", " << GetY() << ")." << std::endl;
-
                 m_Client->Warp();
             }
         }
+    }
+
+
+    Coord pos(GetX(), GetY());
+
+    // Attach to ticked player when in center safe
+    if (m_AliveTime > 10000 && m_Config.Get<bool>("Attach")) {
+        int spawnX = m_Config.Get<int>("SpawnX");
+        int spawnY = m_Config.Get<int>("SpawnX");
+        if (pos.x >= spawnX - 20 && pos.x <= spawnX + 20&& pos.y >= spawnY - 20 && pos.y <= spawnY + 20)
+            m_Client->Attach();
     }
 
     try {
@@ -134,10 +145,9 @@ void Bot::Update(DWORD dt) {
         m_EnemyTargetInfo.dy = dy;
         m_EnemyTargetInfo.dist = dist;
 
-        if (m_PosAddr) {
-            int x = GetX();
-            int y = GetY();
-            Coord pos(GetX(), GetY());
+        SetLastEnemy(timeGetTime());
+
+        if (m_PosAddr && m_Config.Get<bool>("OnlyCenter")) {
             Coord enemy = m_Client->GetRealPosition(pos, m_EnemyTarget, m_Level);
             if (enemy.x < 320 || enemy.x >= 703 || enemy.y < 320 || enemy.x >= 703)
                 reset_target = true;
@@ -212,6 +222,11 @@ int Bot::Run() {
     m_Config.Set(_T("OnlyCenter"),      _T("True"));
     m_Config.Set(_T("Patrol"),          _T("True"));
     m_Config.Set(_T("RotationStore"),   _T("hyperspace.rot"));
+    m_Config.Set(_T("Attach"),          _T("False"));
+    m_Config.Set(_T("MapZoom"),         _T("9"));
+    m_Config.Set(_T("MinGunRange"),     _T("0"));
+    m_Config.Set(_T("SpawnX"),          _T("512"));
+    m_Config.Set(_T("SpawnY"),          _T("512"));
 
     if (!m_Config.Load(_T("bot.conf")))
         tcout << "Could not load bot.conf. Using default values." << std::endl;
@@ -229,6 +244,7 @@ int Bot::Run() {
     if (!m_Level.Load(m_Config.Get<tstring>(_T("Level")))) {
         tcerr << "Could not load level " << m_Config.Get<tstring>(_T("Level")) << "\n";
     } else {
+        tcout << "Creating grid for the level." << std::endl;
         for (int y = 0; y < 1024; ++y) {
             for (int x = 0; x < 1024; ++x) {
                 if (m_Level.IsSolid(x, y))
@@ -269,7 +285,8 @@ int Bot::Run() {
 
     while (true) {
         DWORD dt = timeGetTime() - last_update;
-        //std::cout << dt << std::endl;
+    //    std::cout << dt << " ";
+      //  std::cout << GetStateType() << std::endl;
         last_update = timeGetTime();
         Update(dt);
     }

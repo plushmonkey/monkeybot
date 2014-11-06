@@ -15,7 +15,8 @@ ScreenClient::ScreenClient(HWND hwnd, Config& config)
       m_LastBullet(0),
       m_CurrentBulletDelay(0),
       m_ConfigLoaded(false),
-      m_Rotations(nullptr)
+      m_Rotations(nullptr),
+      m_MapZoom(9)
 { 
     m_Screen = std::make_shared<ScreenGrabber>(m_Window);
     m_Ship = m_Screen->GetArea(m_Screen->GetWidth() / 2 - 18, m_Screen->GetHeight() / 2 - 18, 36, 36);
@@ -45,6 +46,7 @@ void ScreenClient::Update(DWORD dt) {
         m_ScaleDelay = m_Config.Get<bool>(_T("ScaleDelay"));
         m_FireBombs = m_Config.Get<bool>(_T("FireBombs"));
         m_FireGuns = m_Config.Get<bool>(_T("FireGuns"));
+        m_MapZoom = m_Config.Get<int>("MapZoom");
         m_CurrentBulletDelay = m_BulletDelay;
         m_ConfigLoaded = true;
         m_Rotations = new Ships::RotationStore(m_Config);
@@ -71,9 +73,9 @@ void ScreenClient::Gun(GunState state, int energy_percent) {
     if (m_ScaleDelay)
         m_CurrentBulletDelay = static_cast<int>(std::ceil(m_BulletDelay * (1.0f + (100.0f - energy_percent) / 100)));
 
-    if (state == GunState::Constant) m_CurrentBulletDelay = 0;
+    if (state == GunState::Tap && m_BulletDelay == 0) state = GunState::Constant;
 
-    if (state != GunState::Off && timeGetTime() < m_LastBullet + m_CurrentBulletDelay) return;
+    if (state == GunState::Tap && timeGetTime() < m_LastBullet + m_CurrentBulletDelay) return;
 
     switch (state) {
         case GunState::Constant:
@@ -128,6 +130,10 @@ void ScreenClient::Right(bool val) {
     val ? m_Keyboard.Down(VK_RIGHT) : m_Keyboard.Up(VK_RIGHT);
 }
 
+void ScreenClient::Attach() {
+    m_Keyboard.Send(VK_F7);
+}
+
 bool ScreenClient::InShip() const {
     return Util::InShip(m_Screen);
 }
@@ -150,7 +156,7 @@ Coord ScreenClient::GetClosestEnemy(int* dx, int* dy, double* dist) {
 }
 
 Coord ScreenClient::GetRealPosition(Coord bot_pos, Coord target, const Level& level) {
-    return Util::FindTargetPos(bot_pos, target, m_Screen, m_Radar, level);
+    return Util::FindTargetPos(bot_pos, target, m_Screen, m_Radar, level, m_MapZoom);
 }
 
 int ScreenClient::GetEnergy()  {

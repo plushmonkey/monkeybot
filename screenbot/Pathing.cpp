@@ -1,6 +1,7 @@
 #include "Pathing.h"
 #include <vector>
 #include <ostream>
+#include <iostream>
 
 namespace Pathing {
 
@@ -183,6 +184,8 @@ std::vector<JumpPointSearch::Node*> JumpPointSearch::operator()(IntType startX, 
 
     Node* start = m_Grid->GetNode(startX, startY);
     m_Start = start;
+
+    if (!start || !m_Goal) return std::vector<Node*>();
 
     start->opened = true;
 

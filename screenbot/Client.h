@@ -37,6 +37,8 @@ public:
     virtual void Left(bool val) = 0;
     virtual void Right(bool val) = 0;
 
+    virtual void Attach() = 0;
+
     virtual bool InShip() const = 0;
     virtual void EnterShip(int num) = 0;
 
@@ -68,6 +70,7 @@ private:
     DWORD m_LastBomb;
 
     bool m_ConfigLoaded;
+    int m_MapZoom;
 
     bool m_FireBombs;
     bool m_FireGuns;
@@ -99,6 +102,8 @@ public:
     virtual void Down(bool val);
     virtual void Left(bool val);
     virtual void Right(bool val);
+
+    virtual void Attach();
 
     virtual bool InShip() const;
     virtual void EnterShip(int num);

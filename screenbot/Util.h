@@ -20,7 +20,7 @@ namespace Util {
     int GetShipRadius(int n);
     bool InShip(const ScreenGrabberPtr& grabber);
     bool IsClearPath(Coord from, Coord target, int radius, const Level& level);
-    Coord FindTargetPos(Coord bot_pos, Coord radar_coord, const ScreenGrabberPtr& grabber, const ScreenAreaPtr& radar, const Level& level);
+    Coord FindTargetPos(Coord bot_pos, Coord radar_coord, const ScreenGrabberPtr& grabber, const ScreenAreaPtr& radar, const Level& level, int mapzoom);
 }
 
 #endif

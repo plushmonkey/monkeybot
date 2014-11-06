@@ -15,6 +15,8 @@ enum class StateType {
     AggressiveState
 };
 
+std::ostream& operator<<(std::ostream& out, StateType type);
+
 class State {
 protected:
     Bot& m_Bot;
@@ -76,6 +78,7 @@ private:
     bool m_MemoryScanning;
     bool m_OnlyCenter;
     bool m_Patrol;
+    int m_MinGunRange;
 
 public:
     AggressiveState(Bot& bot);
@@ -88,7 +91,8 @@ class MemoryState : public State {
 private:
     // Address -> Value
     std::map<unsigned int, unsigned int> m_FindSpace;
-
+    int m_SpawnX;
+    int m_SpawnY;
     bool m_Up;
 
 public:
