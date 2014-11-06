@@ -100,22 +100,6 @@ int GetTargetRotation(int dx, int dy) {
     return target;
 }
 
-int GetRotation(const ScreenAreaPtr& area) {
-    u64 val = 0;
-
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++)
-            val = area->GetPixel(16 + j, 16 + i) + val;
-    }
-
-    for (int i = 0; i < 8; i++) {
-        for (int j = 0; j < 40; j++)
-            if (Ships::Rotations[i][j] == val) return j;
-    }
-
-    return -1;
-}
-
 int GetShip(const ScreenAreaPtr& ship) {
     u64 val = 0;
 

@@ -48,6 +48,10 @@ public:
     virtual void ToggleKeys() = 0;
 };
 
+namespace Ships {
+    class RotationStore;
+}
+
 class ScreenClient : public Client {
 private:
     Config& m_Config;
@@ -72,6 +76,8 @@ private:
     int m_BulletDelay;
     int m_CurrentBulletDelay;
     int m_BombDelay;
+
+    Ships::RotationStore* m_Rotations;
 
     void GrabRadar();
 public:

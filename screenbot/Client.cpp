@@ -4,6 +4,8 @@
 #include "ScreenArea.h"
 #include "ScreenGrabber.h"
 #include "Util.h"
+#include "RotationStore.h"
+#include <iostream>
 #include <thread>
 
 ScreenClient::ScreenClient(HWND hwnd, Config& config)
@@ -12,7 +14,8 @@ ScreenClient::ScreenClient(HWND hwnd, Config& config)
       m_LastBomb(0),
       m_LastBullet(0),
       m_CurrentBulletDelay(0),
-      m_ConfigLoaded(false)
+      m_ConfigLoaded(false),
+      m_Rotations(nullptr)
 { 
     m_Screen = std::make_shared<ScreenGrabber>(m_Window);
     m_Ship = m_Screen->GetArea(m_Screen->GetWidth() / 2 - 18, m_Screen->GetHeight() / 2 - 18, 36, 36);
@@ -44,6 +47,7 @@ void ScreenClient::Update(DWORD dt) {
         m_FireGuns = m_Config.Get<bool>(_T("FireGuns"));
         m_CurrentBulletDelay = m_BulletDelay;
         m_ConfigLoaded = true;
+        m_Rotations = new Ships::RotationStore(m_Config);
     }
 }
 
@@ -154,7 +158,17 @@ int ScreenClient::GetEnergy()  {
 }
 
 int ScreenClient::GetRotation() {
-    return Util::GetRotation(m_Ship);
+    u64 val = 0;
+
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++)
+            val = m_Ship->GetPixel(16 + j, 16 + i) + val;
+    }
+
+    if (m_Rotations)
+        return m_Rotations->GetRotation(val);
+
+    return -1;
 }
 
 bool ScreenClient::InSafe() {

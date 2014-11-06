@@ -211,6 +211,7 @@ int Bot::Run() {
     m_Config.Set(_T("MemoryScanning"),  _T("True"));
     m_Config.Set(_T("OnlyCenter"),      _T("True"));
     m_Config.Set(_T("Patrol"),          _T("True"));
+    m_Config.Set(_T("RotationStore"),   _T("hyperspace.rot"));
 
     if (!m_Config.Load(_T("bot.conf")))
         tcout << "Could not load bot.conf. Using default values." << std::endl;

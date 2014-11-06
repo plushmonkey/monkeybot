@@ -242,7 +242,7 @@ void FollowState::Update(DWORD dt) {
 
     int away = std::abs(rot - target_rot);
 
-    if (dist < 20)
+    if (dist < 20 && !client->InSafe())
         client->Gun(GunState::Tap, m_Bot.GetEnergyPercent());
 
     bool go = true;
