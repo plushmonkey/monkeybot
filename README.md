@@ -8,7 +8,8 @@
 - Default keybindings.  
 
 ##Running
-- Rename one of the conf files to bot.conf
+- Change the Include variable in bot.conf to point to the file with the config settings
+- Change the Level variable in the config file
 - Make sure Multi-Fire Starts On is checked in View -> Options -> Other if you want multi-fire.  
 - Sometimes the keys will stick after closing the bot. Just press left, right, up, down, and control to fix it.  
 - Put (public) in the zone folder if you want to use a turret with the bot.  

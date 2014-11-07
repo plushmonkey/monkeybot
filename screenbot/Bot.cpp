@@ -8,6 +8,7 @@
 #include "Util.h"
 #include "Memory.h"
 #include "Client.h"
+#include "Tokenizer.h"
 #include <thread>
 #include <tchar.h>
 #include <iostream>
@@ -228,9 +229,22 @@ int Bot::Run() {
     m_Config.Set(_T("SpawnX"),          _T("512"));
     m_Config.Set(_T("SpawnY"),          _T("512"));
     m_Config.Set(_T("Waypoints"),       _T("(400, 585), (565, 580), (600, 475), (512, 460), (425, 460), (385, 505)"));
+    m_Config.Set(_T("Include"),         _T(""));
 
     if (!m_Config.Load(_T("bot.conf")))
         tcout << "Could not load bot.conf. Using default values." << std::endl;
+
+    std::string includes = m_Config.Get<std::string>("Include");
+    if (includes.length() > 0) {
+        Util::Tokenizer tokenizer(includes);
+
+        tokenizer('|');
+
+        for (auto it = tokenizer.begin(); it != tokenizer.end(); ++it) {
+            std::cout << "Loading include file " << *it << std::endl;
+            m_Config.Load(*it);
+        }
+    }
 
     tstringstream ss;
 
@@ -287,7 +301,7 @@ int Bot::Run() {
     while (true) {
         DWORD dt = timeGetTime() - last_update;
     //    std::cout << dt << " ";
-      //  std::cout << GetStateType() << std::endl;
+    //    std::cout << GetStateType() << std::endl;
         last_update = timeGetTime();
         Update(dt);
     }
