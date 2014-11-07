@@ -15,7 +15,7 @@
 #include <cmath>
 #include <limits>
 
-#define RADIUS 0
+#define RADIUS 1
 
 std::ostream& operator<<(std::ostream& out, StateType type) {
     static std::vector<std::string> states = {"Memory", "Chase", "Patrol", "Aggressive"};
@@ -244,7 +244,7 @@ void ChaseState::Update(DWORD dt) {
     double dist = 0.0;
 
     Util::GetDistance(pos, next, &dx, &dy, &dist);
-    while (dist < 3 && m_Plan.size() > 1) {
+    while (dist == 0 && m_Plan.size() > 1) {
         m_Plan.erase(m_Plan.begin());
         next_node = m_Plan.at(0);
         next = Coord(next_node->x, next_node->y);
@@ -419,7 +419,7 @@ void PatrolState::Update(DWORD dt) {
 
     Util::GetDistance(pos, next, &dx, &dy, &dist);
 
-    while (dist < 5 && m_Plan.size() > 1) {
+    while (dist == 0 && m_Plan.size() > 1) {
         m_Plan.erase(m_Plan.begin());
         next_node = m_Plan.at(0);
         next = Coord(next_node->x, next_node->y);
@@ -452,7 +452,7 @@ void PatrolState::Update(DWORD dt) {
             client->Right(true);
             client->Left(false);
         }
-        if (dist < 7) go = false;
+        //if (dist < 7) go = false;
     } else {
         client->Right(false);
         client->Left(false);

@@ -23,7 +23,7 @@ bool Level::Load(const tstring& filename) {
     if (!in.is_open()) return false;
 
     in.seekg(0, std::ios::end);
-    int len = static_cast<int>(in.tellg());
+    unsigned int len = static_cast<int>(in.tellg());
     in.seekg(0, std::ios::beg);
 
     if (len <= 0) {
@@ -37,12 +37,10 @@ bool Level::Load(const tstring& filename) {
     in.read(buffer, len);
     in.close();
 
-    int pos = 0;
+    unsigned int pos = 0;
 
-    if (buffer[0] == 'B' && buffer[1] == 'M') {
-        pos = *(int *)(buffer + 2);
-        len -= pos;
-    }
+    if (buffer[0] == 'B' && buffer[1] == 'M')
+        pos = *(unsigned int *)(buffer + 2);
 
     for (int y = 0; y < 1024; ++y) {
         for (int x = 0; x < 1024; ++x)

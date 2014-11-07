@@ -300,8 +300,8 @@ int Bot::Run() {
 
     while (true) {
         DWORD dt = timeGetTime() - last_update;
-    //    std::cout << dt << " ";
-    //    std::cout << GetStateType() << std::endl;
+        //std::cout << dt << " ";
+        //std::cout << GetStateType() << std::endl;
         last_update = timeGetTime();
         Update(dt);
     }
