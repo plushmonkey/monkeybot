@@ -6,6 +6,7 @@
 - Constant window focus.  
 - Default brightness settings.  
 - Default keybindings.  
+- Disable rolling ships
 
 ##Running
 - Change the Include variable in bot.conf to point to the file with the config settings
