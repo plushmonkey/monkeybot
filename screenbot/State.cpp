@@ -59,6 +59,11 @@ void MemoryState::Update(DWORD dt) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
+    unsigned short minX = std::max((m_SpawnX * 16) - 300, 0);
+    unsigned short maxX = std::max((m_SpawnX * 16) + 300, 0);
+    unsigned short minY = std::max((m_SpawnY * 16) - 300, 0);
+    unsigned short maxY = std::max((m_SpawnY * 16) + 300, 0);
+
     if (m_FindSpace.size() == 0) {
         std::vector<unsigned int> found = Memory::FindRange(m_Bot.GetProcessHandle(), 8000, 8500);
 
@@ -82,11 +87,6 @@ void MemoryState::Update(DWORD dt) {
             // Get the new value at this address
             unsigned int x = Memory::GetU32(m_Bot.GetProcessHandle(), kv.first - 4);
             unsigned int y = Memory::GetU32(m_Bot.GetProcessHandle(), kv.first);
-
-            unsigned short minX = std::max((m_SpawnX * 16) - 300, 0);
-            unsigned short maxX = std::max((m_SpawnX * 16) + 300, 0);
-            unsigned short minY = std::max((m_SpawnY * 16) - 300, 0);
-            unsigned short maxY = std::max((m_SpawnY * 16) + 300, 0);
 
             // Remove the address from the list if it doesn't match the movement
             if (y == kv.second || y < minY|| y > maxY|| x < minX || x > maxX)
@@ -114,7 +114,7 @@ void MemoryState::Update(DWORD dt) {
                 auto this_it = it;
                 ++it;
 
-                if (x < 8000 || x > 8500 || y < 8000 || y > 8500) {
+                if (x < minX || x > maxX|| y < minX || y > maxX) {
                     // Remove this address because it's out of range
                     m_FindSpace.erase(this_it);
                 }
@@ -207,8 +207,8 @@ void ChaseState::Update(DWORD dt) {
 
     m_StuckTimer += dt;
 
-    // Check if stuck every 3.5 seconds
-    if (m_StuckTimer >= 3500) {
+    // Check if stuck every 2.5 seconds
+    if (m_StuckTimer >= 2500) {
         int stuckdx, stuckdy;
         double stuckdist;
 
@@ -218,7 +218,7 @@ void ChaseState::Update(DWORD dt) {
             // Stuck
             client->Up(false);
             client->Down(true);
-            std::this_thread::sleep_for(std::chrono::milliseconds(750));
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
             client->Down(false);
         }
 
@@ -244,7 +244,7 @@ void ChaseState::Update(DWORD dt) {
     double dist = 0.0;
 
     Util::GetDistance(pos, next, &dx, &dy, &dist);
-    while (dist == 0 && m_Plan.size() > 1) {
+    while (dist < 3 && m_Plan.size() > 1) {
         m_Plan.erase(m_Plan.begin());
         next_node = m_Plan.at(0);
         next = Coord(next_node->x, next_node->y);
@@ -282,7 +282,7 @@ void ChaseState::Update(DWORD dt) {
             client->Right(true);
             client->Left(false);
         } 
-        //if (dist < 7) go = false;
+    //    if (dist < 7) go = false;
     } else {
         client->Right(false);
         client->Left(false);

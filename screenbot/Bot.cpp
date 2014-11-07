@@ -134,8 +134,11 @@ void Bot::Update(DWORD dt) {
     if (m_AliveTime > 10000 && m_Config.Get<bool>("Attach")) {
         int spawnX = m_Config.Get<int>("SpawnX");
         int spawnY = m_Config.Get<int>("SpawnX");
-        if (pos.x >= spawnX - 20 && pos.x <= spawnX + 20&& pos.y >= spawnY - 20 && pos.y <= spawnY + 20)
+        if (pos.x >= spawnX - 20 && pos.x <= spawnX + 20 && pos.y >= spawnY - 20 && pos.y <= spawnY + 20) {
             m_Client->Attach();
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            m_Client->Attach();
+        }
     }
 
     try {
