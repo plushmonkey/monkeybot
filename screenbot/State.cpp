@@ -263,7 +263,7 @@ void ChaseState::Update(DWORD dt) {
 
     int away = std::abs(rot - target_rot);
 
-    if (dist < 20 && !client->InSafe()) {
+    if (dist < 20 && !client->InSafe(pos, m_Bot.GetLevel())) {
         client->Gun(GunState::Tap, m_Bot.GetEnergyPercent());
         client->Gun(GunState::Off);
     }
@@ -550,7 +550,7 @@ void AggressiveState::Update(DWORD dt) {
 
     Coord pos(m_Bot.GetX(), m_Bot.GetY());
 
-    bool insafe = client->InSafe();
+    bool insafe = client->InSafe(pos, m_Bot.GetLevel());
     int tardist = m_TargetDist;
     int energypct = m_Bot.GetEnergyPercent();
 

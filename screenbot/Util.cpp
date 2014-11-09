@@ -32,13 +32,16 @@ Coord GetBotRadarPos(Coord real_pos, const ScreenAreaPtr& radar, int mapzoom) {
 
     if (real_pos.x < min_pos)
         bot_radar_x *= real_pos.x / min_pos;
-    else if (real_pos.x > 1024 - min_pos)
-        bot_radar_x = (bot_radar_x * (real_pos.x / min_pos)) + (rwidth / 2);
+    else if (real_pos.x > 1024 - min_pos) // 961
+        bot_radar_x += ((real_pos.x - (1024 - min_pos)) / per_pix);
 
     if (real_pos.y < min_pos)
         bot_radar_y *= real_pos.y / min_pos;
     else if (real_pos.y > 1024 - min_pos)
-        bot_radar_y = (bot_radar_y * (real_pos.y / min_pos)) + (rwidth / 2);
+        bot_radar_y += ((real_pos.y - (1024 - min_pos)) / per_pix);
+
+    bot_radar_x = std::max(std::min(bot_radar_x, rwidth - 1.0f), 0.0f);
+    bot_radar_y = std::max(std::min(bot_radar_y, rwidth - 1.0f), 0.0f);
 
     return Coord(static_cast<int>(bot_radar_x), static_cast<int>(bot_radar_y));
 }

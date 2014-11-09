@@ -5,6 +5,7 @@
 #include "ScreenGrabber.h"
 #include "Util.h"
 #include "RotationStore.h"
+#include "Level.h"
 #include <iostream>
 #include <thread>
 
@@ -230,8 +231,8 @@ int ScreenClient::GetRotation() {
     return -1;
 }
 
-bool ScreenClient::InSafe() {
-    return Util::PlayerInSafe(m_Player);
+bool ScreenClient::InSafe(Coord real_pos, const Level& level) {
+    return level.GetTileID(real_pos.x, real_pos.y) == 171;
 }
 
 void ScreenClient::ReleaseKeys() {

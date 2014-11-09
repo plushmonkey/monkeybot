@@ -30,7 +30,7 @@ public:
     
     virtual int GetEnergy() = 0;
     virtual int GetRotation() = 0;
-    virtual bool InSafe() = 0;
+    virtual bool InSafe(Coord real_pos, const Level& level) = 0;
 
     virtual void Up(bool val) = 0;
     virtual void Down(bool val) = 0;
@@ -97,7 +97,7 @@ public:
 
     virtual int GetEnergy();
     virtual int GetRotation();
-    virtual bool InSafe();
+    virtual bool InSafe(Coord real_pos, const Level& level);
 
     virtual void Up(bool val);
     virtual void Down(bool val);
