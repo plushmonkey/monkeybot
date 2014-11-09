@@ -10,6 +10,11 @@ static const int ShipRadius[8] = { 15, 15, 30, 30, 21, 21, 39 ,11 };
 
 namespace Util {
 
+static const std::vector<Coord> directions = {
+        { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
+        { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
+};
+
 Coord FindTargetPos(Coord bot_pos, Coord radar_coord, const ScreenGrabberPtr& screen, const ScreenAreaPtr& radar, const Level& level, int mapzoom) {
     int rwidth = radar->GetWidth();
     float amountseen = (1024.0f / 2.0f) / mapzoom;
@@ -21,10 +26,6 @@ Coord FindTargetPos(Coord bot_pos, Coord radar_coord, const ScreenGrabberPtr& sc
     Coord target(static_cast<int>(bot_pos.x + rdx * per_pix), static_cast<int>(bot_pos.y + rdy * per_pix));
 
     if (level.IsSolid(target.x, target.y)) {
-        static std::vector<Coord> directions = {
-                { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
-                { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
-        };
         for (const Coord& dir : directions) {
             if (!level.IsSolid(target.x + dir.x, target.y + dir.y)) {
                 target = Coord(target.x + dir.x, target.y + dir.y);
@@ -124,42 +125,13 @@ bool InSafe(const ScreenArea::Ptr& area, Coord coord) {
     int x = coord.x;
     int y = coord.y;
 
-    try {
-        Pixel pixel;
-
-        // up-left
-        pixel = area->GetPixel(x - 1, y - 1);
-        if (pixel == Colors::SafeColor)
-            return true;
-        // up
-        pixel = area->GetPixel(x, y - 1);
-        if (pixel == Colors::SafeColor)
-            return true;
-        // up-right
-        pixel = area->GetPixel(x + 1, y - 1);
-        if (pixel == Colors::SafeColor)
-            return true;
-        // right
-        pixel = area->GetPixel(x + 1, y);
-        if (pixel == Colors::SafeColor)
-            return true;
-        // left
-        pixel = area->GetPixel(x - 1, y);
-        if (pixel == Colors::SafeColor)
-            return true;
-        // bottom-left
-        pixel = area->GetPixel(x - 1, y + 1);
-        if (pixel == Colors::SafeColor)
-            return true;
-        // bottom-right
-        pixel = area->GetPixel(x + 1, y + 1);
-        if (pixel == Colors::SafeColor)
-            return true;
-        // bottom
-        pixel = area->GetPixel(x, y + 1);
-        if (pixel == Colors::SafeColor)
-            return true;
-    } catch (std::exception&) {}
+    for (const Coord& dir : directions) {
+        try {
+            Pixel pixel = area->GetPixel(x + dir.x, y + dir.y);
+            if (pixel == Colors::SafeColor)
+                return true;
+        } catch (...) {}
+    }
 
     return false;
 }

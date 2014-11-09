@@ -35,6 +35,7 @@ private:
     Pathing::Plan m_Plan;
     DWORD m_StuckTimer;
     Coord m_LastCoord;
+    Coord m_LastRealEnemyCoord;
 
 public:
     ChaseState(Bot& bot);
@@ -54,7 +55,7 @@ private:
     DWORD m_StuckTimer;
 
 public:
-    PatrolState(Bot& bot);
+    PatrolState(Bot& bot, std::vector<Coord> waypoints = std::vector<Coord>());
     virtual void Update(DWORD dt);
     void ResetWaypoints(bool full = true);
     virtual StateType GetType() const { return StateType::PatrolState; }
@@ -67,6 +68,7 @@ private:
     Coord m_EnemyVelocity;
     DWORD m_LastNonSafeTime;
     DWORD m_NearWall;
+    Coord m_LastRealEnemyCoord;
 
     // Config
     int m_RunPercent;

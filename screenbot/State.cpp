@@ -158,7 +158,12 @@ void MemoryState::Update(DWORD dt) {
 State::State(Bot& bot)
     : m_Bot(bot) { }
 
-ChaseState::ChaseState(Bot& bot) : State(bot), m_StuckTimer(0), m_LastCoord(0, 0) {
+ChaseState::ChaseState(Bot& bot) 
+    : State(bot), 
+      m_StuckTimer(0), 
+      m_LastCoord(0, 0),
+      m_LastRealEnemyCoord(0, 0)
+{
     m_Bot.GetClient()->ReleaseKeys();
 }
 
@@ -189,7 +194,12 @@ void ChaseState::Update(DWORD dt) {
 
     if (m_Bot.GetEnemyTarget() == Coord(0, 0)) {
         client->ReleaseKeys();
-        m_Bot.SetState(std::make_shared<PatrolState>(m_Bot));
+        if (m_LastRealEnemyCoord != Coord(0, 0)) {
+            std::vector<Coord> waypoints = { m_LastRealEnemyCoord };
+            m_Bot.SetState(std::make_shared<PatrolState>(m_Bot, waypoints));
+        } else {
+            m_Bot.SetState(std::make_shared<PatrolState>(m_Bot));
+        }
         return;
     }
 
@@ -199,6 +209,8 @@ void ChaseState::Update(DWORD dt) {
     int x = pos.x;
     int y = pos.y;
     Coord enemy = client->GetRealPosition(pos, m_Bot.GetEnemyTarget(), m_Bot.GetLevel());
+
+    m_LastRealEnemyCoord = enemy;
 
     if (Util::IsClearPath(pos, enemy, RADIUS, m_Bot.GetLevel())) {
         m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
@@ -291,7 +303,7 @@ void ChaseState::Update(DWORD dt) {
     client->Up(go);
 }
 
-PatrolState::PatrolState(Bot& bot) 
+PatrolState::PatrolState(Bot& bot, std::vector<Coord> waypoints)
     : State(bot), 
       m_LastBullet(timeGetTime()),
       m_StuckTimer(0),
@@ -301,10 +313,10 @@ PatrolState::PatrolState(Bot& bot)
 
     m_Patrol = m_Bot.GetConfig().Get<bool>(_T("Patrol"));
 
-    std::string waypoints = m_Bot.GetConfig().Get<std::string>(_T("Waypoints"));
+    std::string waypoints_str = m_Bot.GetConfig().Get<std::string>(_T("Waypoints"));
     std::regex coord_re(R"::(\(([0-9]*?),\s*?([0-9]*?)\))::");
 
-    std::sregex_iterator begin(waypoints.begin(), waypoints.end(), coord_re);
+    std::sregex_iterator begin(waypoints_str.begin(), waypoints_str.end(), coord_re);
     std::sregex_iterator end;
 
     for (std::sregex_iterator iter = begin; iter != end; ++iter) {
@@ -317,7 +329,10 @@ PatrolState::PatrolState(Bot& bot)
         m_FullWaypoints.emplace_back(x, y);
     }
 
-    ResetWaypoints(false);
+    if (waypoints.size() > 0)
+        m_Waypoints = waypoints;
+    else
+        ResetWaypoints(false);
 }
 
 void PatrolState::ResetWaypoints(bool full) {
@@ -372,9 +387,6 @@ void PatrolState::Update(DWORD dt) {
 
     Coord target = m_Waypoints.front();
     Coord pos(m_Bot.GetX(), m_Bot.GetY());
-    int closedx, closedy;
-    double closedist;
-    Util::GetDistance(pos, target, &closedx, &closedy, &closedist);
 
     m_StuckTimer += dt;
 
@@ -397,9 +409,14 @@ void PatrolState::Update(DWORD dt) {
         m_StuckTimer = 0;
     }
 
+    int closedx, closedy;
+    double closedist;
+    Util::GetDistance(pos, target, &closedx, &closedy, &closedist);
+
     if (closedist <= 25) {
         m_Waypoints.erase(m_Waypoints.begin());
         if (m_Waypoints.size() == 0) return;
+        target = m_Waypoints.front();
     }
 
     if (!m_Bot.GetGrid().IsSolid(pos.x, pos.y) && m_Bot.GetGrid().IsOpen(target.x, target.y)) {
@@ -408,8 +425,10 @@ void PatrolState::Update(DWORD dt) {
         m_Plan = jps(target.x, target.y, pos.x, pos.y, m_Bot.GetGrid());
     }
 
-    if (m_Plan.size() == 0)
+    if (m_Plan.size() == 0) {
+        ResetWaypoints();
         return;
+    }
 
     Pathing::JPSNode* next_node = m_Plan.at(0);
     Coord next(next_node->x, next_node->y);
@@ -419,7 +438,7 @@ void PatrolState::Update(DWORD dt) {
 
     Util::GetDistance(pos, next, &dx, &dy, &dist);
 
-    while (dist == 0 && m_Plan.size() > 1) {
+    while (dist < 3 && m_Plan.size() > 1) {
         m_Plan.erase(m_Plan.begin());
         next_node = m_Plan.at(0);
         next = Coord(next_node->x, next_node->y);
@@ -519,7 +538,8 @@ AggressiveState::AggressiveState(Bot& bot)
       m_LastEnemyTimer(0),
       m_EnemyVelocity(0, 0),
       m_LastNonSafeTime(timeGetTime()),
-      m_NearWall(0)
+      m_NearWall(0),
+      m_LastRealEnemyCoord(0, 0)
 {
     m_RunPercent     = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
     m_XPercent       = m_Bot.GetConfig().Get<int>(_T("XPercent"));
@@ -567,7 +587,12 @@ void AggressiveState::Update(DWORD dt) {
     Coord target = m_Bot.GetEnemyTarget();
 
     if (m_Patrol && target == Coord(0, 0)) {
-        m_Bot.SetState(std::make_shared<PatrolState>(m_Bot));
+        if (m_LastRealEnemyCoord != Coord(0, 0)) {
+            std::vector<Coord> waypoints = { m_LastRealEnemyCoord };
+            m_Bot.SetState(std::make_shared<PatrolState>(m_Bot, waypoints));
+        } else {
+            m_Bot.SetState(std::make_shared<PatrolState>(m_Bot));
+        }
         client->ReleaseKeys();
         return;
     }
@@ -582,6 +607,8 @@ void AggressiveState::Update(DWORD dt) {
         int dy = info.dy;
         Coord pos(x, y);
         Coord enemy = client->GetRealPosition(pos, m_Bot.GetEnemyTarget(), m_Bot.GetLevel());
+
+        m_LastRealEnemyCoord = enemy;
 
         if (!Util::IsClearPath(pos, enemy, RADIUS, m_Bot.GetLevel())) {
             m_Bot.SetState(std::make_shared<ChaseState>(m_Bot));
@@ -714,9 +741,6 @@ void AggressiveState::Update(DWORD dt) {
 
         client->ReleaseKeys();
         
-        if (m_Patrol)
-            m_Bot.SetState(std::make_shared<PatrolState>(m_Bot));
-
         /* Warp to keep the bot in game */
         if (cur_time > m_Bot.GetLastEnemy() + 1000 * 60) {
             client->Warp();
