@@ -204,11 +204,7 @@ void ChaseState::Update(DWORD dt) {
     }
 
     Coord pos(m_Bot.GetX(), m_Bot.GetY());
-    int edx = m_Bot.GetEnemyTargetInfo().dx;
-    int edy = m_Bot.GetEnemyTargetInfo().dy;
-    int x = pos.x;
-    int y = pos.y;
-    Coord enemy = client->GetRealPosition(pos, m_Bot.GetEnemyTarget(), m_Bot.GetLevel());
+    Coord enemy = m_Bot.GetEnemyTarget();
 
     m_LastRealEnemyCoord = enemy;
 
@@ -221,10 +217,9 @@ void ChaseState::Update(DWORD dt) {
 
     // Check if stuck every 2.5 seconds
     if (m_StuckTimer >= 2500) {
-        int stuckdx, stuckdy;
         double stuckdist;
 
-        Util::GetDistance(pos, m_LastCoord, &stuckdx, &stuckdy, &stuckdist);
+        Util::GetDistance(pos, m_LastCoord, nullptr, nullptr, &stuckdist);
 
         if (stuckdist <= 10) {
             // Stuck
@@ -238,7 +233,7 @@ void ChaseState::Update(DWORD dt) {
         m_StuckTimer = 0;
     }
 
-    if (m_Bot.GetGrid().IsOpen(x, y) && m_Bot.GetGrid().IsOpen(enemy.x, enemy.y)) {
+    if (m_Bot.GetGrid().IsOpen(pos.x, pos.y) && m_Bot.GetGrid().IsOpen(enemy.x, enemy.y)) {
         Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
 
         m_Plan = jps(enemy.x, enemy.y, pos.x, pos.y, m_Bot.GetGrid());
@@ -262,9 +257,6 @@ void ChaseState::Update(DWORD dt) {
         next = Coord(next_node->x, next_node->y);
         Util::GetDistance(pos, next, &dx, &dy, &dist);
     }
-
-    dx = -dx;
-    dy = -dy;
 
     int rot = client->GetRotation();
     int target_rot = Util::GetTargetRotation(dx, dy);
@@ -392,10 +384,9 @@ void PatrolState::Update(DWORD dt) {
 
     // Check if stuck every 3.5 seconds
     if (m_StuckTimer >= 3500) {
-        int stuckdx, stuckdy;
         double stuckdist;
 
-        Util::GetDistance(pos, m_LastCoord, &stuckdx, &stuckdy, &stuckdist);
+        Util::GetDistance(pos, m_LastCoord, nullptr, nullptr, &stuckdist);
 
         if (stuckdist <= 10) {
             // Stuck
@@ -409,9 +400,8 @@ void PatrolState::Update(DWORD dt) {
         m_StuckTimer = 0;
     }
 
-    int closedx, closedy;
     double closedist;
-    Util::GetDistance(pos, target, &closedx, &closedy, &closedist);
+    Util::GetDistance(pos, target, nullptr, nullptr, &closedist);
 
     if (closedist <= 25) {
         m_Waypoints.erase(m_Waypoints.begin());
@@ -427,6 +417,7 @@ void PatrolState::Update(DWORD dt) {
 
     if (m_Plan.size() == 0) {
         ResetWaypoints();
+        client->ReleaseKeys();
         return;
     }
 
@@ -444,9 +435,6 @@ void PatrolState::Update(DWORD dt) {
         next = Coord(next_node->x, next_node->y);
         Util::GetDistance(pos, next, &dx, &dy, &dist);
     }
-
-    dx = -dx;
-    dy = -dy;
 
     int rot = client->GetRotation();
     int target_rot = Util::GetTargetRotation(dx, dy);
@@ -538,8 +526,7 @@ AggressiveState::AggressiveState(Bot& bot)
       m_LastEnemyTimer(0),
       m_EnemyVelocity(0, 0),
       m_LastNonSafeTime(timeGetTime()),
-      m_NearWall(0),
-      m_LastRealEnemyCoord(0, 0)
+      m_NearWall(0)
 {
     m_RunPercent     = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
     m_XPercent       = m_Bot.GetConfig().Get<int>(_T("XPercent"));
@@ -561,12 +548,10 @@ AggressiveState::AggressiveState(Bot& bot)
 void AggressiveState::Update(DWORD dt) {
     ClientPtr client = m_Bot.GetClient();
 
-    unsigned int x = m_Bot.GetX();
-    unsigned int y = m_Bot.GetY();
+    Coord pos(m_Bot.GetX(), m_Bot.GetY());
 
     bool insafe = client->InSafe();
     int tardist = m_TargetDist;
-
     int energypct = m_Bot.GetEnergyPercent();
 
     if (energypct < m_RunPercent && !insafe) {
@@ -585,32 +570,16 @@ void AggressiveState::Update(DWORD dt) {
     }
 
     Coord target = m_Bot.GetEnemyTarget();
-
-    if (m_Patrol && target == Coord(0, 0)) {
-        if (m_LastRealEnemyCoord != Coord(0, 0)) {
-            std::vector<Coord> waypoints = { m_LastRealEnemyCoord };
-            m_Bot.SetState(std::make_shared<PatrolState>(m_Bot, waypoints));
-        } else {
-            m_Bot.SetState(std::make_shared<PatrolState>(m_Bot));
-        }
-        client->ReleaseKeys();
-        return;
-    }
-
     DWORD cur_time = timeGetTime();
 
     /* Only update if there is a target enemy */
     if (target != Coord(0, 0)) {
-        TargetInfo info = m_Bot.GetEnemyTargetInfo();
-        double dist = info.dist;
-        int dx = info.dx;
-        int dy = info.dy;
-        Coord pos(x, y);
-        Coord enemy = client->GetRealPosition(pos, m_Bot.GetEnemyTarget(), m_Bot.GetLevel());
+        int dx, dy;
+        double dist;
 
-        m_LastRealEnemyCoord = enemy;
+        Util::GetDistance(pos, target, &dx, &dy, &dist);
 
-        if (!Util::IsClearPath(pos, enemy, RADIUS, m_Bot.GetLevel())) {
+        if (!Util::IsClearPath(pos, target, RADIUS, m_Bot.GetLevel())) {
             m_Bot.SetState(std::make_shared<ChaseState>(m_Bot));
             return;
         }
@@ -631,6 +600,7 @@ void AggressiveState::Update(DWORD dt) {
             m_LastNonSafeTime = cur_time;
         }
 
+        
         int dxchange = static_cast<int>(m_EnemyVelocity.x * (dist / m_DistFactor));
         int dychange = static_cast<int>(m_EnemyVelocity.y * (dist / m_DistFactor));
 
@@ -644,7 +614,7 @@ void AggressiveState::Update(DWORD dt) {
         int away = std::abs(rot - target_rot);
 
         /* Move bot if it's stuck at a wall */
-        if (m_MemoryScanning && PointingAtWall(rot, x, y, m_Bot.GetLevel())) {
+        if (m_MemoryScanning && PointingAtWall(rot, pos.x, pos.y, m_Bot.GetLevel())) {
             m_NearWall += dt;
             if (m_NearWall >= 1000) {
                 // Bot has been near a wall for too long
@@ -708,7 +678,7 @@ void AggressiveState::Update(DWORD dt) {
 
         /* Handle bombing */
         if (!insafe && energypct > m_StopBombing) {
-            if (!PointingAtWall(rot, x, y, m_Bot.GetLevel()) && dist >= 7)
+            if (!PointingAtWall(rot, pos.x, pos.y, m_Bot.GetLevel()) && dist >= 7)
                 client->Bomb();
         }
 
@@ -738,6 +708,17 @@ void AggressiveState::Update(DWORD dt) {
     } else {
         /* Clear input when there is no enemy */
         m_LastNonSafeTime = cur_time;
+
+        if (m_Patrol) {
+            if (m_LastEnemyPos != Coord(0, 0)) {
+                std::vector<Coord> waypoints = { m_LastEnemyPos };
+                m_Bot.SetState(std::make_shared<PatrolState>(m_Bot, waypoints));
+            } else {
+                m_Bot.SetState(std::make_shared<PatrolState>(m_Bot));
+            }
+            client->ReleaseKeys();
+            return;
+        }
 
         client->ReleaseKeys();
         

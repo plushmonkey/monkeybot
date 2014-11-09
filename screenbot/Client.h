@@ -42,8 +42,9 @@ public:
     virtual bool InShip() const = 0;
     virtual void EnterShip(int num) = 0;
 
-    virtual std::vector<Coord> GetEnemies() = 0;
-    virtual Coord GetClosestEnemy(int* dx, int* dy, double* dist) = 0;
+    virtual std::vector<Coord> GetEnemies(Coord real_pos, const Level& level) = 0;
+    virtual Coord GetClosestEnemy(Coord real_pos, const Level& level, int* dx, int* dy, double* dist) = 0;
+
     virtual Coord GetRealPosition(Coord bot_pos, Coord target, const Level& level) = 0;
 
     virtual void ReleaseKeys() = 0;
@@ -108,13 +109,15 @@ public:
     virtual bool InShip() const;
     virtual void EnterShip(int num);
 
-    virtual std::vector<Coord> GetEnemies();
-    virtual Coord GetClosestEnemy(int* dx, int* dy, double* dist);
+    virtual std::vector<Coord> GetEnemies(Coord real_pos, const Level& level);
+    virtual Coord GetClosestEnemy(Coord real_pos, const Level& level, int* dx, int* dy, double* dist);
 
     virtual Coord GetRealPosition(Coord bot_pos, Coord target, const Level& level);
 
     virtual void ReleaseKeys();
     virtual void ToggleKeys();
+
+    ScreenAreaPtr GetRadar() { return m_Radar; }
 };
 
 #endif

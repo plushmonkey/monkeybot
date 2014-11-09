@@ -142,8 +142,8 @@ void Bot::Update(DWORD dt) {
     }
 
     try {
-        std::vector<Coord> enemies = m_Client->GetEnemies();
-        m_EnemyTarget = m_Client->GetClosestEnemy(&dx, &dy, &dist);
+        std::vector<Coord> enemies = m_Client->GetEnemies(pos, m_Level);
+        m_EnemyTarget = m_Client->GetClosestEnemy(pos, m_Level, &dx, &dy, &dist);
 
         m_EnemyTargetInfo.dx = dx;
         m_EnemyTargetInfo.dy = dy;
@@ -152,7 +152,7 @@ void Bot::Update(DWORD dt) {
         SetLastEnemy(timeGetTime());
 
         if (m_PosAddr && m_Config.Get<bool>("OnlyCenter")) {
-            Coord enemy = m_Client->GetRealPosition(pos, m_EnemyTarget, m_Level);
+            Coord enemy = m_EnemyTarget;
             if (enemy.x < 320 || enemy.x >= 703 || enemy.y < 320 || enemy.x >= 703)
                 reset_target = true;
         }

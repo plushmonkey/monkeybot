@@ -7,6 +7,8 @@
 class Level;
 
 namespace Util {
+    float GetRadarPerPixel(const ScreenAreaPtr& radar, int mapzoom);
+    Coord GetBotRadarPos(Coord real_pos, const ScreenAreaPtr& radar, int mapzoom);
     int GetEnergy(ScreenAreaPtr* energyarea);
     int GetEnergyDigit(int digit, ScreenAreaPtr* energyarea);
     std::vector<Coord> GetEnemies(ScreenAreaPtr& radar);

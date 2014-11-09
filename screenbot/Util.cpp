@@ -15,13 +15,42 @@ static const std::vector<Coord> directions = {
         { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
 };
 
-Coord FindTargetPos(Coord bot_pos, Coord radar_coord, const ScreenGrabberPtr& screen, const ScreenAreaPtr& radar, const Level& level, int mapzoom) {
+float GetRadarPerPixel(const ScreenAreaPtr& radar, int mapzoom) {
     int rwidth = radar->GetWidth();
     float amountseen = (1024.0f / 2.0f) / mapzoom;
-    float per_pix = rwidth / amountseen;
+    return rwidth / amountseen;
+}
 
-    int rdx = -((rwidth / 2) - radar_coord.x);
-    int rdy = -((rwidth / 2) - radar_coord.y);
+Coord GetBotRadarPos(Coord real_pos, const ScreenAreaPtr& radar, int mapzoom) {
+    float per_pix = GetRadarPerPixel(radar, mapzoom);
+    int rwidth = radar->GetWidth();
+
+    float bot_radar_x = rwidth / 2.0f;
+    float bot_radar_y = rwidth / 2.0f;
+
+    float min_pos = (rwidth / 2) * per_pix;
+
+    if (real_pos.x < min_pos)
+        bot_radar_x *= real_pos.x / min_pos;
+    else if (real_pos.x > 1024 - min_pos)
+        bot_radar_x = (bot_radar_x * (real_pos.x / min_pos)) + (rwidth / 2);
+
+    if (real_pos.y < min_pos)
+        bot_radar_y *= real_pos.y / min_pos;
+    else if (real_pos.y > 1024 - min_pos)
+        bot_radar_y = (bot_radar_y * (real_pos.y / min_pos)) + (rwidth / 2);
+
+    return Coord(static_cast<int>(bot_radar_x), static_cast<int>(bot_radar_y));
+}
+
+Coord FindTargetPos(Coord bot_pos, Coord radar_coord, const ScreenGrabberPtr& screen, const ScreenAreaPtr& radar, const Level& level, int mapzoom) {
+    float per_pix = GetRadarPerPixel(radar, mapzoom);
+    int rwidth = radar->GetWidth();
+
+    Coord rpos = GetBotRadarPos(bot_pos, radar, mapzoom);
+
+    int rdx = -(rpos.x - radar_coord.x);
+    int rdy = -(rpos.y - radar_coord.y);
 
     Coord target(static_cast<int>(bot_pos.x + rdx * per_pix), static_cast<int>(bot_pos.y + rdy * per_pix));
 
@@ -66,10 +95,14 @@ bool InShip(const ScreenGrabberPtr& grabber) {
 }
 
 void GetDistance(Coord from, Coord to, int *dx, int *dy, double* dist) {
-    *dx = from.x - to.x;
-    *dy = from.y - to.y;
-
-    *dist = std::sqrt(*dx * *dx + *dy * *dy);
+    int cdx = -(from.x - to.x);
+    int cdy = -(from.y - to.y);
+    if (dx)
+        *dx = cdx;
+    if (dy)
+        *dy = cdy;
+    if (dist)
+        *dist = std::sqrt(cdx * cdx + cdy * cdy);
 }
 
 Coord GetClosestEnemy(const std::vector<Coord>& enemies, ScreenAreaPtr& radar, int* dx, int* dy, double* dist) {

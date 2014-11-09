@@ -146,13 +146,66 @@ void ScreenClient::EnterShip(int num) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
 
-std::vector<Coord> ScreenClient::GetEnemies() {
-    return Util::GetEnemies(m_Radar);
+std::vector<Coord> ScreenClient::GetEnemies(Coord real_pos, const Level& level) {
+    std::vector<Coord> enemies;
+
+    for (int y = 0; y < m_Radar->GetWidth(); y++) {
+        for (int x = 0; x < m_Radar->GetWidth(); x++) {
+            Pixel pix = m_Radar->GetPixel(x, y);
+            if (pix == Colors::EnemyColor[0] || pix == Colors::EnemyColor[1] || pix == Colors::EnemyBallColor) {
+                int count = 0;
+                try {
+                    Pixel pixel;
+
+                    // right
+                    pixel = m_Radar->GetPixel(x + 1, y);
+                    if (pixel == Colors::EnemyColor[0] || pixel == Colors::EnemyColor[1] || pixel == Colors::EnemyBallColor)
+                        count++;
+                    // bottom-right
+                    pixel = m_Radar->GetPixel(x + 1, y + 1);
+                    if (pixel == Colors::EnemyColor[0] || pixel == Colors::EnemyColor[1] || pixel == Colors::EnemyBallColor)
+                        count++;
+                    // bottom
+                    pixel = m_Radar->GetPixel(x, y + 1);
+                    if (pixel == Colors::EnemyColor[0] || pixel == Colors::EnemyColor[1] || pixel == Colors::EnemyBallColor)
+                        count++;
+                } catch (std::exception&) {}
+
+                if (count >= 3) {
+                    Coord coord(x, y);
+                    if (!Util::InSafe(m_Radar, coord))
+                        enemies.push_back(this->GetRealPosition(real_pos, coord, level));
+                }
+            }
+        }
+    }
+
+    if (enemies.size() == 0)
+        throw std::runtime_error("No enemies near.");
+    return enemies;
 }
 
-Coord ScreenClient::GetClosestEnemy(int* dx, int* dy, double* dist) {
-    std::vector<Coord> enemies = GetEnemies();
-    return Util::GetClosestEnemy(enemies, m_Radar, dx, dy, dist);
+Coord ScreenClient::GetClosestEnemy(Coord real_pos, const Level& level, int* dx, int* dy, double* dist) {
+    std::vector<Coord> enemies = GetEnemies(real_pos, level);
+    *dist = std::numeric_limits<double>::max();
+    Coord closest = enemies.at(0);
+    Coord radar_pos = Util::GetBotRadarPos(real_pos, m_Radar, m_MapZoom);
+
+    for (unsigned int i = 0; i < enemies.size(); i++) {
+        int cdx, cdy;
+        double cdist;
+
+        Util::GetDistance(enemies.at(i), radar_pos, &cdx, &cdy, &cdist);
+
+        if (cdist < *dist) {
+            *dist = cdist;
+            *dx = cdx;
+            *dy = cdy;
+            closest = enemies.at(i);
+        }
+    }
+
+    return closest;
 }
 
 Coord ScreenClient::GetRealPosition(Coord bot_pos, Coord target, const Level& level) {

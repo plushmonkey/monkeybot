@@ -68,7 +68,6 @@ private:
     Coord m_EnemyVelocity;
     DWORD m_LastNonSafeTime;
     DWORD m_NearWall;
-    Coord m_LastRealEnemyCoord;
 
     // Config
     int m_RunPercent;
