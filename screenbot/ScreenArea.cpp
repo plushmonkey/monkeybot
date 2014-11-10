@@ -1,4 +1,5 @@
 #include "ScreenArea.h"
+
 #include <fstream>
 
 ScreenArea::ScreenArea(HDC screendc, int x, int y, int width, int height)

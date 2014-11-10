@@ -1,11 +1,13 @@
 #include "Client.h"
+
 #include "Common.h"
-#include <iostream>
 #include "ScreenArea.h"
 #include "ScreenGrabber.h"
 #include "Util.h"
 #include "RotationStore.h"
 #include "Level.h"
+
+#include <iostream>
 #include <iostream>
 #include <thread>
 

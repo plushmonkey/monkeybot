@@ -1,14 +1,16 @@
+#include "Bot.h"
+
 #include "Common.h"
 #include "ScreenArea.h"
 #include "Keyboard.h"
 #include "WindowFinder.h"
-#include "Bot.h"
 #include "ScreenGrabber.h"
 #include "State.h"
 #include "Util.h"
 #include "Memory.h"
 #include "Client.h"
 #include "Tokenizer.h"
+
 #include <thread>
 #include <tchar.h>
 #include <iostream>
@@ -31,7 +33,9 @@ Bot::Bot(int ship)
       m_AliveTime(0),
       m_Grid(1024, 1024),
       m_LastEnemy(0),
-      m_Client(nullptr)
+      m_Client(nullptr),
+      m_Attach(false),
+      m_CenterOnly(false)
 { }
 
 ClientPtr Bot::GetClient() {
@@ -114,7 +118,7 @@ void Bot::Update(DWORD dt) {
     if (m_PosAddr && GetStateType() != StateType::MemoryState) {
         m_AliveTime += dt;
 
-        if (!InCenter() && m_Config.Get<bool>("OnlyCenter")) {
+        if (!InCenter() && m_CenterOnly && !m_Attach) {
             if (m_AliveTime < 10000 && m_PossibleAddr.size() > 1) {
                 tcout << "Bot appears to be out of center. The position address is probably wrong, trying next one." << std::endl;
                 m_PossibleAddr.erase(m_PossibleAddr.begin());
@@ -131,14 +135,9 @@ void Bot::Update(DWORD dt) {
     Coord pos(GetX(), GetY());
 
     // Attach to ticked player when in center safe
-    if (m_AliveTime > 10000 && m_Config.Get<bool>("Attach")) {
-        int spawnX = m_Config.Get<int>("SpawnX");
-        int spawnY = m_Config.Get<int>("SpawnX");
-        if (pos.x >= spawnX - 20 && pos.x <= spawnX + 20 && pos.y >= spawnY - 20 && pos.y <= spawnY + 20) {
-            m_Client->Attach();
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            m_Client->Attach();
-        }
+    if (m_Attach) {
+        if (pos.x >= m_SpawnX - 20 && pos.x <= m_SpawnX + 20 && pos.y >= m_SpawnY - 20 && pos.y <= m_SpawnY + 20)
+            SetState(std::make_shared<AttachState>(*this));
     }
 
     try {
@@ -151,7 +150,7 @@ void Bot::Update(DWORD dt) {
 
         SetLastEnemy(timeGetTime());
 
-        if (m_PosAddr && m_Config.Get<bool>("OnlyCenter")) {
+        if (m_PosAddr && m_CenterOnly) {
             Coord enemy = m_EnemyTarget;
             if (enemy.x < 320 || enemy.x >= 703 || enemy.y < 320 || enemy.x >= 703)
                 reset_target = true;
@@ -293,6 +292,11 @@ int Bot::Run() {
         m_Config.Set(_T("OnlyCenter"), _T("False"));
         m_Config.Set(_T("Patrol"), _T("False"));
     }
+
+    m_Attach = m_Config.Get<bool>("Attach");
+    m_CenterOnly = m_Config.Get<bool>("OnlyCenter");
+    m_SpawnX = m_Config.Get<int>("SpawnX");
+    m_SpawnY = m_Config.Get<int>("SpawnY");
 
     if (m_ProcessHandle)
         this->SetState(std::make_shared<MemoryState>(*this));

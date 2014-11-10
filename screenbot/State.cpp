@@ -1,16 +1,18 @@
 #include "State.h"
+
 #include "Keyboard.h"
 #include "ScreenArea.h"
 #include "ScreenGrabber.h"
 #include "Util.h"
 #include "Bot.h"
 #include "Client.h"
-#include <thread>
-#include <iostream>
-#include <tchar.h>
 #include "Memory.h"
 #include "Random.h"
 #include "Tokenizer.h"
+
+#include <thread>
+#include <iostream>
+#include <tchar.h>
 #include <regex>
 #include <cmath>
 #include <limits>
@@ -18,7 +20,7 @@
 #define RADIUS 1
 
 std::ostream& operator<<(std::ostream& out, StateType type) {
-    static std::vector<std::string> states = {"Memory", "Chase", "Patrol", "Aggressive"};
+    static std::vector<std::string> states = {"Memory", "Chase", "Patrol", "Aggressive", "Attach"};
     out << states.at(static_cast<int>(type));
     return out;
 }
@@ -106,6 +108,8 @@ void MemoryState::Update(DWORD dt) {
 
     if (m_FindSpace.size() <= 5) {
         client->Gun(GunState::Constant);
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+        client->Gun(GunState::Off);
 
         for (int i = 0; i < 25; ++i) {
             for (auto it = m_FindSpace.begin(); it != m_FindSpace.end();) {
@@ -121,8 +125,6 @@ void MemoryState::Update(DWORD dt) {
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
-
-        client->Gun(GunState::Off);
 
         // All of the addresses were discarded in the check loop
         if (m_FindSpace.size() == 0) {
@@ -143,7 +145,10 @@ void MemoryState::Update(DWORD dt) {
 
         m_Bot.SetPossibleAddr(possible);
 
-        if (m_Bot.GetConfig().Get<bool>("Patrol")) {
+        if (m_Bot.GetConfig().Get<bool>("Attach")) {
+            auto state = std::make_shared<AttachState>(m_Bot);
+            m_Bot.SetState(state);
+        } else if (m_Bot.GetConfig().Get<bool>("Patrol")) {
             auto state = std::make_shared<PatrolState>(m_Bot);
             m_Bot.SetState(state);
         } else {
@@ -158,6 +163,54 @@ void MemoryState::Update(DWORD dt) {
 State::State(Bot& bot)
     : m_Bot(bot) { }
 
+AttachState::AttachState(Bot& bot)
+    : State(bot)
+{
+    bot.GetClient()->ReleaseKeys();
+    m_SpawnX = m_Bot.GetConfig().Get<int>(_T("SpawnX"));
+    m_SpawnY = m_Bot.GetConfig().Get<int>(_T("SpawnY"));
+}
+
+void AttachState::Update(DWORD dt) {
+    ClientPtr client = m_Bot.GetClient();
+    Coord pos(m_Bot.GetX(), m_Bot.GetY());
+
+    if (!(pos.x >= m_SpawnX - 20 && pos.x <= m_SpawnX + 20 &&
+          pos.y >= m_SpawnY - 20 && pos.y <= m_SpawnY + 20))
+    {
+        // Detach if previous attach was successful
+        client->Attach();
+        m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
+        return;
+    }
+
+    client->SetXRadar(false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    if (m_Bot.GetEnergyPercent() == 100) {
+        client->Attach();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+}
+
+
+double GetPlanDistance(const Pathing::Plan& plan) {
+    if (plan.size() < 2) return 0.0;
+
+    Coord last(plan.at(0)->x, plan.at(0)->y);
+    double total_dist = 0.0;
+    
+    for (const auto& node : plan) {
+        Coord coord(node->x, node->y);
+        double dist = 0.0;
+
+        Util::GetDistance(last, coord, nullptr, nullptr, &dist);
+
+        total_dist += dist;
+        last = coord;
+    }
+    return total_dist;
+}
+
 ChaseState::ChaseState(Bot& bot) 
     : State(bot), 
       m_StuckTimer(0), 
@@ -165,28 +218,8 @@ ChaseState::ChaseState(Bot& bot)
       m_LastRealEnemyCoord(0, 0)
 {
     m_Bot.GetClient()->ReleaseKeys();
-}
 
-bool Enclosed(Coord pos, int radius, Pathing::Grid<short>& grid) {
-    Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
-
-    static std::vector<Coord> directions = {
-        { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
-        { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
-    };
-
-    if (grid.IsSolid(pos.x, pos.y)) return true;
-
-    for (Coord& dir : directions) {
-        int solids = 0;
-        for (int i = 0; i < radius; ++i) {
-            if (!grid.IsOpen(pos.x + dir.x * i, pos.y + dir.y * i))
-                solids++;
-        }
-
-        if (solids != radius) return false;
-    }
-    return true;
+    m_MinGunRange = m_Bot.GetConfig().Get<int>(_T("MinGunRange"));
 }
 
 void ChaseState::Update(DWORD dt) {
@@ -263,12 +296,14 @@ void ChaseState::Update(DWORD dt) {
 
     int away = std::abs(rot - target_rot);
 
-    if (dist < 20 && !client->InSafe(pos, m_Bot.GetLevel())) {
+    double total_dist = GetPlanDistance(m_Plan);
+
+    bool fire = m_MinGunRange == 0 || total_dist < m_MinGunRange;
+
+    if (fire && !client->InSafe(pos, m_Bot.GetLevel())) {
         client->Gun(GunState::Tap, m_Bot.GetEnergyPercent());
         client->Gun(GunState::Off);
     }
-
-    bool go = true;
 
     if (rot != -1 && rot != target_rot) {
         int dir = 0;
@@ -286,13 +321,12 @@ void ChaseState::Update(DWORD dt) {
             client->Right(true);
             client->Left(false);
         } 
-    //    if (dist < 7) go = false;
     } else {
         client->Right(false);
         client->Left(false);
     }
 
-    client->Up(go);
+    client->Up(true);
 }
 
 PatrolState::PatrolState(Bot& bot, std::vector<Coord> waypoints)
@@ -441,8 +475,6 @@ void PatrolState::Update(DWORD dt) {
 
     int away = std::abs(rot - target_rot);
 
-    bool go = true;
-
     if (rot != -1 && rot != target_rot) {
         int dir = 0;
 
@@ -459,25 +491,12 @@ void PatrolState::Update(DWORD dt) {
             client->Right(true);
             client->Left(false);
         }
-        //if (dist < 7) go = false;
     } else {
         client->Right(false);
         client->Left(false);
     }
 
-    client->Up(go);
-}
-
-bool NearWall(unsigned x, unsigned y, const Level& level) {
-    bool nw = level.IsSolid(x - 1, y - 1);
-    bool n = level.IsSolid(x, y - 1);
-    bool ne = level.IsSolid(x + 1, y - 1);
-    bool e = level.IsSolid(x + 1, y);
-    bool se = level.IsSolid(x + 1, y + 1);
-    bool s = level.IsSolid(x, y + 1);
-    bool sw = level.IsSolid(x - 1, y + 1);
-    bool w = level.IsSolid(x - 1, y);
-    return nw || n || ne || e || se || s || sw || w;
+    client->Up(true);
 }
 
 bool PointingAtWall(int rot, unsigned x, unsigned y, const Level& level) {

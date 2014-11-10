@@ -1,4 +1,5 @@
 #include "Keyboard.h"
+
 #include <thread>
 
 INPUT Keyboard::GetInput(int keycode) {

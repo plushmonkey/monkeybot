@@ -3,8 +3,9 @@
 
 #include "Keyboard.h"
 #include "Common.h"
-#include <vector>
 #include "Pathing.h"
+
+#include <vector>
 
 class Bot;
 
@@ -12,7 +13,8 @@ enum class StateType {
     MemoryState,
     ChaseState,
     PatrolState,
-    AggressiveState
+    AggressiveState,
+    AttachState
 };
 
 std::ostream& operator<<(std::ostream& out, StateType type);
@@ -30,12 +32,24 @@ public:
 };
 typedef std::shared_ptr<State> StatePtr;
 
+class AttachState : public State {
+private:
+    int m_SpawnX;
+    int m_SpawnY;
+
+public:
+    AttachState(Bot& bot);
+    virtual void Update(DWORD dt);
+    virtual StateType GetType() const { return StateType::AttachState; }
+};
+
 class ChaseState : public State {
 private:
     Pathing::Plan m_Plan;
     DWORD m_StuckTimer;
     Coord m_LastCoord;
     Coord m_LastRealEnemyCoord;
+    int m_MinGunRange;
 
 public:
     ChaseState(Bot& bot);

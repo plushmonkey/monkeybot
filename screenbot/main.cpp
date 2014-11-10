@@ -1,5 +1,5 @@
-﻿#include "Common.h"
-#include "Bot.h"
+﻿#include "Bot.h"
+
 #include <tchar.h>
 #include <iostream>
 

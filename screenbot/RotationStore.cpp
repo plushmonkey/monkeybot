@@ -1,8 +1,10 @@
 #include "RotationStore.h"
+
 #include "Common.h"
+#include "Tokenizer.h"
+
 #include <vector>
 #include <string>
-#include "Tokenizer.h"
 
 namespace Ships {
 

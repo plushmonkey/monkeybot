@@ -1,4 +1,5 @@
 #include "Pathing.h"
+
 #include <vector>
 #include <ostream>
 #include <iostream>

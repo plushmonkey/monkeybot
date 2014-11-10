@@ -2,6 +2,7 @@
 #define SCREENGRABBER_H_
 
 #include "Common.h"
+
 #include <Windows.h>
 
 class ScreenArea;

@@ -1,9 +1,10 @@
 #ifndef LEVEL_H_
 #define LEVEL_H_
 
-#include <string>
 #include "Common.h"
 #include "Pathing.h"
+
+#include <string>
 
 #pragma pack(push, 1)
 struct Tile {

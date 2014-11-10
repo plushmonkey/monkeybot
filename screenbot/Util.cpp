@@ -1,10 +1,12 @@
 #include "Util.h"
+
 #include "ScreenArea.h"
 #include "ScreenGrabber.h"
+#include "Level.h"
+
 #include <limits>
 #include <iostream>
 #include <map>
-#include "Level.h"
 
 static const int ShipRadius[8] = { 15, 15, 30, 30, 21, 21, 39 ,11 };
 
@@ -81,15 +83,6 @@ bool XRadarOn(const ScreenGrabberPtr& grabber) {
     return true;
 }
 
-bool PlayerInSafe(const ScreenAreaPtr& player) {
-    try {
-        player->Find(Colors::SafeColor);
-        return true;
-    } catch (const std::exception&) {
-        return false;
-    }
-}
-
 bool InShip(const ScreenGrabberPtr& grabber) {
     int x = grabber->GetWidth() - 8;
     int y = 25;
@@ -106,28 +99,6 @@ void GetDistance(Coord from, Coord to, int *dx, int *dy, double* dist) {
         *dy = cdy;
     if (dist)
         *dist = std::sqrt(cdx * cdx + cdy * cdy);
-}
-
-Coord GetClosestEnemy(const std::vector<Coord>& enemies, ScreenAreaPtr& radar, int* dx, int* dy, double* dist) {
-    *dist = std::numeric_limits<double>::max();
-    Coord closest = enemies.at(0);
-    int radar_center = static_cast<int>(std::ceil(radar->GetWidth() / 2.0));
-
-    for (unsigned int i = 0; i < enemies.size(); i++) {
-        int cdx, cdy;
-        double cdist;
-
-        GetDistance(enemies.at(i), Coord(radar_center, radar_center), &cdx, &cdy, &cdist);
-
-        if (cdist < *dist) {
-            *dist = cdist;
-            *dx = cdx;
-            *dy = cdy;
-            closest = enemies.at(i);
-        }
-    }
-
-    return closest;
 }
 
 int GetTargetRotation(int dx, int dy) {
@@ -170,45 +141,6 @@ bool InSafe(const ScreenArea::Ptr& area, Coord coord) {
     }
 
     return false;
-}
-
-std::vector<Coord> GetEnemies(ScreenArea::Ptr& radar) {
-    std::vector<Coord> enemies;
-
-    for (int y = 0; y < radar->GetWidth(); y++) {
-        for (int x = 0; x < radar->GetWidth(); x++) {
-            Pixel pix = radar->GetPixel(x, y);
-            if (pix == Colors::EnemyColor[0] || pix == Colors::EnemyColor[1] || pix == Colors::EnemyBallColor) {
-                int count = 0;
-                try {
-                    Pixel pixel;
-
-                    // right
-                    pixel = radar->GetPixel(x + 1, y);
-                    if (pixel == Colors::EnemyColor[0] || pixel == Colors::EnemyColor[1] || pixel == Colors::EnemyBallColor)
-                        count++;
-                    // bottom-right
-                    pixel = radar->GetPixel(x + 1, y + 1);
-                    if (pixel == Colors::EnemyColor[0] || pixel == Colors::EnemyColor[1] || pixel == Colors::EnemyBallColor)
-                        count++;
-                    // bottom
-                    pixel = radar->GetPixel(x, y + 1);
-                    if (pixel == Colors::EnemyColor[0] || pixel == Colors::EnemyColor[1] || pixel == Colors::EnemyBallColor)
-                        count++;
-                } catch (std::exception&) {}
-
-                if (count >= 3) {
-                    Coord coord(x, y);
-                    if (!InSafe(radar, coord))
-                        enemies.push_back(coord);
-                }
-            }
-        }
-    }
-
-    if (enemies.size() == 0)
-        throw std::runtime_error("No enemies near.");
-    return enemies;
 }
 
 int GetEnergyDigit(int digit, ScreenAreaPtr* energyarea) {

@@ -2,6 +2,7 @@
 #define WINDOWFINDER_H_
 
 #include "Common.h"
+
 #include <Windows.h>
 #include <map>
 

@@ -1,14 +1,15 @@
 #ifndef BOT_H_
 #define BOT_H_
 
-#include <memory>
 #include "WindowFinder.h"
 #include "Keyboard.h"
 #include "State.h"
-#include <vector>
-#include <Windows.h>
 #include "Config.h"
 #include "Level.h"
+
+#include <memory>
+#include <vector>
+#include <Windows.h>
 
 struct TargetInfo {
     int dx;
@@ -22,24 +23,26 @@ class Bot {
 private:
     WindowFinder m_Finder;
     HWND m_Window;
-
     StatePtr m_State;
     int m_ShipNum;
     Coord m_EnemyTarget;
     TargetInfo m_EnemyTargetInfo;
     int m_MaxEnergy;
     int m_Energy;
-    Config m_Config;
     Level m_Level;
     DWORD m_AliveTime;
     Pathing::Grid<short> m_Grid;
-
     DWORD m_LastEnemy;
+
+    Config m_Config;
+    bool m_Attach;
+    bool m_CenterOnly;
+    int m_SpawnX;
+    int m_SpawnY;
 
     ClientPtr m_Client;
 
     HANDLE m_ProcessHandle;
-
     std::vector<unsigned> m_PossibleAddr;
     unsigned int m_PosAddr;
 

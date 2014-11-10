@@ -1,4 +1,5 @@
 #include "ScreenGrabber.h"
+
 #include "ScreenArea.h"
 
 ScreenGrabber::ScreenGrabber(HWND hwnd)

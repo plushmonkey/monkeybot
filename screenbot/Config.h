@@ -1,9 +1,10 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
+#include "Common.h"
+
 #include <map>
 #include <string>
-#include "Common.h"
 #include <tchar.h>
 
 namespace Convert {
