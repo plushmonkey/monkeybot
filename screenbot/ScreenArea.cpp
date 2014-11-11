@@ -89,11 +89,11 @@ bool ScreenArea::Save(const tstring& filename) {
     return true;
 }
 
-Coord ScreenArea::Find(Pixel pixel) {
+Vec2 ScreenArea::Find(Pixel pixel) {
     for (int y = 0; y < m_Height; y++) {
         for (int x = 0; x < m_Width; x++) {
             if (GetPixel(x, y) == pixel)
-                return Coord(x, y);
+                return Vec2(static_cast<float>(x), static_cast<float>(y));
         }
     }
     throw std::runtime_error("Could not find pixel.");

@@ -47,8 +47,8 @@ class ChaseState : public State {
 private:
     Pathing::Plan m_Plan;
     DWORD m_StuckTimer;
-    Coord m_LastCoord;
-    Coord m_LastRealEnemyCoord;
+    Vec2 m_LastCoord;
+    Vec2 m_LastRealEnemyCoord;
     int m_MinGunRange;
 
 public:
@@ -59,17 +59,17 @@ public:
 
 class PatrolState : public State {
 private:
-    std::vector<Coord> m_Waypoints;
-    std::vector<Coord> m_FullWaypoints;
+    std::vector<Vec2> m_Waypoints;
+    std::vector<Vec2> m_FullWaypoints;
     Pathing::Plan m_Plan;
     DWORD m_LastBullet;
     bool m_Patrol;
 
-    Coord m_LastCoord;
+    Vec2 m_LastCoord;
     DWORD m_StuckTimer;
 
 public:
-    PatrolState(Bot& bot, std::vector<Coord> waypoints = std::vector<Coord>());
+    PatrolState(Bot& bot, std::vector<Vec2> waypoints = std::vector<Vec2>());
     virtual void Update(DWORD dt);
     void ResetWaypoints(bool full = true);
     virtual StateType GetType() const { return StateType::PatrolState; }
@@ -77,9 +77,9 @@ public:
 
 class AggressiveState : public State {
 private:
-    Coord m_LastEnemyPos;
+    Vec2 m_LastEnemyPos;
     DWORD m_LastEnemyTimer;
-    Coord m_EnemyVelocity;
+    Vec2 m_EnemyVelocity;
     DWORD m_LastNonSafeTime;
     DWORD m_NearWall;
 

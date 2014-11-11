@@ -173,7 +173,7 @@ AttachState::AttachState(Bot& bot)
 
 void AttachState::Update(DWORD dt) {
     ClientPtr client = m_Bot.GetClient();
-    Coord pos(m_Bot.GetX(), m_Bot.GetY());
+    Vec2 pos = m_Bot.GetPos();
 
     if (!(pos.x >= m_SpawnX - 20 && pos.x <= m_SpawnX + 20 &&
           pos.y >= m_SpawnY - 20 && pos.y <= m_SpawnY + 20))
@@ -196,11 +196,11 @@ void AttachState::Update(DWORD dt) {
 double GetPlanDistance(const Pathing::Plan& plan) {
     if (plan.size() < 2) return 0.0;
 
-    Coord last(plan.at(0)->x, plan.at(0)->y);
+    Vec2 last(plan.at(0)->x, plan.at(0)->y);
     double total_dist = 0.0;
     
     for (const auto& node : plan) {
-        Coord coord(node->x, node->y);
+        Vec2 coord(node->x, node->y);
         double dist = 0.0;
 
         Util::GetDistance(last, coord, nullptr, nullptr, &dist);
@@ -225,10 +225,10 @@ ChaseState::ChaseState(Bot& bot)
 void ChaseState::Update(DWORD dt) {
     ClientPtr client = m_Bot.GetClient();
 
-    if (m_Bot.GetEnemyTarget() == Coord(0, 0)) {
+    if (m_Bot.GetEnemyTarget() == Vec2(0, 0)) {
         client->ReleaseKeys();
-        if (m_LastRealEnemyCoord != Coord(0, 0)) {
-            std::vector<Coord> waypoints = { m_LastRealEnemyCoord };
+        if (m_LastRealEnemyCoord != Vec2(0, 0)) {
+            std::vector<Vec2> waypoints = { m_LastRealEnemyCoord };
             m_Bot.SetState(std::make_shared<PatrolState>(m_Bot, waypoints));
         } else {
             m_Bot.SetState(std::make_shared<PatrolState>(m_Bot));
@@ -236,8 +236,8 @@ void ChaseState::Update(DWORD dt) {
         return;
     }
 
-    Coord pos(m_Bot.GetX(), m_Bot.GetY());
-    Coord enemy = m_Bot.GetEnemyTarget();
+    Vec2 pos = m_Bot.GetPos();
+    Vec2 enemy = m_Bot.GetEnemyTarget();
 
     m_LastRealEnemyCoord = enemy;
 
@@ -266,19 +266,19 @@ void ChaseState::Update(DWORD dt) {
         m_StuckTimer = 0;
     }
 
-    if (m_Bot.GetGrid().IsOpen(pos.x, pos.y) && m_Bot.GetGrid().IsOpen(enemy.x, enemy.y)) {
+    if (m_Bot.GetGrid().IsOpen((short)pos.x, (short)pos.y) && m_Bot.GetGrid().IsOpen((short)enemy.x, (short)enemy.y)) {
         Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
 
-        m_Plan = jps(enemy.x, enemy.y, pos.x, pos.y, m_Bot.GetGrid());
+        m_Plan = jps((short)enemy.x, (short)enemy.y, (short)pos.x, (short)pos.y, m_Bot.GetGrid());
     } else {
         if (m_Plan.size() == 0)
-            m_Plan.push_back(m_Bot.GetGrid().GetNode(enemy.x, enemy.y));
+            m_Plan.push_back(m_Bot.GetGrid().GetNode((short)enemy.x, (short)enemy.y));
     }
 
     if (m_Plan.size() == 0) return;
 
     Pathing::JPSNode* next_node = m_Plan.at(0);
-    Coord next(next_node->x, next_node->y);
+    Vec2 next(next_node->x, next_node->y);
 
     int dx, dy;
     double dist = 0.0;
@@ -287,7 +287,7 @@ void ChaseState::Update(DWORD dt) {
     while (dist < 3 && m_Plan.size() > 1) {
         m_Plan.erase(m_Plan.begin());
         next_node = m_Plan.at(0);
-        next = Coord(next_node->x, next_node->y);
+        next = Vec2(next_node->x, next_node->y);
         Util::GetDistance(pos, next, &dx, &dy, &dist);
     }
 
@@ -329,7 +329,7 @@ void ChaseState::Update(DWORD dt) {
     client->Up(true);
 }
 
-PatrolState::PatrolState(Bot& bot, std::vector<Coord> waypoints)
+PatrolState::PatrolState(Bot& bot, std::vector<Vec2> waypoints)
     : State(bot), 
       m_LastBullet(timeGetTime()),
       m_StuckTimer(0),
@@ -352,7 +352,7 @@ PatrolState::PatrolState(Bot& bot, std::vector<Coord> waypoints)
         int x = strtol(xstr.c_str(), nullptr, 10);
         int y = strtol(ystr.c_str(), nullptr, 10);
 
-        m_FullWaypoints.emplace_back(x, y);
+        m_FullWaypoints.emplace_back((float)x, (float)y);
     }
 
     if (waypoints.size() > 0)
@@ -367,9 +367,9 @@ void PatrolState::ResetWaypoints(bool full) {
     if (full) return;
 
     double closestdist = std::numeric_limits<double>::max();
-    std::vector<Coord>::iterator closest = m_Waypoints.begin();
+    std::vector<Vec2>::iterator closest = m_Waypoints.begin();
 
-    Coord pos(m_Bot.GetX(), m_Bot.GetY());
+    Vec2 pos = m_Bot.GetPos();
 
     // Find the closet waypoint that isn't the one just visited
     for (auto i = m_Waypoints.begin(); i != m_Waypoints.end(); ++i) {
@@ -392,7 +392,7 @@ void PatrolState::ResetWaypoints(bool full) {
 void PatrolState::Update(DWORD dt) {
     ClientPtr client = m_Bot.GetClient();
 
-    if (!m_Patrol || m_Bot.GetEnemyTarget() != Coord(0, 0)) {
+    if (!m_Patrol || m_Bot.GetEnemyTarget() != Vec2(0, 0)) {
         // Target found, switch to aggressive
         m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
         return;
@@ -411,8 +411,8 @@ void PatrolState::Update(DWORD dt) {
         m_LastBullet = timeGetTime();
     }
 
-    Coord target = m_Waypoints.front();
-    Coord pos(m_Bot.GetX(), m_Bot.GetY());
+    Vec2 target = m_Waypoints.front();
+    Vec2 pos = m_Bot.GetPos();
 
     m_StuckTimer += dt;
 
@@ -443,10 +443,10 @@ void PatrolState::Update(DWORD dt) {
         target = m_Waypoints.front();
     }
 
-    if (!m_Bot.GetGrid().IsSolid(pos.x, pos.y) && m_Bot.GetGrid().IsOpen(target.x, target.y)) {
+    if (!m_Bot.GetGrid().IsSolid((short)pos.x, (short)pos.y) && m_Bot.GetGrid().IsOpen((short)target.x, (short)target.y)) {
         Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
 
-        m_Plan = jps(target.x, target.y, pos.x, pos.y, m_Bot.GetGrid());
+        m_Plan = jps((short)target.x, (short)target.y, (short)pos.x, (short)pos.y, m_Bot.GetGrid());
     }
 
     if (m_Plan.size() == 0) {
@@ -456,7 +456,7 @@ void PatrolState::Update(DWORD dt) {
     }
 
     Pathing::JPSNode* next_node = m_Plan.at(0);
-    Coord next(next_node->x, next_node->y);
+    Vec2 next(next_node->x, next_node->y);
 
     int dx, dy;
     double dist = 0.0;
@@ -466,7 +466,7 @@ void PatrolState::Update(DWORD dt) {
     while (dist < 3 && m_Plan.size() > 1) {
         m_Plan.erase(m_Plan.begin());
         next_node = m_Plan.at(0);
-        next = Coord(next_node->x, next_node->y);
+        next = Vec2(next_node->x, next_node->y);
         Util::GetDistance(pos, next, &dx, &dy, &dist);
     }
 
@@ -564,10 +564,53 @@ AggressiveState::AggressiveState(Bot& bot)
     if (m_DistFactor < 1) m_DistFactor = 10;
 }
 
+bool CalculateShot(const Vec2& pShooter, const Vec2& pTarget, const Vec2& vTarget, double projectileSpeed, Vec2& solution) {
+    float vx = vTarget.x;
+    float vy = vTarget.y;
+
+    Vec2 R = pTarget - pShooter;
+    double a = vx * vx + vy * vy - projectileSpeed * projectileSpeed;
+    double b = 2 * (R.x * vx + R.y * vy);
+    double c = R.x * R.x + R.y * R.y;
+    double tBullet = 0;
+
+    if (R.LengthSquared() < 2 * DBL_MIN) {
+        return false;
+    }
+
+    if (std::fabs(a) < 2 * DBL_MIN) {
+        if (std::fabs(b) < 2 * DBL_MIN)
+            return false;
+        tBullet = -c / b;
+    } else {
+        double discriminant = b * b - 4 * a * c;
+        if (discriminant < 0)
+            return false;
+
+        if (discriminant > 0) {
+            double quad = std::sqrt(discriminant);
+            double tBullet1 = (-b + quad) / (2 * a);
+            double tBullet2 = (-b - quad) / (2 * a);
+            if (tBullet1 < tBullet2 && tBullet1 >= 0)
+                tBullet = tBullet1;
+            else
+                tBullet = tBullet2;
+        } else {
+            tBullet = -b / (2 * a);
+        }
+    }
+
+    if (tBullet < 0)
+        return false;
+
+    solution = pTarget + static_cast<float>(tBullet) * vTarget;
+    return true;
+}
+
 void AggressiveState::Update(DWORD dt) {
     ClientPtr client = m_Bot.GetClient();
 
-    Coord pos(m_Bot.GetX(), m_Bot.GetY());
+    Vec2 pos = m_Bot.GetPos();
 
     bool insafe = client->InSafe(pos, m_Bot.GetLevel());
     int tardist = m_TargetDist;
@@ -588,11 +631,11 @@ void AggressiveState::Update(DWORD dt) {
         return;
     }
 
-    Coord target = m_Bot.GetEnemyTarget();
+    Vec2 target = m_Bot.GetEnemyTarget();
     DWORD cur_time = timeGetTime();
 
     /* Only update if there is a target enemy */
-    if (target != Coord(0, 0)) {
+    if (target != Vec2(0, 0)) {
         int dx, dy;
         double dist;
 
@@ -603,11 +646,11 @@ void AggressiveState::Update(DWORD dt) {
             return;
         }
         
-        if (cur_time > m_LastEnemyTimer + 500) {
-            m_EnemyVelocity.x = target.x - m_LastEnemyPos.x;
-            m_EnemyVelocity.y = target.y - m_LastEnemyPos.y;
-            m_LastEnemyTimer = cur_time;
+        m_LastEnemyTimer += dt;
+        if (m_LastEnemyTimer >= 1000) {
+            m_EnemyVelocity = (target - m_LastEnemyPos) / (m_LastEnemyTimer / 1000.0f);
             m_LastEnemyPos = target;
+            m_LastEnemyTimer = 0;
         }
 
         if (!insafe)
@@ -619,21 +662,30 @@ void AggressiveState::Update(DWORD dt) {
             m_LastNonSafeTime = cur_time;
         }
 
+        int projectileSpeed = 3500 / 16 / 10;
+        Vec2 solution;
+
+        // Assume enemy slowed down when near
+        if (CalculateShot(pos, target, m_EnemyVelocity * .5f, projectileSpeed, solution)) {
+            dx = -(int)(pos.x - solution.x);
+            dy = -(int)(pos.y - solution.y);
+        } else {
+            int dxchange = static_cast<int>(m_EnemyVelocity.x * (dist / m_DistFactor));
+            int dychange = static_cast<int>(m_EnemyVelocity.y * (dist / m_DistFactor));
+
+            if (std::abs(m_EnemyVelocity.x) < 15)
+                dx += dxchange;
+            if (std::abs(m_EnemyVelocity.y) < 15)
+                dy += dychange;
+        }
+
         
-        int dxchange = static_cast<int>(m_EnemyVelocity.x * (dist / m_DistFactor));
-        int dychange = static_cast<int>(m_EnemyVelocity.y * (dist / m_DistFactor));
-
-        if (std::abs(m_EnemyVelocity.x) < 15)
-            dx += dxchange;
-        if (std::abs(m_EnemyVelocity.y) < 15)
-            dy += dychange;
-
-        int target_rot = Util::GetTargetRotation(dx, dy);
         int rot = client->GetRotation();
+        int target_rot = Util::GetTargetRotation(dx, dy);
         int away = std::abs(rot - target_rot);
-
+        
         /* Move bot if it's stuck at a wall */
-        if (m_MemoryScanning && PointingAtWall(rot, pos.x, pos.y, m_Bot.GetLevel())) {
+        if (m_MemoryScanning && PointingAtWall(rot, (unsigned)pos.x, (unsigned)pos.y, m_Bot.GetLevel())) {
             m_NearWall += dt;
             if (m_NearWall >= 1000) {
                 // Bot has been near a wall for too long
@@ -697,7 +749,7 @@ void AggressiveState::Update(DWORD dt) {
 
         /* Handle bombing */
         if (!insafe && energypct > m_StopBombing) {
-            if (!PointingAtWall(rot, pos.x, pos.y, m_Bot.GetLevel()) && dist >= 7)
+            if (!PointingAtWall(rot, (unsigned)pos.x, (unsigned)pos.y, m_Bot.GetLevel()) && dist >= 7)
                 client->Bomb();
         }
 
@@ -729,8 +781,8 @@ void AggressiveState::Update(DWORD dt) {
         m_LastNonSafeTime = cur_time;
 
         if (m_Patrol) {
-            if (m_LastEnemyPos != Coord(0, 0)) {
-                std::vector<Coord> waypoints = { m_LastEnemyPos };
+            if (m_LastEnemyPos != Vec2(0, 0)) {
+                std::vector<Vec2> waypoints = { m_LastEnemyPos };
                 m_Bot.SetState(std::make_shared<PatrolState>(m_Bot, waypoints));
             } else {
                 m_Bot.SetState(std::make_shared<PatrolState>(m_Bot));

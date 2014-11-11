@@ -34,7 +34,7 @@ public:
     Pixel ScreenArea::GetPixel(int x, int y);
     ScreenArea::Ptr GetArea(int x, int y, int width, int height);
     bool Save(const tstring& filename);
-    Coord Find(Pixel pixel);
+    Vec2 Find(Pixel pixel);
 };
 
 

@@ -35,7 +35,9 @@ Bot::Bot(int ship)
       m_LastEnemy(0),
       m_Client(nullptr),
       m_Attach(false),
-      m_CenterOnly(false)
+      m_CenterOnly(false),
+      m_Velocity(0, 0),
+      m_LastPos(0, 0)
 { }
 
 ClientPtr Bot::GetClient() {
@@ -132,7 +134,15 @@ void Bot::Update(DWORD dt) {
     }
 
 
-    Coord pos(GetX(), GetY());
+    Vec2 pos = GetPos();
+
+    m_VelocityTimer += dt;
+
+    if (m_VelocityTimer >= 1000) {
+        m_Velocity = (pos - m_LastPos) / (m_VelocityTimer / 1000.0f);
+        m_LastPos = pos;
+        m_VelocityTimer = 0;
+    }
 
     // Attach to ticked player when in center safe
     if (m_Attach) {
@@ -141,7 +151,7 @@ void Bot::Update(DWORD dt) {
     }
 
     try {
-        std::vector<Coord> enemies = m_Client->GetEnemies(pos, m_Level);
+        std::vector<Vec2> enemies = m_Client->GetEnemies(pos, m_Level);
         m_EnemyTarget = m_Client->GetClosestEnemy(pos, m_Level, &dx, &dy, &dist);
 
         m_EnemyTargetInfo.dx = dx;
@@ -151,7 +161,7 @@ void Bot::Update(DWORD dt) {
         SetLastEnemy(timeGetTime());
 
         if (m_PosAddr && m_CenterOnly) {
-            Coord enemy = m_EnemyTarget;
+            Vec2 enemy = m_EnemyTarget;
             if (enemy.x < 320 || enemy.x >= 703 || enemy.y < 320 || enemy.x >= 703)
                 reset_target = true;
         }
@@ -161,7 +171,7 @@ void Bot::Update(DWORD dt) {
     }
 
     if (reset_target)
-        m_EnemyTarget = Coord(0, 0);
+        m_EnemyTarget = Vec2(0, 0);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
     m_State->Update(dt);

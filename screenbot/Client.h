@@ -4,6 +4,7 @@
 #include "Common.h"
 #include "Config.h"
 #include "Keyboard.h"
+#include "PlayerList.h"
 
 #include <Windows.h>
 #include <vector>
@@ -31,7 +32,7 @@ public:
     
     virtual int GetEnergy() = 0;
     virtual int GetRotation() = 0;
-    virtual bool InSafe(Coord real_pos, const Level& level) = 0;
+    virtual bool InSafe(Vec2 real_pos, const Level& level) = 0;
 
     virtual void Up(bool val) = 0;
     virtual void Down(bool val) = 0;
@@ -43,10 +44,10 @@ public:
     virtual bool InShip() const = 0;
     virtual void EnterShip(int num) = 0;
 
-    virtual std::vector<Coord> GetEnemies(Coord real_pos, const Level& level) = 0;
-    virtual Coord GetClosestEnemy(Coord real_pos, const Level& level, int* dx, int* dy, double* dist) = 0;
+    virtual std::vector<Vec2> GetEnemies(Vec2 real_pos, const Level& level) = 0;
+    virtual Vec2 GetClosestEnemy(Vec2 real_pos, const Level& level, int* dx, int* dy, double* dist) = 0;
 
-    virtual Coord GetRealPosition(Coord bot_pos, Coord target, const Level& level) = 0;
+    virtual Vec2 GetRealPosition(Vec2 bot_pos, Vec2 target, const Level& level) = 0;
 
     virtual void ReleaseKeys() = 0;
     virtual void ToggleKeys() = 0;
@@ -67,6 +68,7 @@ private:
     ScreenAreaPtr m_Ship;
     ScreenAreaPtr m_Player;
     ScreenAreaPtr m_EnergyArea[4];
+    PlayerList m_PlayerList;
 
     DWORD m_LastBullet;
     DWORD m_LastBomb;
@@ -98,7 +100,7 @@ public:
 
     virtual int GetEnergy();
     virtual int GetRotation();
-    virtual bool InSafe(Coord real_pos, const Level& level);
+    virtual bool InSafe(Vec2 real_pos, const Level& level);
 
     virtual void Up(bool val);
     virtual void Down(bool val);
@@ -110,10 +112,10 @@ public:
     virtual bool InShip() const;
     virtual void EnterShip(int num);
 
-    virtual std::vector<Coord> GetEnemies(Coord real_pos, const Level& level);
-    virtual Coord GetClosestEnemy(Coord real_pos, const Level& level, int* dx, int* dy, double* dist);
+    virtual std::vector<Vec2> GetEnemies(Vec2 real_pos, const Level& level);
+    virtual Vec2 GetClosestEnemy(Vec2 real_pos, const Level& level, int* dx, int* dy, double* dist);
 
-    virtual Coord GetRealPosition(Coord bot_pos, Coord target, const Level& level);
+    virtual Vec2 GetRealPosition(Vec2 bot_pos, Vec2 target, const Level& level);
 
     virtual void ReleaseKeys();
     virtual void ToggleKeys();

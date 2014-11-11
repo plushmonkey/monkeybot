@@ -1,5 +1,8 @@
 ﻿#include "Bot.h"
 
+#include "Common.h"
+#include "Font.h"
+
 #include <tchar.h>
 #include <iostream>
 
@@ -21,7 +24,14 @@ int Application::Run() {
 
 int wmain(int argc, wchar_t* argv[]) {
     Application app;
-    
+
+    Fonts::TallFont = new Font(7, 10);
+
+    if (!Fonts::TallFont->Load("fonts\\tallfont.bmp", 2)) {
+        std::cerr << "Could not load fonts\\tallfont.bmp" << std::endl;
+        std::abort();
+    }
+
 #ifdef UNICODE
     _setmode(_fileno(stdout), _O_U16TEXT);
 #endif

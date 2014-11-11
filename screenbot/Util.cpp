@@ -12,7 +12,7 @@ static const int ShipRadius[8] = { 15, 15, 30, 30, 21, 21, 39 ,11 };
 
 namespace Util {
 
-static const std::vector<Coord> directions = {
+static const std::vector<Vec2> directions = {
         { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
         { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
 };
@@ -23,7 +23,11 @@ float GetRadarPerPixel(const ScreenAreaPtr& radar, int mapzoom) {
     return rwidth / amountseen;
 }
 
-Coord GetBotRadarPos(Coord real_pos, const ScreenAreaPtr& radar, int mapzoom) {
+int ContRotToDegrees(int rot) {
+    return (40 - ((rot + 30) % 40)) * 9;
+}
+
+Vec2 GetBotRadarPos(Vec2 real_pos, const ScreenAreaPtr& radar, int mapzoom) {
     float per_pix = GetRadarPerPixel(radar, mapzoom);
     int rwidth = radar->GetWidth();
 
@@ -45,24 +49,24 @@ Coord GetBotRadarPos(Coord real_pos, const ScreenAreaPtr& radar, int mapzoom) {
     bot_radar_x = std::max(std::min(bot_radar_x, rwidth - 1.0f), 0.0f);
     bot_radar_y = std::max(std::min(bot_radar_y, rwidth - 1.0f), 0.0f);
 
-    return Coord(static_cast<int>(bot_radar_x), static_cast<int>(bot_radar_y));
+    return Vec2(bot_radar_x, bot_radar_y);
 }
 
-Coord FindTargetPos(Coord bot_pos, Coord radar_coord, const ScreenGrabberPtr& screen, const ScreenAreaPtr& radar, const Level& level, int mapzoom) {
+Vec2 FindTargetPos(Vec2 bot_pos, Vec2 radar_coord, const ScreenGrabberPtr& screen, const ScreenAreaPtr& radar, const Level& level, int mapzoom) {
     float per_pix = GetRadarPerPixel(radar, mapzoom);
     int rwidth = radar->GetWidth();
 
-    Coord rpos = GetBotRadarPos(bot_pos, radar, mapzoom);
+    Vec2 rpos = GetBotRadarPos(bot_pos, radar, mapzoom);
 
-    int rdx = -(rpos.x - radar_coord.x);
-    int rdy = -(rpos.y - radar_coord.y);
+    float rdx = -(rpos.x - radar_coord.x);
+    float rdy = -(rpos.y - radar_coord.y);
 
-    Coord target(static_cast<int>(bot_pos.x + rdx * per_pix), static_cast<int>(bot_pos.y + rdy * per_pix));
+    Vec2 target(bot_pos.x + rdx * per_pix, bot_pos.y + rdy * per_pix);
 
-    if (level.IsSolid(target.x, target.y)) {
-        for (const Coord& dir : directions) {
-            if (!level.IsSolid(target.x + dir.x, target.y + dir.y)) {
-                target = Coord(target.x + dir.x, target.y + dir.y);
+    if (level.IsSolid((int)target.x, (int)target.y)) {
+        for (const Vec2& dir : directions) {
+            if (!level.IsSolid((int)(target.x + dir.x), (int)(target.y + dir.y))) {
+                target = Vec2(target.x + dir.x, target.y + dir.y);
                 break;
             }
         }
@@ -90,13 +94,13 @@ bool InShip(const ScreenGrabberPtr& grabber) {
     return grabber->GetPixel(x, y) == Pixel(99, 90, 148, 0);
 }
 
-void GetDistance(Coord from, Coord to, int *dx, int *dy, double* dist) {
-    int cdx = -(from.x - to.x);
-    int cdy = -(from.y - to.y);
+void GetDistance(Vec2 from, Vec2 to, int *dx, int *dy, double* dist) {
+    float cdx = -(from.x - to.x);
+    float cdy = -(from.y - to.y);
     if (dx)
-        *dx = cdx;
+        *dx = (int)cdx;
     if (dy)
-        *dy = cdy;
+        *dy = (int)cdy;
     if (dist)
         *dist = std::sqrt(cdx * cdx + cdy * cdy);
 }
@@ -128,13 +132,13 @@ int GetShipRadius(int n) {
     return ShipRadius[n - 1];
 }
 
-bool InSafe(const ScreenArea::Ptr& area, Coord coord) {
-    int x = coord.x;
-    int y = coord.y;
+bool InSafe(const ScreenArea::Ptr& area, Vec2 coord) {
+    float x = coord.x;
+    float y = coord.y;
 
-    for (const Coord& dir : directions) {
+    for (const Vec2& dir : directions) {
         try {
-            Pixel pixel = area->GetPixel(x + dir.x, y + dir.y);
+            Pixel pixel = area->GetPixel((int)(x + dir.x), (int)(y + dir.y));
             if (pixel == Colors::SafeColor)
                 return true;
         } catch (...) {}
@@ -225,7 +229,7 @@ bool FitsOnMap(int x, int y, int radius, const Level& level) {
     return true;
 }
 
-bool IsClearPath(Coord from, Coord target, int radius, const Level& level) {
+bool IsClearPath(Vec2 from, Vec2 target, int radius, const Level& level) {
     const int PathClearIncrease = 8;
     int numpixels;
     int d, dinc1, dinc2;
@@ -237,8 +241,8 @@ bool IsClearPath(Coord from, Coord target, int radius, const Level& level) {
     target.x *= 16;
     target.y *= 16;
 
-    int dx = target.x - from.x;
-    int dy = target.y - from.y;
+    int dx = (int)(target.x - from.x);
+    int dy = (int)(target.y - from.y);
 
     if (dx < 0) dx = -dx;
     if (dy < 0) dy = -dy;
@@ -279,8 +283,8 @@ bool IsClearPath(Coord from, Coord target, int radius, const Level& level) {
     yinc1 *= PathClearIncrease;
     yinc2 *= PathClearIncrease;
 
-    x = from.x;
-    y = from.y;
+    x = (int)from.x;
+    y = (int)from.y;
 
     for (int i = 1; i < numpixels; i += PathClearIncrease) {
         if (!FitsOnMap(x, y, radius, level))

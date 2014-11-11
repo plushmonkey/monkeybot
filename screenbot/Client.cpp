@@ -34,6 +34,7 @@ ScreenClient::ScreenClient(HWND hwnd, Config& config)
     m_EnergyArea[1] = m_Screen->GetArea(width - 62, 0, 16, 21);
     m_EnergyArea[2] = m_Screen->GetArea(width - 46, 0, 16, 21);
     m_EnergyArea[3] = m_Screen->GetArea(width - 30, 0, 16, 21);
+    m_PlayerList.SetScreenArea(m_Screen->GetArea(3, 3, 172, m_Screen->GetHeight() - 50));
 }
 
 
@@ -42,6 +43,7 @@ void ScreenClient::Update(DWORD dt) {
     m_Radar->Update();
     m_Ship->Update();
     m_Player->Update();
+    //m_PlayerList.Update(dt);
 
     if (!m_ConfigLoaded) {
         m_BombDelay = m_Config.Get<int>(_T("BombTime"));
@@ -149,8 +151,8 @@ void ScreenClient::EnterShip(int num) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
 
-std::vector<Coord> ScreenClient::GetEnemies(Coord real_pos, const Level& level) {
-    std::vector<Coord> enemies;
+std::vector<Vec2> ScreenClient::GetEnemies(Vec2 real_pos, const Level& level) {
+    std::vector<Vec2> enemies;
 
     for (int y = 0; y < m_Radar->GetWidth(); y++) {
         for (int x = 0; x < m_Radar->GetWidth(); x++) {
@@ -175,7 +177,7 @@ std::vector<Coord> ScreenClient::GetEnemies(Coord real_pos, const Level& level) 
                 } catch (std::exception&) {}
 
                 if (count >= 3) {
-                    Coord coord(x, y);
+                    Vec2 coord(static_cast<float>(x), static_cast<float>(y));
                     if (!Util::InSafe(m_Radar, coord))
                         enemies.push_back(this->GetRealPosition(real_pos, coord, level));
                 }
@@ -188,17 +190,16 @@ std::vector<Coord> ScreenClient::GetEnemies(Coord real_pos, const Level& level) 
     return enemies;
 }
 
-Coord ScreenClient::GetClosestEnemy(Coord real_pos, const Level& level, int* dx, int* dy, double* dist) {
-    std::vector<Coord> enemies = GetEnemies(real_pos, level);
+Vec2 ScreenClient::GetClosestEnemy(Vec2 real_pos, const Level& level, int* dx, int* dy, double* dist) {
+    std::vector<Vec2> enemies = GetEnemies(real_pos, level);
     *dist = std::numeric_limits<double>::max();
-    Coord closest = enemies.at(0);
-    Coord radar_pos = Util::GetBotRadarPos(real_pos, m_Radar, m_MapZoom);
+    Vec2 closest = enemies.at(0);
 
     for (unsigned int i = 0; i < enemies.size(); i++) {
         int cdx, cdy;
         double cdist;
 
-        Util::GetDistance(enemies.at(i), radar_pos, &cdx, &cdy, &cdist);
+        Util::GetDistance(enemies.at(i), real_pos, &cdx, &cdy, &cdist);
 
         if (cdist < *dist) {
             *dist = cdist;
@@ -211,7 +212,7 @@ Coord ScreenClient::GetClosestEnemy(Coord real_pos, const Level& level, int* dx,
     return closest;
 }
 
-Coord ScreenClient::GetRealPosition(Coord bot_pos, Coord target, const Level& level) {
+Vec2 ScreenClient::GetRealPosition(Vec2 bot_pos, Vec2 target, const Level& level) {
     return Util::FindTargetPos(bot_pos, target, m_Screen, m_Radar, level, m_MapZoom);
 }
 
@@ -233,8 +234,8 @@ int ScreenClient::GetRotation() {
     return -1;
 }
 
-bool ScreenClient::InSafe(Coord real_pos, const Level& level) {
-    return level.GetTileID(real_pos.x, real_pos.y) == 171;
+bool ScreenClient::InSafe(Vec2 real_pos, const Level& level) {
+    return level.GetTileID(static_cast<int>(real_pos.x), static_cast<int>(real_pos.y)) == 171;
 }
 
 void ScreenClient::ReleaseKeys() {

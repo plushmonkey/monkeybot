@@ -1,5 +1,13 @@
 #include "Common.h"
 
+#include "Font.h"
+
+namespace Fonts {
+
+Font* TallFont = nullptr;
+
+} // ns
+
 tostream& operator<<(tostream& out, const Pixel& pix) {
     out << "(" << (int)pix.r << ", " << (int)pix.g << ", " << (int)pix.b << ", " << (int)pix.a << ")";
     return out;
@@ -18,21 +26,6 @@ bool operator!=(const Pixel& first, const Pixel& second) {
     return !(first == second);
 }
 
-tostream& operator<<(tostream& out, const Coord& coord) {
-    out << "(" << coord.x << ", " << coord.y << ")";
-    return out;
-}
-
-bool operator==(const Coord& first, const Coord& second) {
-    return first.x == second.x && first.y == second.y;
-}
-
-bool operator!=(const Coord& first, const Coord& second) {
-    return !(first == second);
-}
-
-bool operator<(const Coord& first, const Coord& second) {
-    if (first.y < second.y) return true;
-    if (first.y == second.y) return first.x < second.x;
-    return false;
+tostream& operator<<(tostream& out, const Vec2& vec) {
+    return out << "(" << vec.x << ", " << vec.y << ")";
 }

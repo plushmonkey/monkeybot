@@ -25,7 +25,7 @@ private:
     HWND m_Window;
     StatePtr m_State;
     int m_ShipNum;
-    Coord m_EnemyTarget;
+    Vec2 m_EnemyTarget;
     TargetInfo m_EnemyTargetInfo;
     int m_MaxEnergy;
     int m_Energy;
@@ -33,6 +33,10 @@ private:
     DWORD m_AliveTime;
     Pathing::Grid<short> m_Grid;
     DWORD m_LastEnemy;
+
+    Vec2 m_LastPos;
+    DWORD m_VelocityTimer;
+    Vec2 m_Velocity;
 
     Config m_Config;
     bool m_Attach;
@@ -58,7 +62,7 @@ public:
     Pathing::Grid<short>& GetGrid() { return m_Grid; }
     const Level& GetLevel() const { return m_Level; }
 
-    Coord GetEnemyTarget() const { return m_EnemyTarget; }
+    Vec2 GetEnemyTarget() const { return m_EnemyTarget; }
     TargetInfo GetEnemyTargetInfo() const { return m_EnemyTargetInfo; }
 
     int GetEnergy() const { return m_Energy; }
@@ -72,6 +76,9 @@ public:
 
     unsigned int GetX() const;
     unsigned int GetY() const;
+    Vec2 GetPos() const { return Vec2(static_cast<float>(GetX()), static_cast<float>(GetY())); }
+    Vec2 GetVelocity() const { return m_Velocity; }
+    float GetSpeed() const { return std::abs((m_Velocity * 16 * 10).Length()); }
     
     unsigned int GetPosAddress() const { return m_PosAddr; }
     void SetPosAddress(unsigned int addr) { m_PosAddr = addr; }
@@ -93,8 +100,9 @@ public:
         return m_State->GetType();
     }
 
-    DWORD GetLastEnemy() { return m_LastEnemy; }
+    DWORD GetLastEnemy() const { return m_LastEnemy; }
     void SetLastEnemy(DWORD last) { m_LastEnemy = last; }
+
 };
 
 #endif

@@ -6,6 +6,8 @@
 #include <ostream>
 #include <functional>
 
+#include "Vector.h"
+
 #ifdef UNICODE
 #include <io.h>
 #include <fcntl.h>
@@ -70,30 +72,6 @@ u64 operator+(const Pixel& pix, u64 a);
 bool operator==(const Pixel& first, const Pixel& second);
 bool operator!=(const Pixel& first, const Pixel& second);
 
-struct Coord {
-    int x;
-    int y;
-
-    Coord() : x(0), y(0) { }
-    Coord(int x, int y) : x(x), y(y) { }
-};
-
-namespace std {
-    template<>
-    struct hash<Coord> {
-        std::size_t operator()(const Coord& coord) const {
-            typedef unsigned int T;
-            T val = coord.x << 16 | coord.y;
-            return std::hash<T>()(val);
-        }
-    };
-}
-
-tostream& operator<<(tostream& out, const Coord& coord);
-bool operator==(const Coord& first, const Coord& second);
-bool operator!=(const Coord& first, const Coord& second);
-bool operator<(const Coord& first, const Coord& second);
-
 namespace Colors {
     extern const Pixel RadarColor;
     extern const Pixel RadarEnd;
@@ -106,5 +84,13 @@ namespace Colors {
     extern const Pixel XRadarOn;
     extern const Pixel XRadarOff;
 }
+
+class Font;
+
+namespace Fonts {
+    extern Font* TallFont;
+}
+
+tostream& operator<<(tostream& out, const Vec2& vec);
 
 #endif

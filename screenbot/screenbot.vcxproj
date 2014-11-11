@@ -150,11 +150,13 @@
     <ClCompile Include="Colors.cpp" />
     <ClCompile Include="Common.cpp" />
     <ClCompile Include="Config.cpp" />
+    <ClCompile Include="Font.cpp" />
     <ClCompile Include="Keyboard.cpp" />
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="Pathing.cpp" />
+    <ClCompile Include="PlayerList.cpp" />
     <ClCompile Include="Random.cpp" />
     <ClCompile Include="RotationStore.cpp" />
     <ClCompile Include="ScreenArea.cpp" />
@@ -168,10 +170,12 @@
     <ClInclude Include="Client.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="Font.h" />
     <ClInclude Include="Keyboard.h" />
     <ClInclude Include="Level.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="Pathing.h" />
+    <ClInclude Include="PlayerList.h" />
     <ClInclude Include="Random.h" />
     <ClInclude Include="ScreenArea.h" />
     <ClInclude Include="ScreenGrabber.h" />
@@ -179,6 +183,7 @@
     <ClInclude Include="State.h" />
     <ClInclude Include="Tokenizer.h" />
     <ClInclude Include="Util.h" />
+    <ClInclude Include="Vector.h" />
     <ClInclude Include="WindowFinder.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
