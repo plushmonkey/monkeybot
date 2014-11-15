@@ -71,6 +71,10 @@ public:
         y *= inv_len;
         return len;
     }
+
+    static float Dot(Vec2 a, Vec2 b) {
+        return a.x * b.x + a.y * b.y;
+    }
 };
 
 inline Vec2 operator+(const Vec2& a, const Vec2& other) {
@@ -90,7 +94,7 @@ inline Vec2 operator/(const Vec2& a, const Vec2& other) {
 }
 
 inline Vec2 operator+(float scalar, const Vec2& a) {
-    return Vec2(a.x + scalar, a.y + scalar);
+    return Vec2(scalar + a.x, scalar + a.y);
 }
 
 inline Vec2 operator+(const Vec2& a, float scalar) {
@@ -98,7 +102,7 @@ inline Vec2 operator+(const Vec2& a, float scalar) {
 }
 
 inline Vec2 operator-(float scalar, const Vec2& a) {
-    return Vec2(a.x - scalar, a.y - scalar);
+    return Vec2(scalar - a.x, scalar - a.y);
 }
 
 inline Vec2 operator-(const Vec2& a, float scalar) {
@@ -106,7 +110,7 @@ inline Vec2 operator-(const Vec2& a, float scalar) {
 }
 
 inline Vec2 operator*(float scalar, const Vec2& a) {
-    return Vec2(a.x * scalar, a.y * scalar);
+    return Vec2(scalar * a.x, scalar * a.y);
 }
 
 inline Vec2 operator*(const Vec2& a, float scalar) {
@@ -114,7 +118,7 @@ inline Vec2 operator*(const Vec2& a, float scalar) {
 }
 
 inline Vec2 operator/(float scalar, const Vec2& a) {
-    return Vec2(a.x / scalar, a.y / scalar);
+    return Vec2(scalar / a.x, scalar / a.y);
 }
 
 inline Vec2 operator/(const Vec2& a, float scalar) {

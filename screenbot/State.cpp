@@ -451,7 +451,7 @@ void PatrolState::Update(DWORD dt) {
 
     if (m_Plan.size() == 0) {
         ResetWaypoints();
-        client->ReleaseKeys();
+        client->Warp();
         return;
     }
 
@@ -564,46 +564,31 @@ AggressiveState::AggressiveState(Bot& bot)
     if (m_DistFactor < 1) m_DistFactor = 10;
 }
 
-bool CalculateShot(const Vec2& pShooter, const Vec2& pTarget, const Vec2& vTarget, double projectileSpeed, Vec2& solution) {
-    float vx = vTarget.x;
-    float vy = vTarget.y;
+bool CalculateShot(const Vec2& pShooter, const Vec2& pTarget, const Vec2& vTarget, double sProjectile, Vec2& solution) {
+    Vec2 totarget = pTarget - pShooter;
 
-    Vec2 R = pTarget - pShooter;
-    double a = vx * vx + vy * vy - projectileSpeed * projectileSpeed;
-    double b = 2 * (R.x * vx + R.y * vy);
-    double c = R.x * R.x + R.y * R.y;
-    double tBullet = 0;
+    double a = Vec2::Dot(vTarget, vTarget) - sProjectile * sProjectile;
+    double b = 2 * Vec2::Dot(vTarget, totarget);
+    double c = Vec2::Dot(totarget, totarget);
 
-    if (R.LengthSquared() < 2 * DBL_MIN) {
+    double p = -b / (2 * a);
+    double o = (b * b) - 4 * a * c;
+    if (o < 0) {
+        solution = pTarget;
         return false;
     }
+    double q = std::sqrt(o) / (2 * a);
 
-    if (std::fabs(a) < 2 * DBL_MIN) {
-        if (std::fabs(b) < 2 * DBL_MIN)
-            return false;
-        tBullet = -c / b;
-    } else {
-        double discriminant = b * b - 4 * a * c;
-        if (discriminant < 0)
-            return false;
+    double t1 = p - q;
+    double t2 = p + q;
+    double t;
 
-        if (discriminant > 0) {
-            double quad = std::sqrt(discriminant);
-            double tBullet1 = (-b + quad) / (2 * a);
-            double tBullet2 = (-b - quad) / (2 * a);
-            if (tBullet1 < tBullet2 && tBullet1 >= 0)
-                tBullet = tBullet1;
-            else
-                tBullet = tBullet2;
-        } else {
-            tBullet = -b / (2 * a);
-        }
-    }
+    if (t1 > t2 && t2 > 0)
+        t = t2;
+    else
+        t = t1;
 
-    if (tBullet < 0)
-        return false;
-
-    solution = pTarget + static_cast<float>(tBullet) * vTarget;
+    solution = pTarget + (vTarget * (float)t);
     return true;
 }
 
@@ -647,8 +632,8 @@ void AggressiveState::Update(DWORD dt) {
         }
         
         m_LastEnemyTimer += dt;
-        if (m_LastEnemyTimer >= 1000) {
-            m_EnemyVelocity = (target - m_LastEnemyPos) / (m_LastEnemyTimer / 1000.0f);
+        if (m_LastEnemyTimer >= 250) {
+            m_EnemyVelocity = (target - m_LastEnemyPos) / (m_LastEnemyTimer / 250.0f);
             m_LastEnemyPos = target;
             m_LastEnemyTimer = 0;
         }
@@ -662,24 +647,15 @@ void AggressiveState::Update(DWORD dt) {
             m_LastNonSafeTime = cur_time;
         }
 
-        int projectileSpeed = 3500 / 16 / 10;
+        double projectileSpeed = 3400.0 / 16.0 / 10.0;
         Vec2 solution;
 
-        // Assume enemy slowed down when near
-        if (CalculateShot(pos, target, m_EnemyVelocity * .5f, projectileSpeed, solution)) {
-            dx = -(int)(pos.x - solution.x);
-            dy = -(int)(pos.y - solution.y);
-        } else {
-            int dxchange = static_cast<int>(m_EnemyVelocity.x * (dist / m_DistFactor));
-            int dychange = static_cast<int>(m_EnemyVelocity.y * (dist / m_DistFactor));
+        Vec2 vEnemy = m_EnemyVelocity * 4;
 
-            if (std::abs(m_EnemyVelocity.x) < 15)
-                dx += dxchange;
-            if (std::abs(m_EnemyVelocity.y) < 15)
-                dy += dychange;
-        }
+        CalculateShot(pos, target, vEnemy, projectileSpeed * 2.4, solution);
+        dx = (int)(solution.x - pos.x);
+        dy = (int)(solution.y - pos.y);
 
-        
         int rot = client->GetRotation();
         int target_rot = Util::GetTargetRotation(dx, dy);
         int away = std::abs(rot - target_rot);
@@ -753,6 +729,7 @@ void AggressiveState::Update(DWORD dt) {
                 client->Bomb();
         }
 
+        // Only fire guns if the enemy is within range
         if (m_MinGunRange != 0 && dist > m_MinGunRange) {
             client->Gun(GunState::Off);
             return;
@@ -780,6 +757,7 @@ void AggressiveState::Update(DWORD dt) {
         /* Clear input when there is no enemy */
         m_LastNonSafeTime = cur_time;
 
+        /* Switch to patrol state when there is no enemy to fight */
         if (m_Patrol) {
             if (m_LastEnemyPos != Vec2(0, 0)) {
                 std::vector<Vec2> waypoints = { m_LastEnemyPos };

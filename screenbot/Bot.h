@@ -77,8 +77,8 @@ public:
     unsigned int GetX() const;
     unsigned int GetY() const;
     Vec2 GetPos() const { return Vec2(static_cast<float>(GetX()), static_cast<float>(GetY())); }
-    Vec2 GetVelocity() const { return m_Velocity; }
-    float GetSpeed() const { return std::abs((m_Velocity * 16 * 10).Length()); }
+    Vec2 GetVelocity() const { return m_Velocity * 4.0f; }
+    float GetSpeed() const { return std::abs((m_Velocity * 4 * 16 * 10).Length()); }
     
     unsigned int GetPosAddress() const { return m_PosAddr; }
     void SetPosAddress(unsigned int addr) { m_PosAddr = addr; }

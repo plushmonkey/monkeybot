@@ -138,8 +138,8 @@ void Bot::Update(DWORD dt) {
 
     m_VelocityTimer += dt;
 
-    if (m_VelocityTimer >= 1000) {
-        m_Velocity = (pos - m_LastPos) / (m_VelocityTimer / 1000.0f);
+    if (m_VelocityTimer >= 250) {
+        m_Velocity = (pos - m_LastPos) / (m_VelocityTimer / 250.0f);
         m_LastPos = pos;
         m_VelocityTimer = 0;
     }
