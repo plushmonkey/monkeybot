@@ -71,6 +71,9 @@ public:
     Character GetCharacter(char c);
     char GetCharacter(Character c);
     bool GetCharacter(ScreenAreaPtr area, std::vector<Pixel> ignore, char* out);
+
+    int GetWidth() const { return m_CharWidth; }
+    int GetHeight() const { return m_CharHeight; }
 };
 
 #endif

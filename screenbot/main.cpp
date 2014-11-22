@@ -5,6 +5,7 @@
 
 #include <tchar.h>
 #include <iostream>
+#include <fstream>
 
 #pragma comment(lib, "winmm.lib")
 
@@ -21,6 +22,8 @@ public:
 int Application::Run() {
     return m_Bot.Run();
 }
+
+Vec2 CalculateShot(const Vec2& pShooter, const Vec2& pTarget, const Vec2& vTarget, double sProjectile);
 
 int wmain(int argc, wchar_t* argv[]) {
     Application app;

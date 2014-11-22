@@ -34,7 +34,7 @@ ScreenClient::ScreenClient(HWND hwnd, Config& config)
     m_EnergyArea[1] = m_Screen->GetArea(width - 62, 0, 16, 21);
     m_EnergyArea[2] = m_Screen->GetArea(width - 46, 0, 16, 21);
     m_EnergyArea[3] = m_Screen->GetArea(width - 30, 0, 16, 21);
-    m_PlayerList.SetScreenArea(m_Screen->GetArea(3, 3, 172, m_Screen->GetHeight() - 50));
+    m_PlayerWindow.SetScreenArea(m_Screen->GetArea(3, 3, 172, m_Screen->GetHeight() - 50));
 }
 
 
@@ -43,7 +43,7 @@ void ScreenClient::Update(DWORD dt) {
     m_Radar->Update();
     m_Ship->Update();
     m_Player->Update();
-    //m_PlayerList.Update(dt);
+    m_PlayerWindow.Update(dt);
 
     if (!m_ConfigLoaded) {
         m_BombDelay = m_Config.Get<int>(_T("BombTime"));
@@ -56,6 +56,48 @@ void ScreenClient::Update(DWORD dt) {
         m_ConfigLoaded = true;
         m_Rotations = new Ships::RotationStore(m_Config);
     }
+}
+
+std::string ScreenClient::GetName() {
+    try {
+        return m_PlayerWindow.GetPlayer(0)->GetName();
+    } catch (...) {}
+    return "";
+}
+
+int ScreenClient::GetFreq() {
+    try {
+        return m_PlayerWindow.GetPlayer(0)->GetFreq();
+    } catch (...) {}
+    return 9999;
+}
+
+PlayerList ScreenClient::GetFreqPlayers(int freq) {
+    return m_PlayerWindow.GetFrequency(freq);
+}
+
+PlayerList ScreenClient::GetPlayers() {
+    return m_PlayerWindow.GetPlayers();
+}
+
+bool ScreenClient::OnSoloFreq() {
+    int freq = GetFreq();
+    return GetFreqPlayers(freq).size() <= 1;
+}
+
+PlayerPtr ScreenClient::GetSelectedPlayer() {
+    return m_PlayerWindow.GetSelectedPlayer();
+}
+
+void ScreenClient::MoveTicker(bool down) {
+    int key = down ? VK_NEXT : VK_PRIOR;
+
+    m_Keyboard.ToggleDown();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    m_Keyboard.Send(key);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    m_Keyboard.ToggleDown();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 void ScreenClient::Bomb() {
@@ -102,14 +144,18 @@ void ScreenClient::Gun(GunState state, int energy_percent) {
 void ScreenClient::SetXRadar(bool on) {
     int count = 0;
     /* Try to toggle xradar, timeout after 50 tries */
-    while (Util::XRadarOn(m_Screen) != on && count < 50) {
-        m_Keyboard.Down(VK_END);
-        std::this_thread::sleep_for(std::chrono::milliseconds(2));
-        m_Keyboard.Up(VK_END);
-        count++;
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
-        m_Screen->Update();
-    }
+
+    
+    try {
+        while (Util::XRadarOn(m_Screen) != on && count < 50) {
+            m_Keyboard.Down(VK_END);
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+            m_Keyboard.Up(VK_END);
+            count++;
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            m_Screen->Update();
+        }
+    } catch (...) {}
 }
 
 void ScreenClient::Warp() {

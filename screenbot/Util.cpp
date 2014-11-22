@@ -82,9 +82,9 @@ bool XRadarOn(const ScreenGrabberPtr& grabber) {
     Pixel pixel = grabber->GetPixel(x, y);
 
     if (pixel == Colors::XRadarOff) return false;
-
+    if (pixel == Colors::XRadarOn) return true;
     /* Only handle x radar if the ship has x radar */
-    return true;
+    throw std::runtime_error("");
 }
 
 bool InShip(const ScreenGrabberPtr& grabber) {

@@ -51,6 +51,16 @@ public:
 
     virtual void ReleaseKeys() = 0;
     virtual void ToggleKeys() = 0;
+
+    virtual std::string GetName() = 0;
+    virtual int GetFreq() = 0;
+
+    virtual PlayerList GetFreqPlayers(int freq) = 0;
+    virtual PlayerList GetPlayers() = 0;
+
+    virtual bool OnSoloFreq() = 0;
+    virtual PlayerPtr GetSelectedPlayer() = 0;
+    virtual void MoveTicker(bool down) = 0;
 };
 
 namespace Ships {
@@ -68,7 +78,7 @@ private:
     ScreenAreaPtr m_Ship;
     ScreenAreaPtr m_Player;
     ScreenAreaPtr m_EnergyArea[4];
-    PlayerList m_PlayerList;
+    PlayerWindow m_PlayerWindow;
 
     DWORD m_LastBullet;
     DWORD m_LastBomb;
@@ -119,6 +129,16 @@ public:
 
     virtual void ReleaseKeys();
     virtual void ToggleKeys();
+
+    virtual std::string GetName();
+    virtual int GetFreq();
+
+    virtual PlayerList GetFreqPlayers(int freq);
+    virtual PlayerList GetPlayers();
+
+    virtual bool OnSoloFreq();
+    virtual PlayerPtr GetSelectedPlayer();
+    virtual void MoveTicker(bool down);
 
     ScreenAreaPtr GetRadar() { return m_Radar; }
 };

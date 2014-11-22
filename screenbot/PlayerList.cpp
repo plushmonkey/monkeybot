@@ -5,78 +5,118 @@
 #include "Font.h"
 #include <iostream>
 
+namespace {
+
 const Pixel BackgroundColor(10, 25, 10, 0);
+const Pixel SelectedColor(99, 33, 0, 0);
+const int PlayerListStart = 16; // pixels from top
+const int LineHeight = 12; // pixels
+const std::string FreqIndicator = "-------------";
+const int UpdateFrequency = 150; // ms
 
+}
 
-PlayerList::PlayerList() { }
+PlayerWindow::PlayerWindow() { }
 
-PlayerList::PlayerList(ScreenAreaPtr area)
-    : m_Area(area)
+PlayerWindow::PlayerWindow(ScreenAreaPtr area)
+    : m_Area(area), m_UpdateTimer(0)
 {
 
 }
 
-void PlayerList::SetScreenArea(ScreenAreaPtr area) {
+void PlayerWindow::SetScreenArea(ScreenAreaPtr area) {
     m_Area = area;
     m_Area->Update();
 }
 
-void PlayerList::Update(unsigned long dt) {
+std::string PlayerWindow::GetLineText(int line) {
+    const int FontWidth = Fonts::TallFont->GetWidth();
+    const int FontHeight = Fonts::TallFont->GetHeight();
+    const int y = PlayerListStart + LineHeight * line;
+
+    std::string text;
+
+    for (int x = 2; x < m_Area->GetWidth() - FontWidth + 1; x += FontWidth + 1) {
+        ScreenAreaPtr char_area = m_Area->GetArea(x, y, FontWidth, FontHeight);
+        char_area->Update();
+
+        std::vector<Pixel> ign = { BackgroundColor };
+        char out;
+
+        if (Fonts::TallFont->GetCharacter(char_area, ign, &out))
+            text += out;
+    }
+
+    return text;
+}
+
+void PlayerWindow::Update(unsigned long dt) {
     m_Area->Update();
 
-    static DWORD plist_timer = 0;
+    m_UpdateTimer += dt;
+    if (m_UpdateTimer < UpdateFrequency) return;
+    m_UpdateTimer = 0;
 
-    plist_timer += dt;
+    m_Players.clear();
 
-    if (plist_timer < 1000) return;
-
-    plist_timer = 0;
-
-    std::vector<std::string> freq;
-    std::string cur_freq;
     std::string line;
-    /* ugly code here for testing */
-    for (int y = 16; ; y += 12) {
-        line = "";
-        for (int i = 2; i < m_Area->GetWidth() - 8; i += 8) {
-            ScreenAreaPtr t = m_Area->GetArea(i, y, 7, 10);
-            t->Update();
 
-            std::vector<Pixel> ign = { BackgroundColor };
-            char out;
+    int num_lines = (m_Area->GetHeight() - PlayerListStart) / LineHeight;
+    int current_freq = 0;
 
-            if (Fonts::TallFont->GetCharacter(t, ign, &out))
-                line += out;
-        }
+    for (int i = 0; i < num_lines; ++i) {
+        line = GetLineText(i);
 
-        if (line.find("-------------") != std::string::npos) {
-            if (freq.size() > 0)
-                std::cout << cur_freq << ": ";
-            for (size_t i = 0; i < freq.size(); ++i) {
-                if (i != 0) 
-                    std::cout << ", ";
-                std::cout << freq.at(i);
-            }
-            std::cout << std::endl;
-                
-            cur_freq = line.substr(0, 4);
-            freq.clear();
+        // No text on line so we hit the end of the window
+        if (line.length() == 0) 
+            break; 
+
+        if (line.find(FreqIndicator) != std::string::npos) {
+            // Freq found, update current_freq
+            std::string freq_str = line.substr(0, 4);
+            if (freq_str.find("-") != std::string::npos)
+                current_freq = 9999;
+            else
+                current_freq = strtol(freq_str.c_str(), nullptr, 10);
         } else {
-            if (line.length() > 0)
-                freq.push_back(line.substr(0, line.find("  ")));
+            // Player found, add them to the current freq
+            std::string name = line;
+            
+            // Find and strip front spaces
+            for (size_t n = 0; n < name.length(); ++n) {
+                if (name[n] != ' ') {
+                    name = name.substr(n, name.length() - n);
+                    break;
+                }
+            }
+            // Strip trailing spaces
+            std::string::size_type end = name.find("  "); 
+            name = name.substr(0, end);
+
+            auto player = std::make_shared<Player>(name, current_freq);
+            m_Players.emplace_back(player);
+
+            // Check if this player is the selected player
+            if (m_Area->GetPixel(0, 5 + PlayerListStart + i * LineHeight) == SelectedColor)
+                m_Selected = player;
         }
-
-        if (line.length() == 0)
-            break;
     }
-    if (freq.size() > 0)
-        std::cout << cur_freq << ": ";
-    for (size_t i = 0; i < freq.size(); ++i) {
-        if (i != 0) std::cout << ", ";
-        std::cout << freq.at(i);
-    }
-    std::cout << std::endl;
+}
 
-    cur_freq = line.substr(0, 4);
-    freq.clear();
+PlayerPtr PlayerWindow::Find(const std::string& name) {
+    for (PlayerPtr player : m_Players) {
+        if (player->GetName().compare(name) == 0) 
+            return player;
+    }
+
+    return std::shared_ptr<Player>();
+}
+
+PlayerList PlayerWindow::GetFrequency(int freq) {
+    PlayerList list;
+    for (PlayerPtr player : m_Players) {
+        if (player->GetFreq() == freq)
+            list.push_back(player);
+    }
+    return list;
 }

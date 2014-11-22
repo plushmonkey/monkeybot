@@ -145,7 +145,7 @@ void Bot::Update(DWORD dt) {
     }
 
     // Attach to ticked player when in center safe
-    if (m_Attach) {
+    if (m_Attach && !m_Client->OnSoloFreq()) {
         if (pos.x >= m_SpawnX - 20 && pos.x <= m_SpawnX + 20 && pos.y >= m_SpawnY - 20 && pos.y <= m_SpawnY + 20)
             SetState(std::make_shared<AttachState>(*this));
     }
@@ -242,7 +242,9 @@ int Bot::Run() {
     m_Config.Set(_T("SpawnY"),          _T("512"));
     m_Config.Set(_T("Waypoints"),       _T("(400, 585), (565, 580), (600, 475), (512, 460), (425, 460), (385, 505)"));
     m_Config.Set(_T("Include"),         _T(""));
-
+    m_Config.Set(_T("DevaBDB"),         _T("False"));
+    m_Config.Set(_T("ProjectileSpeed"), _T("3400"));
+    
     if (!m_Config.Load(_T("bot.conf")))
         tcout << "Could not load bot.conf. Using default values." << std::endl;
 

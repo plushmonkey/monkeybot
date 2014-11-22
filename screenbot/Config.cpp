@@ -21,6 +21,12 @@ namespace Convert {
     }
 
     template<>
+    float Get(const tstring& val) {
+        if (val.length() == 0) return 0.0f;
+        return _tstof(val.c_str());
+    }
+
+    template<>
     tstring Get(const tstring& val) {
         return val;
     }

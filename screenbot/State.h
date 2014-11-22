@@ -95,6 +95,8 @@ private:
     bool m_OnlyCenter;
     bool m_Patrol;
     int m_MinGunRange;
+    bool m_Baseduel;
+    int m_ProjectileSpeed;
 
 public:
     AggressiveState(Bot& bot);
