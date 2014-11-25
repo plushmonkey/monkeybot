@@ -26,6 +26,8 @@ public:
 
     virtual void Bomb() = 0;
     virtual void Gun(GunState state, int energy_percent = 100) = 0;
+    virtual void Burst() = 0;
+    virtual void Repel() = 0;
 
     virtual void SetXRadar(bool on) = 0;
     virtual void Warp() = 0;
@@ -94,6 +96,8 @@ private:
     int m_CurrentBulletDelay;
     int m_BombDelay;
 
+    bool m_IgnoreCarriers;
+
     Ships::RotationStore* m_Rotations;
 
     void GrabRadar();
@@ -104,6 +108,8 @@ public:
 
     virtual void Bomb();
     virtual void Gun(GunState state, int energy_percent = 100);
+    virtual void Burst();
+    virtual void Repel();
 
     virtual void SetXRadar(bool on);
     virtual void Warp();

@@ -26,6 +26,24 @@ public:
         m_ColValues = new int[width];
     }
 
+    ~Character() {
+        if (m_RowValues)
+            delete[] m_RowValues;
+        if (m_ColValues)
+            delete[] m_ColValues;
+    }
+
+    Character(const Character& other) {
+        m_Width = other.m_Width;
+        m_Height = other.m_Height;
+        m_RowValues = new int[m_Height];
+        m_ColValues = new int[m_Width];
+        m_Char = other.m_Char;
+
+        memcpy(m_RowValues, other.m_RowValues, sizeof(int) * m_Height);
+        memcpy(m_ColValues, other.m_ColValues, sizeof(int) * m_Width);
+    }
+
     void SetRowCount(int row, int amount) {
         m_RowValues[row] = amount;
     }

@@ -2,6 +2,18 @@
 
 #include <thread>
 
+bool IsExtended(int keycode) {
+    int extended[] = { VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT, 
+                       VK_HOME, VK_END, VK_PRIOR, VK_NEXT,
+                       VK_INSERT, VK_DELETE };
+
+    for (int i = 0; i < sizeof(extended) / sizeof(*extended); ++i) {
+        if (keycode == extended[i])
+            return true;
+    }
+    return false;
+}
+
 INPUT Keyboard::GetInput(int keycode) {
     INPUT input;
 
@@ -11,6 +23,9 @@ INPUT Keyboard::GetInput(int keycode) {
     input.ki.dwExtraInfo = 0;
     input.ki.dwFlags = 0;
     input.ki.wVk = keycode;
+
+    if (IsExtended(keycode))
+        input.ki.dwFlags = KEYEVENTF_EXTENDEDKEY;
 
     return input;
 }

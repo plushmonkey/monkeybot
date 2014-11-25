@@ -52,6 +52,7 @@ void ScreenClient::Update(DWORD dt) {
         m_FireBombs = m_Config.Get<bool>(_T("FireBombs"));
         m_FireGuns = m_Config.Get<bool>(_T("FireGuns"));
         m_MapZoom = m_Config.Get<int>("MapZoom");
+        m_IgnoreCarriers = m_Config.Get<bool>("IgnoreCarriers");
         m_CurrentBulletDelay = m_BulletDelay;
         m_ConfigLoaded = true;
         m_Rotations = new Ships::RotationStore(m_Config);
@@ -141,6 +142,32 @@ void ScreenClient::Gun(GunState state, int energy_percent) {
     m_LastBullet = timeGetTime();
 }
 
+void ScreenClient::Burst() {
+    m_Keyboard.ToggleDown();
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+    m_Keyboard.Down(VK_SHIFT);
+    std::this_thread::sleep_for(std::chrono::milliseconds(105));
+    m_Keyboard.Send(VK_DELETE);
+    m_Keyboard.Up(VK_SHIFT);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    m_Keyboard.ToggleDown();
+}
+
+void ScreenClient::Repel() {
+    m_Keyboard.ToggleDown();
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+    m_Keyboard.Down(VK_SHIFT);
+    std::this_thread::sleep_for(std::chrono::milliseconds(105));
+    m_Keyboard.Send(VK_CONTROL);
+    m_Keyboard.Up(VK_SHIFT);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    m_Keyboard.ToggleDown();
+}
+
 void ScreenClient::SetXRadar(bool on) {
     int count = 0;
     /* Try to toggle xradar, timeout after 50 tries */
@@ -198,6 +225,18 @@ void ScreenClient::EnterShip(int num) {
 }
 
 std::vector<Vec2> ScreenClient::GetEnemies(Vec2 real_pos, const Level& level) {
+    // TODO: Fix ball carrier and flags dropped looking exactly the same
+    std::vector<Pixel> ign_colors = { Colors::EnemyColor[0], Colors::EnemyColor[1] };
+
+    if (!m_IgnoreCarriers)
+        ign_colors.push_back(Colors::EnemyBallColor);
+
+    auto IsEnemy = [&](Pixel pix) -> bool {
+        for (Pixel& check : ign_colors)
+            if (pix == check) return true;
+        return false;
+    };
+
     std::vector<Vec2> enemies;
 
     for (int y = 0; y < m_Radar->GetWidth(); y++) {
@@ -210,16 +249,15 @@ std::vector<Vec2> ScreenClient::GetEnemies(Vec2 real_pos, const Level& level) {
 
                     // right
                     pixel = m_Radar->GetPixel(x + 1, y);
-                    if (pixel == Colors::EnemyColor[0] || pixel == Colors::EnemyColor[1] || pixel == Colors::EnemyBallColor)
-                        count++;
+                    if (IsEnemy(pixel)) count++;
+
                     // bottom-right
                     pixel = m_Radar->GetPixel(x + 1, y + 1);
-                    if (pixel == Colors::EnemyColor[0] || pixel == Colors::EnemyColor[1] || pixel == Colors::EnemyBallColor)
-                        count++;
+                    if (IsEnemy(pixel)) count++;
+
                     // bottom
                     pixel = m_Radar->GetPixel(x, y + 1);
-                    if (pixel == Colors::EnemyColor[0] || pixel == Colors::EnemyColor[1] || pixel == Colors::EnemyBallColor)
-                        count++;
+                    if (IsEnemy(pixel)) count++;
                 } catch (std::exception&) {}
 
                 if (count >= 3) {

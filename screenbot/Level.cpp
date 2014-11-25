@@ -10,6 +10,7 @@ Level::Level() : m_Filename(_T("")), m_Tiles(nullptr) {
 
 bool Level::IsSolid(int id) {
     if (id == 0) return false;
+    if (id >= 162 && id <= 169) return false; // treat doors as non-solid
     if (id < 170) return true;
     if (id >= 192 && id <= 240) return true;
     if (id >= 242 && id <= 252) return true;
@@ -71,6 +72,7 @@ bool Level::Load(const tstring& filename) {
 
         pos += sizeof(Tile);
     }
+    delete[] buffer;
     return true;
 }
 

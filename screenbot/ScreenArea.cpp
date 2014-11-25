@@ -57,8 +57,7 @@ Pixel ScreenArea::GetPixel(int x, int y) {
 }
 
 ScreenArea::Ptr ScreenArea::GetArea(int x, int y, int width, int height) {
-    ScreenArea::Ptr area(new ScreenArea(m_DC, x, y, width, height));
-    return area;
+    return std::make_shared<ScreenArea>(m_DC, x, y, width, height);
 }
 
 bool ScreenArea::Save(const tstring& filename) {

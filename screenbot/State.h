@@ -82,6 +82,7 @@ private:
     Vec2 m_EnemyVelocity;
     DWORD m_LastNonSafeTime;
     DWORD m_NearWall;
+    DWORD m_BurstTimer;
 
     // Config
     int m_RunPercent;
@@ -97,6 +98,7 @@ private:
     int m_MinGunRange;
     bool m_Baseduel;
     int m_ProjectileSpeed;
+    int m_IgnoreDelayDistance;
 
 public:
     AggressiveState(Bot& bot);

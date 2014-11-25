@@ -33,6 +33,8 @@ private:
     DWORD m_AliveTime;
     Pathing::Grid<short> m_Grid;
     DWORD m_LastEnemy;
+    DWORD m_RepelTimer;
+    int m_RepelPercent;
 
     Vec2 m_LastPos;
     DWORD m_VelocityTimer;
@@ -43,12 +45,14 @@ private:
     bool m_CenterOnly;
     int m_SpawnX;
     int m_SpawnY;
+    int m_CenterRadius;
 
     ClientPtr m_Client;
 
     HANDLE m_ProcessHandle;
     std::vector<unsigned> m_PossibleAddr;
     unsigned int m_PosAddr;
+
 
     HWND SelectWindow();
     void SelectShip();
@@ -90,10 +94,10 @@ public:
 
     bool InCenter() const {
         if (m_PosAddr == 0) return true;
-        unsigned x = GetX();
-        unsigned y = GetY();
+        Vec2 pos = GetPos();
+        Vec2 spawn((float)m_SpawnX, (float)m_SpawnY);
 
-        return x > 320 && x < 703 && y > 320 && y < 703;
+        return (pos - spawn).Length() < m_CenterRadius;
     }
 
     StateType GetStateType() const {

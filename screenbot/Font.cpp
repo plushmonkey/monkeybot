@@ -88,6 +88,7 @@ bool Font::Load(const std::string& filename, int row_start) {
     }
 
     DeleteDC(dc);
+    delete[] pixels;
     return hBMP != NULL;
 }
 

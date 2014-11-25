@@ -282,8 +282,19 @@ void ChaseState::Update(DWORD dt) {
             // Stuck
             client->Up(false);
             client->Down(true);
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+            int dir = Random::GetU32(0, 1) ? VK_LEFT : VK_RIGHT;
+
+            dir == VK_LEFT ? client->Left(true) : client->Right(true);
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+            dir == VK_LEFT ? client->Left(false) : client->Right(false);
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+            dir == VK_LEFT ? client->Left(true) : client->Right(true);
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+
             client->Down(false);
+            dir == VK_LEFT ? client->Left(false) : client->Right(false);
         }
 
         m_LastCoord = pos;
@@ -299,7 +310,10 @@ void ChaseState::Update(DWORD dt) {
             m_Plan.push_back(m_Bot.GetGrid().GetNode((short)enemy.x, (short)enemy.y));
     }
 
-    if (m_Plan.size() == 0) return;
+    if (m_Plan.size() == 0) {
+        client->ReleaseKeys();
+        return;
+    }
 
     Pathing::JPSNode* next_node = m_Plan.at(0);
     Vec2 next(next_node->x, next_node->y);
@@ -308,7 +322,7 @@ void ChaseState::Update(DWORD dt) {
     double dist = 0.0;
 
     Util::GetDistance(pos, next, &dx, &dy, &dist);
-    while (dist < 3 && m_Plan.size() > 1) {
+    while (dist < 1 && m_Plan.size() > 1) {
         m_Plan.erase(m_Plan.begin());
         next_node = m_Plan.at(0);
         next = Vec2(next_node->x, next_node->y);
@@ -451,8 +465,19 @@ void PatrolState::Update(DWORD dt) {
             // Stuck
             client->Up(false);
             client->Down(true);
-            std::this_thread::sleep_for(std::chrono::milliseconds(750));
+
+            int dir = Random::GetU32(0, 1) ? VK_LEFT : VK_RIGHT;
+
+            dir == VK_LEFT ? client->Left(true) : client->Right(true);
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+            dir == VK_LEFT ? client->Left(false) : client->Right(false);
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+            dir == VK_LEFT ? client->Left(true) : client->Right(true);
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+
             client->Down(false);
+            dir == VK_LEFT ? client->Left(false) : client->Right(false);
         }
 
         m_LastCoord = pos;
@@ -553,7 +578,7 @@ void PatrolState::Update(DWORD dt) {
 
     Util::GetDistance(pos, next, &dx, &dy, &dist);
 
-    while (dist < 3 && m_Plan.size() > 1) {
+    while (dist < 1 && m_Plan.size() > 1) {
         m_Plan.erase(m_Plan.begin());
         next_node = m_Plan.at(0);
         next = Vec2(next_node->x, next_node->y);
@@ -635,7 +660,8 @@ AggressiveState::AggressiveState(Bot& bot)
       m_LastEnemyTimer(0),
       m_EnemyVelocity(0, 0),
       m_LastNonSafeTime(timeGetTime()),
-      m_NearWall(0)
+      m_NearWall(0),
+      m_BurstTimer(0)
 {
     m_RunPercent     = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
     m_XPercent       = m_Bot.GetConfig().Get<int>(_T("XPercent"));
@@ -650,7 +676,7 @@ AggressiveState::AggressiveState(Bot& bot)
     m_MinGunRange    = m_Bot.GetConfig().Get<int>(_T("MinGunRange"));
     m_Baseduel       = m_Bot.GetConfig().Get<bool>(_T("DevaBDB"));
     m_ProjectileSpeed = m_Bot.GetConfig().Get<int>(_T("ProjectileSpeed"));
-
+    m_IgnoreDelayDistance = m_Bot.GetConfig().Get<int>(_T("IgnoreDelayDistance"));
     m_Bot.GetClient()->ReleaseKeys();
     
     if (m_DistFactor < 1) m_DistFactor = 10;
@@ -686,6 +712,24 @@ Vec2 CalculateShot(const Vec2& pShooter, const Vec2& pTarget, const Vec2& vTarge
     solution = pTarget + (vTarget * (float)t);
 
     return solution;
+}
+
+bool InBurstArea(const Vec2& pBot, Pathing::Grid<short>& grid) {
+    static const std::vector<Vec2> directions = { Vec2(0, -1), Vec2(1, 0), Vec2(0, 1), Vec2(-1, 0) };
+    const int SearchLength = 15;
+    const int WallsNeeded = 2;
+    int wall_count = 0;
+
+    for (auto dir : directions) {
+        for (int i = 0; i < SearchLength; ++i) {
+            if (grid.IsSolid(short(pBot.x + dir.x * i), short(pBot.y + dir.y * i))) {
+                wall_count++;
+                break;
+            }
+        }
+    }
+
+    return wall_count >= WallsNeeded;
 }
 
 void AggressiveState::Update(DWORD dt) {
@@ -746,7 +790,7 @@ void AggressiveState::Update(DWORD dt) {
         Vec2 vEnemy = m_EnemyVelocity * 4;
         Vec2 vBot = m_Bot.GetVelocity();
 
-        Vec2 solution = CalculateShot(pos + vBot, target, vEnemy - vBot, m_ProjectileSpeed / 16.0 / 10.0);
+        Vec2 solution = CalculateShot(pos, target, vEnemy - vBot, m_ProjectileSpeed / 16.0 / 10.0);
 
         Util::GetDistance(pos, solution, &dx, &dy, nullptr);
 
@@ -811,8 +855,18 @@ void AggressiveState::Update(DWORD dt) {
             client->Up(false);
         }
 
+        m_BurstTimer += dt;
+
+        if (m_BurstTimer >= 1000) {
+            if (!insafe && dist < 15 && InBurstArea(pos, m_Bot.GetGrid())) {
+                client->Burst();
+
+                m_BurstTimer = 0;
+            }
+        }
+
         /* Only fire weapons if pointing at enemy */
-        if (rot != target_rot && dist > 5 && !m_Baseduel) {
+        if (rot != target_rot && dist > 5 && (!m_Baseduel || m_Bot.InCenter())) {
             client->Gun(GunState::Off);
             return;
         }
@@ -831,7 +885,7 @@ void AggressiveState::Update(DWORD dt) {
 
         /* Handle gunning */
         if (energypct < m_RunPercent) {
-            if (dist <= 7)
+            if (dist <= m_IgnoreDelayDistance)
                 client->Gun(GunState::Constant);
             else
                 client->Gun(GunState::Off);
@@ -840,7 +894,7 @@ void AggressiveState::Update(DWORD dt) {
                 client->Gun(GunState::Off);
             } else {
                 // Do bullet delay if the closest enemy isn't close, ignore otherwise
-                if (dist > 7)
+                if (dist > m_IgnoreDelayDistance)
                     client->Gun(GunState::Tap, energypct);
                 else
                     client->Gun(GunState::Constant);

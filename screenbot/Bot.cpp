@@ -37,7 +37,8 @@ Bot::Bot(int ship)
       m_Attach(false),
       m_CenterOnly(false),
       m_Velocity(0, 0),
-      m_LastPos(0, 0)
+      m_LastPos(0, 0),
+      m_RepelTimer(0)
 { }
 
 ClientPtr Bot::GetClient() {
@@ -121,15 +122,8 @@ void Bot::Update(DWORD dt) {
         m_AliveTime += dt;
 
         if (!InCenter() && m_CenterOnly && !m_Attach) {
-            if (m_AliveTime < 10000 && m_PossibleAddr.size() > 1) {
-                tcout << "Bot appears to be out of center. The position address is probably wrong, trying next one." << std::endl;
-                m_PossibleAddr.erase(m_PossibleAddr.begin());
-                SetPosAddress(m_PossibleAddr.at(0));
-                m_Client->Warp();
-            } else {
-                tcout << "Warping because position is out of center (" << GetX() << ", " << GetY() << ")." << std::endl;
-                m_Client->Warp();
-            }
+            tcout << "Warping because position is out of center (" << GetX() << ", " << GetY() << ")." << std::endl;
+            m_Client->Warp();
         }
     }
 
@@ -164,6 +158,13 @@ void Bot::Update(DWORD dt) {
             Vec2 enemy = m_EnemyTarget;
             if (enemy.x < 320 || enemy.x >= 703 || enemy.y < 320 || enemy.x >= 703)
                 reset_target = true;
+        }
+
+        m_RepelTimer += dt;
+        int epct = GetEnergyPercent();
+        if (m_RepelTimer >= 1200 && epct > 0 && epct < m_RepelPercent) {
+            m_Client->Repel();
+            m_RepelTimer = 0;
         }
 
     } catch (...) { 
@@ -244,6 +245,11 @@ int Bot::Run() {
     m_Config.Set(_T("Include"),         _T(""));
     m_Config.Set(_T("DevaBDB"),         _T("False"));
     m_Config.Set(_T("ProjectileSpeed"), _T("3400"));
+    m_Config.Set(_T("CenterRadius"),    _T("400"));
+    m_Config.Set(_T("IgnoreCarriers"),  _T("False"));
+    m_Config.Set(_T("IgnoreDelayDistance"), _T("10"));
+    m_Config.Set(_T("RepelPercent"),    _T("25"));
+    m_Config.Set(_T("UseBurst"),        _T("True"));
     
     if (!m_Config.Load(_T("bot.conf")))
         tcout << "Could not load bot.conf. Using default values." << std::endl;
@@ -309,6 +315,8 @@ int Bot::Run() {
     m_CenterOnly = m_Config.Get<bool>("OnlyCenter");
     m_SpawnX = m_Config.Get<int>("SpawnX");
     m_SpawnY = m_Config.Get<int>("SpawnY");
+    m_CenterRadius = m_Config.Get<int>("CenterRadius");
+    m_RepelPercent = m_Config.Get<int>("RepelPercent");
 
     if (m_ProcessHandle)
         this->SetState(std::make_shared<MemoryState>(*this));
