@@ -677,6 +677,7 @@ AggressiveState::AggressiveState(Bot& bot)
     m_Baseduel       = m_Bot.GetConfig().Get<bool>(_T("DevaBDB"));
     m_ProjectileSpeed = m_Bot.GetConfig().Get<int>(_T("ProjectileSpeed"));
     m_IgnoreDelayDistance = m_Bot.GetConfig().Get<int>(_T("IgnoreDelayDistance"));
+    m_UseBurst       = m_Bot.GetConfig().Get<bool>(_T("UseBurst"));
     m_Bot.GetClient()->ReleaseKeys();
     
     if (m_DistFactor < 1) m_DistFactor = 10;
@@ -857,7 +858,7 @@ void AggressiveState::Update(DWORD dt) {
 
         m_BurstTimer += dt;
 
-        if (m_BurstTimer >= 1000) {
+        if (m_BurstTimer >= 1000 && m_UseBurst) {
             if (!insafe && dist < 15 && InBurstArea(pos, m_Bot.GetGrid())) {
                 client->Burst();
 

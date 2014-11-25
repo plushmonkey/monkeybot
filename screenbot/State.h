@@ -99,6 +99,7 @@ private:
     bool m_Baseduel;
     int m_ProjectileSpeed;
     int m_IgnoreDelayDistance;
+    bool m_UseBurst;
 
 public:
     AggressiveState(Bot& bot);
