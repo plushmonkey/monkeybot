@@ -678,6 +678,10 @@ AggressiveState::AggressiveState(Bot& bot)
     m_ProjectileSpeed = m_Bot.GetConfig().Get<int>(_T("ProjectileSpeed"));
     m_IgnoreDelayDistance = m_Bot.GetConfig().Get<int>(_T("IgnoreDelayDistance"));
     m_UseBurst       = m_Bot.GetConfig().Get<bool>(_T("UseBurst"));
+	m_DecoyDelay	 = m_Bot.GetConfig().Get<int>(_T("DecoyDelay"));
+
+	m_DecoyTimer	 = 0;
+
     m_Bot.GetClient()->ReleaseKeys();
     
     if (m_DistFactor < 1) m_DistFactor = 10;
@@ -865,6 +869,11 @@ void AggressiveState::Update(DWORD dt) {
                 m_BurstTimer = 0;
             }
         }
+
+		m_DecoyTimer += dt;
+
+		if (m_DecoyDelay > 0 && m_DecoyTimer >= m_DecoyDelay)
+			client->Decoy();
 
         /* Only fire weapons if pointing at enemy */
         if (rot != target_rot && dist > 5 && (!m_Baseduel || m_Bot.InCenter())) {

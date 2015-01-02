@@ -28,6 +28,7 @@ public:
     virtual void Gun(GunState state, int energy_percent = 100) = 0;
     virtual void Burst() = 0;
     virtual void Repel() = 0;
+	virtual void Decoy() = 0;
 
     virtual void SetXRadar(bool on) = 0;
     virtual void Warp() = 0;
@@ -110,6 +111,7 @@ public:
     virtual void Gun(GunState state, int energy_percent = 100);
     virtual void Burst();
     virtual void Repel();
+	virtual void Decoy();
 
     virtual void SetXRadar(bool on);
     virtual void Warp();

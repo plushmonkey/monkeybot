@@ -168,6 +168,16 @@ void ScreenClient::Repel() {
     m_Keyboard.ToggleDown();
 }
 
+void ScreenClient::Decoy() {
+	m_Keyboard.ToggleDown();
+	std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+	m_Keyboard.Send(VK_F5);
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(30));
+	m_Keyboard.ToggleDown();
+}
+
 void ScreenClient::SetXRadar(bool on) {
     int count = 0;
     /* Try to toggle xradar, timeout after 50 tries */
@@ -361,7 +371,9 @@ void ScreenClient::GrabRadar() {
         }
 
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        tcout << "Finding radar location." << std::endl;
+        tcout << "Finding radar location. (Screen dimensions: " << m_Screen->GetWidth() << "x" << m_Screen->GetHeight() << ")" << std::endl;
+        tcout << "Saving screen to screen.bmp" << std::endl;
+        m_Screen->Save("screen.bmp");
     }
 
     int radarwidth = radarend - radarstart;

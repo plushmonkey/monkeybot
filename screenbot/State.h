@@ -83,6 +83,7 @@ private:
     DWORD m_LastNonSafeTime;
     DWORD m_NearWall;
     DWORD m_BurstTimer;
+	DWORD m_DecoyTimer;
 
     // Config
     int m_RunPercent;
@@ -100,6 +101,7 @@ private:
     int m_ProjectileSpeed;
     int m_IgnoreDelayDistance;
     bool m_UseBurst;
+	int m_DecoyDelay;
 
 public:
     AggressiveState(Bot& bot);

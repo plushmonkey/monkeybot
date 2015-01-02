@@ -250,6 +250,7 @@ int Bot::Run() {
     m_Config.Set(_T("IgnoreDelayDistance"), _T("10"));
     m_Config.Set(_T("RepelPercent"),    _T("25"));
     m_Config.Set(_T("UseBurst"),        _T("True"));
+	m_Config.Set(_T("DecoyDelay"),		_T("0"));
     
     if (!m_Config.Load(_T("bot.conf")))
         tcout << "Could not load bot.conf. Using default values." << std::endl;
