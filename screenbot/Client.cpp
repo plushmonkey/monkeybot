@@ -174,7 +174,6 @@ void ScreenClient::Decoy() {
 
 	m_Keyboard.Send(VK_F5);
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(30));
 	m_Keyboard.ToggleDown();
 }
 

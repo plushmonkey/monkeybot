@@ -872,8 +872,10 @@ void AggressiveState::Update(DWORD dt) {
 
 		m_DecoyTimer += dt;
 
-		if (m_DecoyDelay > 0 && m_DecoyTimer >= m_DecoyDelay)
+		if (m_DecoyDelay > 0 && m_DecoyTimer >= m_DecoyDelay) {
 			client->Decoy();
+			m_DecoyTimer = 0;
+		}
 
         /* Only fire weapons if pointing at enemy */
         if (rot != target_rot && dist > 5 && (!m_Baseduel || m_Bot.InCenter())) {
