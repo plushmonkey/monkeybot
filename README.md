@@ -16,6 +16,7 @@
 - Put (public) in the zone folder if you want to use a turret with the bot.  
 - The bot will need to be restarted if you change items that adjust energy.  
 - You can run the bot in a virtual machine if you want to be able to still use the computer normally.  
+- Keep the playerlist window on Team Sort.  
 
 ### Config
 - Add ?log bot.log to auto.  
