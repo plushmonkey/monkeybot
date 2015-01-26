@@ -18,7 +18,8 @@
 - You can run the bot in a virtual machine if you want to be able to still use the computer normally.  
 
 ### Config
-- Add ?log bot.log to auto.
+- Add ?log bot.log to auto.  
+- Turn on kill messages in chat.  
 - Create /?attach macro and set it to F7 keybinding.   
 - Update the config settings. At least Level, MapZoom, LogFile, and Name  
 
