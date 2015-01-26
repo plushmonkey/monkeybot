@@ -17,6 +17,11 @@
 - The bot will need to be restarted if you change items that adjust energy.  
 - You can run the bot in a virtual machine if you want to be able to still use the computer normally.  
 
+### Config
+- Add ?log bot.log to auto.
+- Create /?attach macro and set it to F7 keybinding.   
+- Update the config settings. At least Level, MapZoom, LogFile, and Name  
+
 ##Compiling
 - It will probably only compile with Visual Studio 2013.  
 - Add _USE_MATH_DEFINES;NOMINMAX to preprocessor definitions.  
