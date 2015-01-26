@@ -5,8 +5,10 @@
 #include <memory>
 #include <ostream>
 #include <functional>
+#include <Windows.h>
 
 #include "Vector.h"
+#include "MessageQueue.h"
 
 #ifdef UNICODE
 #include <io.h>
@@ -52,6 +54,10 @@ typedef std::shared_ptr<ScreenGrabber> ScreenGrabberPtr;
 typedef std::shared_ptr<ScreenArea> ScreenAreaPtr;
 typedef std::shared_ptr<Client> ClientPtr;
 
+enum class Direction {
+    Up, Down, Left, Right, None
+};
+
 namespace Ships {
     extern const u64 Rotations[8][40];
 }
@@ -71,6 +77,17 @@ tostream& operator<<(tostream& out, const Pixel& pix);
 u64 operator+(const Pixel& pix, u64 a);
 bool operator==(const Pixel& first, const Pixel& second);
 bool operator!=(const Pixel& first, const Pixel& second);
+
+namespace std {
+    template<>
+    struct hash <Pixel> {
+        size_t operator()(const Pixel& pix) const {
+            u32 val = (pix.b << 24) | (pix.g << 16) | (pix.r << 8) | pix.a;
+            std::hash<u32> v;
+            return v(val);
+        }
+    };
+}
 
 namespace Colors {
     extern const Pixel RadarColor;

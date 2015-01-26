@@ -10,6 +10,8 @@
 #include "Memory.h"
 #include "Client.h"
 #include "Tokenizer.h"
+#include "FileStream.h"
+#include "Random.h"
 
 #include <thread>
 #include <tchar.h>
@@ -18,6 +20,7 @@
 #include <string>
 #include <queue>
 #include <sstream>
+#include <regex>
 
 Bot::Bot(int ship)
     : m_Finder(_T("Continuum")),
@@ -36,9 +39,13 @@ Bot::Bot(int ship)
       m_Client(nullptr),
       m_Attach(false),
       m_CenterOnly(false),
-      m_Velocity(0, 0),
-      m_LastPos(0, 0),
-      m_RepelTimer(0)
+      m_RepelTimer(0),
+      m_Taunter(this),
+      m_Taunt(false),
+      m_LancTimer(20000),
+      m_Flagging(false),
+      m_CommandHandler(this),
+      m_Hyperspace(false)
 { }
 
 ClientPtr Bot::GetClient() {
@@ -54,6 +61,58 @@ unsigned int Bot::GetY() const {
     if (m_PosAddr == 0) return 0;
 
     return Memory::GetU32(m_ProcessHandle, m_PosAddr + 4) / 16;
+}
+
+unsigned int Bot::GetPixelX() const {
+    if (m_PosAddr == 0) return 0;
+
+    return Memory::GetU32(m_ProcessHandle, m_PosAddr);
+}
+unsigned int Bot::GetPixelY() const {
+    if (m_PosAddr == 0) return 0;
+
+    return Memory::GetU32(m_ProcessHandle, m_PosAddr + 4);
+}
+
+Vec2 Bot::GetHeading() const {
+    double rad = (((40 - (m_Client->GetRotation() + 30)) % 40) * 9) * (M_PI / 180);
+    return Vec2((float)std::cos(rad), -(float)std::sin(rad));
+}
+
+Vec2 Bot::GetVelocity() const {
+    if (m_PosAddr == 0) return Vec2(0, 0);
+
+    int xspeed = Memory::GetU32(m_ProcessHandle, m_PosAddr + 8);
+    int yspeed = Memory::GetU32(m_ProcessHandle, m_PosAddr + 12);
+
+    return Vec2(xspeed / 16.0, yspeed / 16.0);
+}
+
+void Bot::SetSpeed(float target) {
+    Vec2 velocity = GetVelocity();
+    
+    double len = velocity.Length();
+
+    Vec2 heading = GetHeading();
+    velocity.Normalize();
+
+    double dot = heading.Dot(velocity);
+
+    if (dot < 0.0) {
+        // Going backwards, so just press up key
+        m_Client->Down(false);
+        m_Client->Up(true);
+    } else {
+        if (len < target) {
+            m_Client->Down(false);
+            m_Client->Up(true);
+        } else {
+            m_Client->Up(false);
+            m_Client->Down(true);
+        }
+    }
+
+    //std::cout << "Speed: " << len << ", Target: " << target << std::endl;
 }
 
 HWND Bot::SelectWindow() {
@@ -103,14 +162,88 @@ void Bot::SelectShip() {
     m_ShipNum = input[0] - 0x30;
 }
 
+void Bot::CheckLancs(const std::string& line) {
+    std::string regex_str = R"::(^\s*\(S|E\) (.+)$)::";
+
+    if (m_ShipNum > 6 || m_ShipNum == 3 || m_ShipNum == 4)
+        regex_str = R"::(^\s*\(S\) (.+)$)::";
+
+    std::regex summoner_regex(regex_str);
+    Util::Tokenizer tokenizer(line);
+
+    if (m_LancTimer > 5000) return;
+
+    tokenizer(',');
+
+    std::vector<std::string> summoners;
+    std::vector<std::string> evokers;
+
+    std::string target;
+
+    for (const std::string& lanc : tokenizer) {
+        std::sregex_iterator begin(lanc.begin(), lanc.end(), summoner_regex);
+        std::sregex_iterator end;
+        
+        if (begin != end) {
+            // Prioritize this lanc
+            size_t pos = lanc.find("(S) ");
+            if (pos != std::string::npos) {
+                summoners.emplace_back(lanc.substr(lanc.find("(S) ") + 4));
+                continue;
+            }
+
+            pos = lanc.find("(E)");
+            if (pos == std::string::npos) continue;
+            evokers.emplace_back(lanc.substr(lanc.find("(E) ") + 4));
+            break;
+        }
+    }
+
+    if (evokers.size() > 0)
+        target = evokers.at(0);
+    if (summoners.size() > 0)
+        target = summoners.at(0);
+
+    m_AttachTarget = target;
+
+    if (target.length() > 0) {
+        m_LancTimer = 5001;
+        std::cout << "Target: " << target << std::endl;
+        m_Client->SelectPlayer(target);
+    }
+}
+
+void Bot::HandleMessage(ChatMessage* mesg) {
+    std::string line = mesg->GetLine();
+
+    if (m_Hyperspace)
+        CheckLancs(line);
+}
+
 void Bot::Update(DWORD dt) {
     m_Client->Update(dt);
-    
-    if (!m_Client->InShip())
+
+    if (!m_Client->InShip()) {
         m_Client->EnterShip(m_ShipNum);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(dt));
+        m_Client->Update(dt);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+        if (m_Client->InShip() && m_Attach && m_Hyperspace) {
+            if (m_Flagging) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                m_Client->SendString("?flag");
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            m_Client->SendString("?lancs");
+        }
+    }
     
     m_Energy = m_Client->GetEnergy();
 
+    // Reset maximum energy on every death
+    if (m_Energy == 0) m_MaxEnergy = 0;
     if (m_Energy > m_MaxEnergy) m_MaxEnergy = m_Energy;
 
     int dx, dy;
@@ -122,28 +255,32 @@ void Bot::Update(DWORD dt) {
         m_AliveTime += dt;
 
         if (!InCenter() && m_CenterOnly && !m_Attach) {
-            tcout << "Warping because position is out of center (" << GetX() << ", " << GetY() << ")." << std::endl;
+            m_Client->ReleaseKeys();
+
+            if (GetEnergyPercent() == 100)
+                tcout << "Warping because position is out of center (" << GetX() << ", " << GetY() << ")." << std::endl;
             m_Client->Warp();
         }
     }
 
+    m_LancTimer += dt;
+
+    m_LogReader->Update(dt);
+
+    if (m_LancTimer >= 35000 && m_Hyperspace) {
+        if (m_Attach)
+            m_Client->SendString("?lancs");
+        m_LancTimer = 0;
+    }
 
     Vec2 pos = GetPos();
 
-    m_VelocityTimer += dt;
-
-    if (m_VelocityTimer >= 250) {
-        m_Velocity = (pos - m_LastPos) / (m_VelocityTimer / 250.0f);
-        m_LastPos = pos;
-        m_VelocityTimer = 0;
-    }
-
     // Attach to ticked player when in center safe
-    if (m_Attach && !m_Client->OnSoloFreq()) {
+    if (m_Attach && !m_Client->OnSoloFreq() && this->GetStateType() != StateType::AttachState) {
         if (pos.x >= m_SpawnX - 20 && pos.x <= m_SpawnX + 20 && pos.y >= m_SpawnY - 20 && pos.y <= m_SpawnY + 20)
             SetState(std::make_shared<AttachState>(*this));
     }
-
+    
     try {
         std::vector<Vec2> enemies = m_Client->GetEnemies(pos, m_Level);
         m_EnemyTarget = m_Client->GetClosestEnemy(pos, m_Level, &dx, &dy, &dist);
@@ -166,7 +303,6 @@ void Bot::Update(DWORD dt) {
             m_Client->Repel();
             m_RepelTimer = 0;
         }
-
     } catch (...) { 
         reset_target = true;
     }
@@ -175,7 +311,11 @@ void Bot::Update(DWORD dt) {
         m_EnemyTarget = Vec2(0, 0);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    
     m_State->Update(dt);
+    
+    MQueue.Dispatch();
+    
 }
 
 bool GetDebugPrivileges() {
@@ -213,7 +353,7 @@ int Bot::Run() {
             ready = true;
         } catch (const std::exception& e) {
             tcerr << e.what() << std::endl;
-            std::this_thread::sleep_for(std::chrono::seconds(3));
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
     }
 
@@ -232,7 +372,6 @@ int Bot::Run() {
     m_Config.Set(_T("Level"),           _T("C:\\Program Files (x86)\\Continuum\\zones\\SSCE Hyperspace\\pub20140727.lvl"));
     m_Config.Set(_T("BulletDelay"),     _T("20"));
     m_Config.Set(_T("ScaleDelay"),      _T("True"));
-    m_Config.Set(_T("MemoryScanning"),  _T("True"));
     m_Config.Set(_T("OnlyCenter"),      _T("True"));
     m_Config.Set(_T("Patrol"),          _T("True"));
     m_Config.Set(_T("RotationStore"),   _T("hyperspace.rot"));
@@ -243,7 +382,7 @@ int Bot::Run() {
     m_Config.Set(_T("SpawnY"),          _T("512"));
     m_Config.Set(_T("Waypoints"),       _T("(400, 585), (565, 580), (600, 475), (512, 460), (425, 460), (385, 505)"));
     m_Config.Set(_T("Include"),         _T(""));
-    m_Config.Set(_T("DevaBDB"),         _T("False"));
+    m_Config.Set(_T("Baseduel"),        _T("False"));
     m_Config.Set(_T("ProjectileSpeed"), _T("3400"));
     m_Config.Set(_T("CenterRadius"),    _T("400"));
     m_Config.Set(_T("IgnoreCarriers"),  _T("False"));
@@ -251,6 +390,10 @@ int Bot::Run() {
     m_Config.Set(_T("RepelPercent"),    _T("25"));
     m_Config.Set(_T("UseBurst"),        _T("True"));
 	m_Config.Set(_T("DecoyDelay"),		_T("0"));
+    m_Config.Set(_T("LogFile"),         _T("C:\\Program Files (x86)\\Continuum\\logs\\bot.log"));
+    m_Config.Set(_T("Taunt"),           _T("False"));
+    m_Config.Set(_T("Name"),            _T(""));
+    m_Config.Set(_T("Hyperspace"),      _T("false"));
     
     if (!m_Config.Load(_T("bot.conf")))
         tcout << "Could not load bot.conf. Using default values." << std::endl;
@@ -262,7 +405,7 @@ int Bot::Run() {
         tokenizer('|');
 
         for (auto it = tokenizer.begin(); it != tokenizer.end(); ++it) {
-            std::cout << "Loading include file " << *it << std::endl;
+            tcout << "Loading include file " << *it << std::endl;
             m_Config.Load(*it);
         }
     }
@@ -277,6 +420,9 @@ int Bot::Run() {
     for (auto iter = m_Config.begin(); iter != m_Config.end(); ++iter)
         tcout << iter->first << ": " << iter->second << std::endl;
 
+    m_LogReader = std::make_shared<LogReader>(m_Config.Get<std::string>("LogFile"), 3000);
+    m_LogReader->Clear();
+
     if (!m_Level.Load(m_Config.Get<tstring>(_T("Level")))) {
         tcerr << "Could not load level " << m_Config.Get<tstring>(_T("Level")) << "\n";
     } else {
@@ -289,27 +435,23 @@ int Bot::Run() {
         }
     }
 
-    bool memory_enabled = false;
+    tcout << "Bot started." << std::endl;
 
-    if (m_Config.Get<bool>(_T("MemoryScanning"))) {
-        if (GetDebugPrivileges()) {
-            DWORD pid;
-            GetWindowThreadProcessId(m_Window, &pid);
+    if (GetDebugPrivileges()) {
+        DWORD pid;
+        GetWindowThreadProcessId(m_Window, &pid);
 
-            m_ProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+        m_ProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
 
-            if (!m_ProcessHandle)
-                tcerr << "Could not open process for reading.\n";
-            else
-                memory_enabled = true;
-        } else {
-            tcerr << "Could not get Windows debug privileges." << std::endl;
+        if (!m_ProcessHandle) {
+            tcerr << "Could not open process for reading.\n";
+            std::cin.get();
+            std::exit(1);
         }
-    }
-
-    if (!memory_enabled) {
-        m_Config.Set(_T("OnlyCenter"), _T("False"));
-        m_Config.Set(_T("Patrol"), _T("False"));
+    } else {
+        tcerr << "Could not get Windows debug privileges." << std::endl;
+        std::cin.get();
+        std::exit(1);
     }
 
     m_Attach = m_Config.Get<bool>("Attach");
@@ -318,14 +460,15 @@ int Bot::Run() {
     m_SpawnY = m_Config.Get<int>("SpawnY");
     m_CenterRadius = m_Config.Get<int>("CenterRadius");
     m_RepelPercent = m_Config.Get<int>("RepelPercent");
+    m_Taunt = m_Config.Get<bool>("Taunt");
+    m_Hyperspace = m_Config.Get<bool>("Hyperspace");
 
-    if (m_ProcessHandle)
-        this->SetState(std::make_shared<MemoryState>(*this));
-    else
-        this->SetState(std::make_shared<AggressiveState>(*this));
+    m_Taunter.SetEnabled(m_Taunt);
+
+    this->SetState(std::make_shared<MemoryState>(*this));
 
     DWORD last_update = timeGetTime();
-
+    
     while (true) {
         DWORD dt = timeGetTime() - last_update;
         //std::cout << dt << " ";

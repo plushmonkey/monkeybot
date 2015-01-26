@@ -1,5 +1,7 @@
 #include "Memory.h"
 
+#include <tlhelp32.h>
+
 namespace Memory {
 
 std::vector<WritableArea> GetWritableAreas(HANDLE handle) {
@@ -52,6 +54,25 @@ unsigned int GetU32(HANDLE handle, const unsigned int address) {
     if (ReadProcessMemory(handle, (LPVOID)address, &value, sizeof(unsigned int), &num_read))
         return value;
 
+    return 0;
+}
+
+ULONG GetModuleBase(char *name, ULONG pid) {
+    MODULEENTRY32 me = { 0 };
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, pid);
+
+    me.dwSize = sizeof(me);
+    if (snap == INVALID_HANDLE_VALUE) return 0;
+
+    BOOL bModule = Module32First(snap, &me);
+    while (bModule) {
+        if (!name || strcmp(name, me.szModule) == 0) {
+            CloseHandle(snap);
+            return (ULONG)me.modBaseAddr;
+        }
+        bModule = Module32Next(snap, &me);
+    }
+    CloseHandle(snap);
     return 0;
 }
 

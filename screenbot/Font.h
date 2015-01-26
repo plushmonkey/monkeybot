@@ -7,37 +7,30 @@
 #include <map>
 #include <vector>
 
+#define MAX_ROWS 20
+#define MAX_COLS 20
+
 class Character {
 private:
     int m_Width;
     int m_Height;
-    int* m_RowValues;
-    int* m_ColValues;
+    int m_RowValues[MAX_ROWS];
+    int m_ColValues[MAX_COLS];
     char m_Char;
 public:
     Character(int width, int height) 
         : m_Width(width), 
           m_Height(height), 
-          m_RowValues(nullptr),
-          m_ColValues(nullptr),
           m_Char(' ')
     { 
-        m_RowValues = new int[height];
-        m_ColValues = new int[width];
+
     }
 
-    ~Character() {
-        if (m_RowValues)
-            delete[] m_RowValues;
-        if (m_ColValues)
-            delete[] m_ColValues;
-    }
+    ~Character() { }
 
     Character(const Character& other) {
         m_Width = other.m_Width;
         m_Height = other.m_Height;
-        m_RowValues = new int[m_Height];
-        m_ColValues = new int[m_Width];
         m_Char = other.m_Char;
 
         memcpy(m_RowValues, other.m_RowValues, sizeof(int) * m_Height);

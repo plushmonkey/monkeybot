@@ -17,6 +17,15 @@ static const std::vector<Vec2> directions = {
         { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
 };
 
+
+void str_replace(std::string& str, const std::string& from, const std::string& to) {
+    size_t pos = 0;
+    while ((pos = str.find(from, pos)) != std::string::npos) {
+        str.replace(pos, from.length(), to);
+        pos += to.length();
+    }
+}
+
 float GetRadarPerPixel(const ScreenAreaPtr& radar, int mapzoom) {
     int rwidth = radar->GetWidth();
     float amountseen = (1024.0f / 2.0f) / mapzoom;
@@ -27,12 +36,27 @@ int ContRotToDegrees(int rot) {
     return (40 - ((rot + 30) % 40)) * 9;
 }
 
+double ContRotToRads(int rot) {
+    return (((40 - (rot + 30)) % 40) * 9) * (M_PI / 180);
+}
+
+Vec2 ContRotToVec(int rot) {
+    double rad = Util::ContRotToRads(rot);
+    return Vec2(std::cos(rad), -std::sin(rad));
+}
+
+Direction GetRotationDirection(Vec2 heading, Vec2 target) {
+    Vec2 perp = heading.Perpendicular();
+    target.Normalize();
+    return perp.Dot(target) >= 0.0 ? Direction::Right : Direction::Left;
+}
+
 Vec2 GetBotRadarPos(Vec2 real_pos, const ScreenAreaPtr& radar, int mapzoom) {
     float per_pix = GetRadarPerPixel(radar, mapzoom);
     int rwidth = radar->GetWidth();
 
-    float bot_radar_x = rwidth / 2.0f;
-    float bot_radar_y = rwidth / 2.0f;
+    double bot_radar_x = rwidth / 2.0f;
+    double bot_radar_y = rwidth / 2.0f;
 
     float min_pos = (rwidth / 2) * per_pix;
 
@@ -46,8 +70,8 @@ Vec2 GetBotRadarPos(Vec2 real_pos, const ScreenAreaPtr& radar, int mapzoom) {
     else if (real_pos.y > 1024 - min_pos)
         bot_radar_y += ((real_pos.y - (1024 - min_pos)) / per_pix);
 
-    bot_radar_x = std::max(std::min(bot_radar_x, rwidth - 1.0f), 0.0f);
-    bot_radar_y = std::max(std::min(bot_radar_y, rwidth - 1.0f), 0.0f);
+    bot_radar_x = std::max(std::min(bot_radar_x, rwidth - 1.0), 0.0);
+    bot_radar_y = std::max(std::min(bot_radar_y, rwidth - 1.0), 0.0);
 
     return Vec2(bot_radar_x, bot_radar_y);
 }
@@ -58,8 +82,8 @@ Vec2 FindTargetPos(Vec2 bot_pos, Vec2 radar_coord, const ScreenGrabberPtr& scree
 
     Vec2 rpos = GetBotRadarPos(bot_pos, radar, mapzoom);
 
-    float rdx = -(rpos.x - radar_coord.x);
-    float rdy = -(rpos.y - radar_coord.y);
+    double rdx = -(rpos.x - radar_coord.x);
+    double rdy = -(rpos.y - radar_coord.y);
 
     Vec2 target(bot_pos.x + rdx * per_pix, bot_pos.y + rdy * per_pix);
 
@@ -95,8 +119,8 @@ bool InShip(const ScreenGrabberPtr& grabber) {
 }
 
 void GetDistance(Vec2 from, Vec2 to, int *dx, int *dy, double* dist) {
-    float cdx = -(from.x - to.x);
-    float cdy = -(from.y - to.y);
+    double cdx = -(from.x - to.x);
+    double cdy = -(from.y - to.y);
     if (dx)
         *dx = (int)cdx;
     if (dy)
@@ -133,8 +157,8 @@ int GetShipRadius(int n) {
 }
 
 bool InSafe(const ScreenArea::Ptr& area, Vec2 coord) {
-    float x = coord.x;
-    float y = coord.y;
+    double x = coord.x;
+    double y = coord.y;
 
     for (const Vec2& dir : directions) {
         try {
@@ -201,15 +225,16 @@ int GetEnergy(ScreenAreaPtr* energyarea) {
     // Default to 2000 energy if resolution isn't supported
     if (!energyarea[0]) return 2000;
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 5; i++)
         energyarea[i]->Update();
 
     int first = GetEnergyDigit(0, energyarea);
     int second = GetEnergyDigit(1, energyarea);
     int third = GetEnergyDigit(2, energyarea);
     int fourth = GetEnergyDigit(3, energyarea);
+    int fifth = GetEnergyDigit(4, energyarea);
 
-    return (first * 1000) + (second * 100) + (third * 10) + fourth;
+    return (first * 10000) + (second * 1000) + (third * 100) + (fourth * 10) + fifth;
 }
 
 bool FitsOnMap(int x, int y, int radius, const Level& level) {

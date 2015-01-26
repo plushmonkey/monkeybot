@@ -148,13 +148,16 @@
     <ClCompile Include="Bot.cpp" />
     <ClCompile Include="Client.cpp" />
     <ClCompile Include="Colors.cpp" />
+    <ClCompile Include="CommandHandler.cpp" />
     <ClCompile Include="Common.cpp" />
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="Font.cpp" />
     <ClCompile Include="Keyboard.cpp" />
     <ClCompile Include="Level.cpp" />
+    <ClCompile Include="LogReader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Memory.cpp" />
+    <ClCompile Include="MessageQueue.cpp" />
     <ClCompile Include="Pathing.cpp" />
     <ClCompile Include="PlayerList.cpp" />
     <ClCompile Include="Random.cpp" />
@@ -162,18 +165,27 @@
     <ClCompile Include="ScreenArea.cpp" />
     <ClCompile Include="ScreenGrabber.cpp" />
     <ClCompile Include="State.cpp" />
+    <ClCompile Include="Taunter.cpp" />
     <ClCompile Include="Util.cpp" />
     <ClCompile Include="WindowFinder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Bot.h" />
+    <ClInclude Include="CommandHandler.h" />
+    <ClInclude Include="MessageQueue.h" />
     <ClInclude Include="Client.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="FileStream.h" />
     <ClInclude Include="Font.h" />
     <ClInclude Include="Keyboard.h" />
     <ClInclude Include="Level.h" />
+    <ClInclude Include="LogReader.h" />
     <ClInclude Include="Memory.h" />
+    <ClInclude Include="Messages\ChatMessage.h" />
+    <ClInclude Include="Messages\KillMessage.h" />
+    <ClInclude Include="Messages\Messages.h" />
+    <ClInclude Include="Taunter.h" />
     <ClInclude Include="Pathing.h" />
     <ClInclude Include="PlayerList.h" />
     <ClInclude Include="Random.h" />

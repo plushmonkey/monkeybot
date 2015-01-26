@@ -112,6 +112,27 @@ PlayerPtr PlayerWindow::Find(const std::string& name) {
     return std::shared_ptr<Player>();
 }
 
+int PlayerWindow::GetPlayerIndex(PlayerPtr player) {
+    for (size_t i = 0; i < m_Players.size(); ++i) {
+        if (player == m_Players.at(i))
+            return i;
+    }
+    return -1;
+}
+
+Direction PlayerWindow::GetDirection(PlayerPtr player) {
+    int index = GetPlayerIndex(player);
+
+    if (index < 0) return Direction::None;
+
+    PlayerPtr selected = GetSelectedPlayer();
+    int selected_index = GetPlayerIndex(selected);
+
+    if (selected_index == index) return Direction::None;
+
+    return selected_index < index ? Direction::Down : Direction::Up;
+}
+
 PlayerList PlayerWindow::GetFrequency(int freq) {
     PlayerList list;
     for (PlayerPtr player : m_Players) {

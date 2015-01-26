@@ -14,7 +14,8 @@ enum class StateType {
     ChaseState,
     PatrolState,
     AggressiveState,
-    AttachState
+    AttachState,
+    BaseduelState
 };
 
 std::ostream& operator<<(std::ostream& out, StateType type);
@@ -36,6 +37,7 @@ class AttachState : public State {
 private:
     int m_SpawnX;
     int m_SpawnY;
+    Direction m_Direction;
 
 public:
     AttachState(Bot& bot);
@@ -57,6 +59,14 @@ public:
     virtual StateType GetType() const { return StateType::ChaseState; }
 };
 
+class BaseduelState : public State {
+private:
+public:
+    BaseduelState(Bot& bot);
+    virtual void Update(DWORD dt);
+    virtual StateType GetType() const { return StateType::BaseduelState; }
+};
+
 class PatrolState : public State {
 private:
     std::vector<Vec2> m_Waypoints;
@@ -64,7 +74,7 @@ private:
     Pathing::Plan m_Plan;
     DWORD m_LastBullet;
     bool m_Patrol;
-
+    bool m_Attach;
     Vec2 m_LastCoord;
     DWORD m_StuckTimer;
 
@@ -93,7 +103,6 @@ private:
     int m_RunDist;
     int m_StopBombing;
     int m_DistFactor;
-    bool m_MemoryScanning;
     bool m_OnlyCenter;
     bool m_Patrol;
     int m_MinGunRange;
@@ -101,7 +110,7 @@ private:
     int m_ProjectileSpeed;
     int m_IgnoreDelayDistance;
     bool m_UseBurst;
-	int m_DecoyDelay;
+	unsigned int m_DecoyDelay;
 
 public:
     AggressiveState(Bot& bot);
@@ -112,8 +121,9 @@ public:
 
 class MemoryState : public State {
 private:
-    // Address -> Value
-    std::map<unsigned int, unsigned int> m_FindSpace;
+    typedef unsigned int Address;
+    typedef unsigned int Value;
+    std::map<Address, Value> m_FindSpace;
     int m_SpawnX;
     int m_SpawnY;
     bool m_Up;

@@ -29,6 +29,7 @@ public:
     virtual void Burst() = 0;
     virtual void Repel() = 0;
 	virtual void Decoy() = 0;
+    virtual void SetThrust(bool on) = 0;
 
     virtual void SetXRadar(bool on) = 0;
     virtual void Warp() = 0;
@@ -63,7 +64,18 @@ public:
 
     virtual bool OnSoloFreq() = 0;
     virtual PlayerPtr GetSelectedPlayer() = 0;
-    virtual void MoveTicker(bool down) = 0;
+    virtual void MoveTicker(Direction dir) = 0;
+
+    virtual std::vector<Vec2> FindMines(Vec2 bot_pixel_pos) = 0;
+
+    virtual void Scan() = 0;
+
+    virtual bool Emped() = 0;
+
+    virtual void SendString(const std::string& str) = 0;
+    virtual void UseMacro(short num) = 0;
+
+    virtual void SelectPlayer(const std::string& name) = 0;
 };
 
 namespace Ships {
@@ -80,24 +92,24 @@ private:
     ScreenAreaPtr m_Radar;
     ScreenAreaPtr m_Ship;
     ScreenAreaPtr m_Player;
-    ScreenAreaPtr m_EnergyArea[4];
+    ScreenAreaPtr m_EnergyArea[5];
     PlayerWindow m_PlayerWindow;
 
     DWORD m_LastBullet;
     DWORD m_LastBomb;
+    DWORD m_EmpEnd;
 
     bool m_ConfigLoaded;
     int m_MapZoom;
-
     bool m_FireBombs;
     bool m_FireGuns;
     bool m_ScaleDelay;
-
     int m_BulletDelay;
     int m_CurrentBulletDelay;
     int m_BombDelay;
-
     bool m_IgnoreCarriers;
+
+    bool m_Thrusting;
 
     Ships::RotationStore* m_Rotations;
 
@@ -112,6 +124,7 @@ public:
     virtual void Burst();
     virtual void Repel();
 	virtual void Decoy();
+    virtual void SetThrust(bool on);
 
     virtual void SetXRadar(bool on);
     virtual void Warp();
@@ -146,9 +159,21 @@ public:
 
     virtual bool OnSoloFreq();
     virtual PlayerPtr GetSelectedPlayer();
-    virtual void MoveTicker(bool down);
+    virtual void MoveTicker(Direction dir);
 
     ScreenAreaPtr GetRadar() { return m_Radar; }
+
+    virtual std::vector<Vec2> FindMines(Vec2 bot_pixel_pos);
+
+    void EMPPixelHandler(ScreenGrabberPtr screen, int x, int y);
+    virtual void Scan();
+
+    virtual bool Emped();
+
+    virtual void SendString(const std::string& str);
+    virtual void UseMacro(short num);
+
+    virtual void SelectPlayer(const std::string& name);
 };
 
 #endif

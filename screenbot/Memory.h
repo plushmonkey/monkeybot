@@ -16,6 +16,8 @@ namespace Memory {
     std::vector<unsigned int> FindRange(HANDLE handle, const unsigned int start, const unsigned int end);
     unsigned int GetU32(HANDLE handle, const unsigned int address);
     std::vector<WritableArea> GetWritableAreas(HANDLE handle);
+
+    ULONG GetModuleBase(char *name, ULONG pid);
 }
 
 #endif

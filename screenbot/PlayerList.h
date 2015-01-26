@@ -42,9 +42,12 @@ public:
 
     void Update(unsigned long dt);
 
+    int GetPlayerIndex(PlayerPtr player);
     PlayerPtr GetPlayer(int index) { return m_Players.at(index); }
     PlayerPtr Find(const std::string& name);
     PlayerList GetFrequency(int freq);
+
+    Direction GetDirection(PlayerPtr player);
 
     PlayerPtr GetSelectedPlayer() { return m_Selected; }
 
