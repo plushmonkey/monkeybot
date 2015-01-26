@@ -17,10 +17,13 @@
 #include <cmath>
 #include <limits>
 
+// TODO: Pull out all of the common state stuff like movement/unstuck. 
+// Maybe just put it right in the bot class.
+
 #define RADIUS 1
 
 std::ostream& operator<<(std::ostream& out, StateType type) {
-    static std::vector<std::string> states = { "Memory", "Chase", "Patrol", "Aggressive", "Attach" };
+    static std::vector<std::string> states = { "Memory", "Chase", "Patrol", "Aggressive", "Attach", "Baseduel" };
     out << states.at(static_cast<int>(type));
     return out;
 }
@@ -49,6 +52,8 @@ void MemoryState::Update(DWORD dt) {
     client->Left(false);
     client->Right(false);
 
+
+    // Move a random vertical direction
     m_Up = Random::GetU32(0, 1) == 0;
 
     if (m_Up)
@@ -73,6 +78,7 @@ void MemoryState::Update(DWORD dt) {
     unsigned short maxY = std::max((m_SpawnY * 16) + 300, 0);
 
     if (m_FindSpace.size() == 0) {
+        // Find the initial possible addresses by searching for values around spawn
         std::vector<unsigned int> found = Memory::FindRange(m_Bot.GetProcessHandle(), minY, maxY);
 
         for (unsigned int i = 0; i < found.size(); ++i) {
@@ -105,13 +111,14 @@ void MemoryState::Update(DWORD dt) {
                 continue;
             }
             
-            m_FindSpace[kv.first] = y; // Set the new value of the address
+            // Set the new value of the address
+            m_FindSpace[kv.first] = y;
         }
     }
 
     tcout << "Possible memory locations: " << m_FindSpace.size() << std::endl;
 
-    /* Restart the search and make sure it's in the safe zone */
+    /* Restart the search and make sure it's at spawn */
     if (m_FindSpace.size() == 0) {
         client->Warp();
         return;
@@ -122,6 +129,7 @@ void MemoryState::Update(DWORD dt) {
         std::this_thread::sleep_for(std::chrono::milliseconds(30));
         client->Gun(GunState::Off);
 
+        // Do a bunch of checks to make sure the value is still near spawn
         for (int i = 0; i < 25; ++i) {
             for (auto it = m_FindSpace.begin(); it != m_FindSpace.end();) {
                 unsigned int x = Memory::GetU32(m_Bot.GetProcessHandle(), it->first - 4);
@@ -152,6 +160,7 @@ void MemoryState::Update(DWORD dt) {
         // Subtract 4 to get the x position address instead of y
         auto found = m_FindSpace.begin();
 
+        // Get the second to last address (this is usually the right one)
         for (size_t i = 1; i < m_FindSpace.size() - 1; ++i)
             found++;
 
@@ -161,17 +170,18 @@ void MemoryState::Update(DWORD dt) {
 
         m_Bot.SetPossibleAddr(possible);
 
-        if (m_Bot.GetConfig().Get<bool>("Attach")) {
-            auto state = std::make_shared<AttachState>(m_Bot);
-            m_Bot.SetState(state);
-        } else if (m_Bot.GetConfig().Get<bool>("Patrol")) {
-            auto state = std::make_shared<PatrolState>(m_Bot);
-            m_Bot.SetState(state);
-        } else {
-            auto state = std::make_shared<AggressiveState>(m_Bot);
-            m_Bot.SetState(state);
-            m_Bot.SetLastEnemy(timeGetTime());
-        }
+        StatePtr state;
+
+        if (m_Bot.GetConfig().Get<bool>("Attach"))
+            state = std::make_shared<AttachState>(m_Bot);
+        else if (m_Bot.GetConfig().Get<bool>("Patrol"))
+            state = std::make_shared<PatrolState>(m_Bot);
+        else
+            state = std::make_shared<AggressiveState>(m_Bot);
+
+        // Make sure the bot doesn't warp automatically by setting the last enemy detected to now
+        m_Bot.SetLastEnemy(timeGetTime());
+        m_Bot.SetState(state);
     }
 }
 
@@ -202,6 +212,7 @@ void AttachState::Update(DWORD dt) {
     auto selected = client->GetSelectedPlayer();
     std::string attach_target = m_Bot.GetAttachTarget();
 
+    // If the bot is out of center
     if (!(pos.x >= m_SpawnX - 20 && pos.x <= m_SpawnX + 20 &&
           pos.y >= m_SpawnY - 20 && pos.y <= m_SpawnY + 20))
     {
@@ -210,24 +221,25 @@ void AttachState::Update(DWORD dt) {
         client->Attach();
         m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
         return;
-    } else {
-        if (selected->GetFreq() == bot_freq)
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 
+    // Check if there is a specific person to attach to
     if (attach_target.length() == 0) {
         if (selected->GetName().compare(bot_name) == 0) {
+            // Ticker is at the top of the list, reverse direction
             m_Direction = Direction::Down;
             client->MoveTicker(m_Direction);
             return;
         }
 
         if (selected->GetFreq() != bot_freq) {
+            // Ticker is below bot freq, reverse direction
             m_Direction = Direction::Up;
             client->MoveTicker(m_Direction);
             return;
         }
     } else {
+        // Moves the ticker without continuing state loop
         client->SelectPlayer(attach_target);
         m_Direction = Direction::None;
     }
@@ -243,6 +255,7 @@ void AttachState::Update(DWORD dt) {
 }
 
 
+// Returns the distance of an entire plan, used in chase state
 double GetPlanDistance(const Pathing::Plan& plan) {
     if (plan.size() < 2) return 0.0;
 
@@ -277,6 +290,8 @@ void ChaseState::Update(DWORD dt) {
     float target_speed = 100000.0f;
 
     if (m_Bot.GetEnemyTarget() == Vec2(0, 0)) {
+        // Switch to patrol state if there is no enemy
+        // Set the waypoint to the last enemy spotted
         client->ReleaseKeys();
         if (m_LastRealEnemyCoord != Vec2(0, 0)) {
             std::vector<Vec2> waypoints = { m_LastRealEnemyCoord };
@@ -292,6 +307,7 @@ void ChaseState::Update(DWORD dt) {
 
     m_LastRealEnemyCoord = enemy;
 
+    // Switch to aggressive state if there is direct line of sight
     if (Util::IsClearPath(pos, enemy, RADIUS, m_Bot.GetLevel())) {
         m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
         return;
@@ -299,6 +315,7 @@ void ChaseState::Update(DWORD dt) {
 
     m_StuckTimer += dt;
 
+    // TODO: improve this, it's annoying with slow moving ships. Maybe check if pointing right at wall without any rotation.
     // Check if stuck every 2.5 seconds
     if (m_StuckTimer >= 2500) {
         double stuckdist;
@@ -328,11 +345,13 @@ void ChaseState::Update(DWORD dt) {
         m_StuckTimer = 0;
     }
 
+    // Update the path if the bot and the enemy are both in reachable positions
     if (m_Bot.GetGrid().IsOpen((short)pos.x, (short)pos.y) && m_Bot.GetGrid().IsOpen((short)enemy.x, (short)enemy.y)) {
         static DWORD path_timer = 0;
 
         path_timer += dt;
 
+        // Recalculate path every 1 second
         if (path_timer >= 1000 || m_Plan.size() == 0) {
             Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
 
@@ -356,6 +375,8 @@ void ChaseState::Update(DWORD dt) {
     double dist = 0.0;
 
     Util::GetDistance(pos, next, &dx, &dy, &dist);
+
+    // Grab the next node in the plan that isn't right beside the bot. NOTE: This can mess things up so the bot gets stuck on corners.
     while (dist < 3 && m_Plan.size() > 1) {
         m_Plan.erase(m_Plan.begin());
         next_node = m_Plan.at(0);
@@ -365,8 +386,8 @@ void ChaseState::Update(DWORD dt) {
 
     double total_dist = GetPlanDistance(m_Plan);
 
+    // Only fire if the bot is close enough to fire
     bool fire = m_MinGunRange == 0 || total_dist <= m_MinGunRange * .8;
-
     if (fire && !client->InSafe(pos, m_Bot.GetLevel()))
         client->Gun(GunState::Tap, m_Bot.GetEnergyPercent());
     else
@@ -375,6 +396,7 @@ void ChaseState::Update(DWORD dt) {
     int rot = client->GetRotation();
     int target_rot = Util::GetTargetRotation(dx, dy);
 
+    // Calculate rotation direction
     Vec2 heading = m_Bot.GetHeading();
     Vec2 target_heading = Util::ContRotToVec(target_rot);
     bool clockwise = Util::GetRotationDirection(heading, target_heading) == Direction::Right;
@@ -479,7 +501,9 @@ PatrolState::PatrolState(Bot& bot, std::vector<Vec2> waypoints)
     m_Attach        = m_Bot.GetConfig().Get<bool>(_T("Attach"));
 
     std::string waypoints_str = m_Bot.GetConfig().Get<std::string>(_T("Waypoints"));
-    std::regex coord_re(R"::(\(([0-9]*?),\s*?([0-9]*?)\))::");
+
+    // (n, n), (n, n)
+    std::regex coord_re(R"::(\(([0-9]+),\s*?([0-9]+)\))::");
 
     std::sregex_iterator begin(waypoints_str.begin(), waypoints_str.end(), coord_re);
     std::sregex_iterator end;
@@ -508,7 +532,6 @@ void PatrolState::ResetWaypoints(bool full) {
     double closestdist = std::numeric_limits<double>::max();
     std::vector<Vec2>::iterator closest = m_Waypoints.begin();
     Vec2 pos = m_Bot.GetPos();
-    
 
     // Find the closet waypoint that isn't the one just visited
     for (auto i = m_Waypoints.begin(); i != m_Waypoints.end(); ++i) {
@@ -788,6 +811,7 @@ Vec2 CalculateShot(const Vec2& pShooter, const Vec2& pTarget, const Vec2& vShoot
     return solution;
 }
 
+// Checks for surrounding walls. Returns true if the bot should use a burst.
 bool InBurstArea(const Vec2& pBot, Pathing::Grid<short>& grid) {
     static const std::vector<Vec2> directions = { Vec2(0, -1), Vec2(1, 0), Vec2(0, 1), Vec2(-1, 0) };
     const int SearchLength = 15;

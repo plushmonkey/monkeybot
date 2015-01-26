@@ -226,8 +226,8 @@ void Bot::Update(DWORD dt) {
     if (!m_Client->InShip()) {
         m_Client->EnterShip(m_ShipNum);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(dt));
-        m_Client->Update(dt);
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+        m_Client->Update(30);
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         if (m_Client->InShip() && m_Attach && m_Hyperspace) {
