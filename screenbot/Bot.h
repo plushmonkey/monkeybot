@@ -86,7 +86,7 @@ public:
     int GetEnergy() const { return m_Energy; }
     int GetMaxEnergy() const { return m_MaxEnergy; }
     int GetEnergyPercent() const { 
-        if (m_MaxEnergy == 0) return 100;
+        if (m_MaxEnergy == 0) return 0;
         return static_cast<int>((m_Energy / (float)m_MaxEnergy) * 100);
     }
 

@@ -19,6 +19,55 @@ std::vector<WritableArea> GetWritableAreas(HANDLE handle) {
     return areas;
 }
 
+unsigned int GetPosAddress(HANDLE handle, uintptr_t base) {
+    const unsigned int PosStructID = 0x4AC7C0;
+
+    std::vector<uintptr_t> found = Memory::FindU32(handle, PosStructID);
+
+    if (found.size() == 1) return found.at(0) + 0x1C;
+
+    for (uintptr_t addr : found) {
+        bool okay = true;
+        for (int i = 1; i <= 3; ++i) {
+            unsigned int value = Memory::GetU32(handle, addr + i * 4);
+            if (value != 0) {
+                okay = false;
+                break;
+            }
+        }
+        if (okay) return addr;
+    }
+
+    return 0;
+}
+
+std::vector<unsigned int> FindU32(HANDLE handle, const unsigned int value) {
+    const unsigned int upper = 0x7FFFFFFF;
+    std::vector<unsigned int> found;
+
+    std::vector<WritableArea> areas = GetWritableAreas(handle);
+
+    for (WritableArea& area : areas) {
+        if (area.size == 0) continue;
+
+        char *buffer = new char[area.size];
+        SIZE_T num_read;
+
+        if (ReadProcessMemory(handle, (LPVOID)area.base, buffer, area.size, &num_read)) {
+            for (unsigned int i = 0; i < num_read - 4; i += 4) {
+                unsigned int check = *reinterpret_cast<unsigned int *>(buffer + i);
+
+                if (check == value)
+                    found.push_back(area.base + i);
+            }
+        }
+
+        delete[] buffer;
+    }
+
+    return found;
+}
+
 std::vector<unsigned int> FindRange(HANDLE handle, const unsigned int start, const unsigned int end) {
     const unsigned int upper = 0x7FFFFFFF;
     std::vector<unsigned int> found;

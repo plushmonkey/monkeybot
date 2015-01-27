@@ -442,6 +442,12 @@ int Bot::Run() {
         GetWindowThreadProcessId(m_Window, &pid);
 
         m_ProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+        
+        uintptr_t base = Memory::GetModuleBase("Continuum.exe", pid);
+        uintptr_t addr = Memory::GetPosAddress(m_ProcessHandle, base);
+
+        SetPosAddress(addr);
+        std::cout << "Pos addr:" << std::hex << addr << std::dec << std::endl;
 
         if (!m_ProcessHandle) {
             tcerr << "Could not open process for reading.\n";
@@ -465,7 +471,10 @@ int Bot::Run() {
 
     m_Taunter.SetEnabled(m_Taunt);
 
-    this->SetState(std::make_shared<MemoryState>(*this));
+    if (m_PosAddr == 0)
+        this->SetState(std::make_shared<MemoryState>(*this));
+    else
+        this->SetState(std::make_shared<PatrolState>(*this));
 
     DWORD last_update = timeGetTime();
     
