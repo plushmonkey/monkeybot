@@ -22,7 +22,7 @@
 - Add ?log bot.log to auto.  
 - Turn on kill messages in chat.  
 - Create /?attach macro and set it to F7 keybinding.   
-- Update the config settings. At least Level, MapZoom, LogFile, and Name  
+- Update the config settings. At least Level, MapZoom, and LogFile  
 
 ##Compiling
 - It will probably only compile with Visual Studio 2013.  

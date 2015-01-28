@@ -1,7 +1,7 @@
 #include "Memory.h"
 
 #include <tlhelp32.h>
-
+#include <iostream>
 namespace Memory {
 
 
@@ -62,16 +62,18 @@ unsigned int GetPosAddress(HANDLE handle, uintptr_t base) {
     return 0;
 }
 
-std::string GetBotName(HANDLE handle, uintptr_t base) {
-    std::vector<unsigned int> jumps = { 0x2B104, 0x25C, 0x32C, 0x4E8 };
-    uintptr_t addr = base;
+std::string GetBotName(HANDLE handle, uintptr_t menu_base) {
+    unsigned short pindex = Memory::GetU32(handle, menu_base + 0x47FA0) & 0xFFFF;
+    const int ProfileStructLength = 2860;
+    uintptr_t addr = menu_base;
 
-    for (unsigned int jump : jumps) {
-        addr = Memory::GetU32(handle, addr + jump);
-        if (base == 0) return "";
-    }
+    addr = Memory::GetU32(handle, addr + 0x47A38) + 0x15;
+    if (addr == 0) return "";
 
-    return Memory::GetString(handle, addr + 0x257, 23);
+    addr += pindex * ProfileStructLength;
+
+    std::string name = Memory::GetString(handle, addr, 23);
+    return name.substr(0, strlen(name.c_str()));
 }
 
 std::vector<unsigned int> FindU32(HANDLE handle, const unsigned int value) {

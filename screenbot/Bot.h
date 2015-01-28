@@ -52,7 +52,10 @@ private:
 
     ClientPtr m_Client;
 
-    uintptr_t m_BaseAddress;
+    std::string m_Name;
+
+    uintptr_t m_ContBaseAddr;
+    uintptr_t m_MenuBaseAddr;
     HANDLE m_ProcessHandle;
     std::vector<unsigned> m_PossibleAddr;
     unsigned int m_PosAddr;

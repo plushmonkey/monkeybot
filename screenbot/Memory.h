@@ -25,7 +25,7 @@ namespace Memory {
     bool GetDebugPrivileges();
 
     unsigned int GetPosAddress(HANDLE handle, uintptr_t base);
-    std::string GetBotName(HANDLE handle, uintptr_t base);
+    std::string GetBotName(HANDLE handle, uintptr_t menu_base);
 }
 
 #endif

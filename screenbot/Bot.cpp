@@ -46,7 +46,8 @@ Bot::Bot(int ship)
       m_Flagging(false),
       m_CommandHandler(this),
       m_Hyperspace(false),
-      m_BaseAddress(0)
+      m_ContBaseAddr(0),
+      m_MenuBaseAddr(0)
 { }
 
 ClientPtr Bot::GetClient() {
@@ -76,8 +77,7 @@ unsigned int Bot::GetPixelY() const {
 }
 
 std::string Bot::GetName() const {
-    return m_Config.Get<std::string>("Name");
-    //return Memory::GetBotName(m_ProcessHandle, m_BaseAddress);
+    return m_Name;
 }
 
 Vec2 Bot::GetHeading() const {
@@ -432,8 +432,9 @@ int Bot::Run() {
             std::exit(1);
         }
         
-        m_BaseAddress = Memory::GetModuleBase("Continuum.exe", pid);
-        uintptr_t addr = Memory::GetPosAddress(m_ProcessHandle, m_BaseAddress);
+        m_ContBaseAddr = Memory::GetModuleBase("Continuum.exe", pid);
+        m_MenuBaseAddr = Memory::GetModuleBase("menu040.dll", pid);
+        uintptr_t addr = Memory::GetPosAddress(m_ProcessHandle, m_ContBaseAddr);
 
         SetPosAddress(addr);
         tcout << "Position address: " << std::hex << addr << std::dec << std::endl;
@@ -459,9 +460,19 @@ int Bot::Run() {
     else
         this->SetState(std::make_shared<PatrolState>(*this));
 
-    tcout << "Bot name: " << GetName() << std::endl;
+    std::string conf_name = m_Config.Get<std::string>("Name");
 
+    if (conf_name.length() > 0) {
+        m_Name = conf_name;
+        tcout << "Using the name from conf file. Remove it from the conf if you want it to try to detect the name automatically." << std::endl;
+    } else {
+        m_Name = Memory::GetBotName(m_ProcessHandle, m_MenuBaseAddr);
+        tcout << "Set the Name variable in the conf file if the detected name is wrong." << std::endl;
+    }
+
+    tcout << "Bot name: " << GetName() << std::endl;
     tcout << "Bot started." << std::endl;
+
     DWORD last_update = timeGetTime();
     
     while (true) {
