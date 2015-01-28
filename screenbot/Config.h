@@ -29,7 +29,11 @@ public:
         for (unsigned int i = 0; i < var.length(); i++)
             out[i] = _totlower(var[i]);
 
-        return Convert::Get<T>(m_Variables.at(out));
+        auto found = m_Variables.find(out);
+
+        if (found == m_Variables.end()) return T();
+
+        return Convert::Get<T>(found->second);
     }
 
     void Set(const tstring& var, const tstring& val);

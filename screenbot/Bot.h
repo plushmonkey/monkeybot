@@ -52,6 +52,7 @@ private:
 
     ClientPtr m_Client;
 
+    uintptr_t m_BaseAddress;
     HANDLE m_ProcessHandle;
     std::vector<unsigned> m_PossibleAddr;
     unsigned int m_PosAddr;
@@ -92,6 +93,7 @@ public:
 
     HANDLE GetProcessHandle() const { return m_ProcessHandle; }
 
+    std::string GetName() const;
     unsigned int GetX() const;
     unsigned int GetY() const;
     unsigned int GetPixelX() const;

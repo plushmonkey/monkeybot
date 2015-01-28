@@ -38,6 +38,7 @@ private:
     int m_SpawnX;
     int m_SpawnY;
     Direction m_Direction;
+    int m_Count;
 
 public:
     AttachState(Bot& bot);

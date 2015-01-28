@@ -49,14 +49,13 @@ public:
     virtual void EnterShip(int num) = 0;
 
     virtual std::vector<Vec2> GetEnemies(Vec2 real_pos, const Level& level) = 0;
-    virtual Vec2 GetClosestEnemy(Vec2 real_pos, const Level& level, int* dx, int* dy, double* dist) = 0;
+    virtual Vec2 GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist) = 0;
 
     virtual Vec2 GetRealPosition(Vec2 bot_pos, Vec2 target, const Level& level) = 0;
 
     virtual void ReleaseKeys() = 0;
     virtual void ToggleKeys() = 0;
 
-    virtual std::string GetName() = 0;
     virtual int GetFreq() = 0;
 
     virtual PlayerList GetFreqPlayers(int freq) = 0;
@@ -144,14 +143,13 @@ public:
     virtual void EnterShip(int num);
 
     virtual std::vector<Vec2> GetEnemies(Vec2 real_pos, const Level& level);
-    virtual Vec2 GetClosestEnemy(Vec2 real_pos, const Level& level, int* dx, int* dy, double* dist);
+    virtual Vec2 GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist);
 
     virtual Vec2 GetRealPosition(Vec2 bot_pos, Vec2 target, const Level& level);
 
     virtual void ReleaseKeys();
     virtual void ToggleKeys();
 
-    virtual std::string GetName();
     virtual int GetFreq();
 
     virtual PlayerList GetFreqPlayers(int freq);

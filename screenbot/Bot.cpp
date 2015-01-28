@@ -45,7 +45,8 @@ Bot::Bot(int ship)
       m_LancTimer(20000),
       m_Flagging(false),
       m_CommandHandler(this),
-      m_Hyperspace(false)
+      m_Hyperspace(false),
+      m_BaseAddress(0)
 { }
 
 ClientPtr Bot::GetClient() {
@@ -72,6 +73,11 @@ unsigned int Bot::GetPixelY() const {
     if (m_PosAddr == 0) return 0;
 
     return Memory::GetU32(m_ProcessHandle, m_PosAddr + 4);
+}
+
+std::string Bot::GetName() const {
+    return m_Config.Get<std::string>("Name");
+    //return Memory::GetBotName(m_ProcessHandle, m_BaseAddress);
 }
 
 Vec2 Bot::GetHeading() const {
@@ -185,13 +191,12 @@ void Bot::CheckLancs(const std::string& line) {
         std::sregex_iterator end;
         
         if (begin != end) {
-            // Prioritize this lanc
             size_t pos = lanc.find("(S) ");
             if (pos != std::string::npos) {
                 summoners.emplace_back(lanc.substr(lanc.find("(S) ") + 4));
                 continue;
             }
-
+            
             pos = lanc.find("(E)");
             if (pos == std::string::npos) continue;
             evokers.emplace_back(lanc.substr(lanc.find("(E) ") + 4));
@@ -201,10 +206,12 @@ void Bot::CheckLancs(const std::string& line) {
 
     if (evokers.size() > 0)
         target = evokers.at(0);
+
+    // Prioritize summoners over evokers
     if (summoners.size() > 0)
         target = summoners.at(0);
 
-    m_AttachTarget = target;
+    m_AttachTarget = target.substr(0, 12);
 
     if (target.length() > 0) {
         m_LancTimer = 5001;
@@ -277,23 +284,22 @@ void Bot::Update(DWORD dt) {
 
     // Attach to ticked player when in center safe
     if (m_Attach && !m_Client->OnSoloFreq() && this->GetStateType() != StateType::AttachState) {
-        if (pos.x >= m_SpawnX - 20 && pos.x <= m_SpawnX + 20 && pos.y >= m_SpawnY - 20 && pos.y <= m_SpawnY + 20)
+        //if (pos.x >= m_SpawnX - 20 && pos.x <= m_SpawnX + 20 && pos.y >= m_SpawnY - 20 && pos.y <= m_SpawnY + 20)
+        if (InCenter())
             SetState(std::make_shared<AttachState>(*this));
     }
     
     try {
-        std::vector<Vec2> enemies = m_Client->GetEnemies(pos, m_Level);
-        m_EnemyTarget = m_Client->GetClosestEnemy(pos, m_Level, &dx, &dy, &dist);
+        m_EnemyTarget = m_Client->GetClosestEnemy(pos, GetHeading(), m_Level, &dx, &dy, &dist);
 
         m_EnemyTargetInfo.dx = dx;
         m_EnemyTargetInfo.dy = dy;
         m_EnemyTargetInfo.dist = dist;
-
+        
         SetLastEnemy(timeGetTime());
 
         if (m_PosAddr && m_CenterOnly) {
-            Vec2 enemy = m_EnemyTarget;
-            if (enemy.x < 320 || enemy.x >= 703 || enemy.y < 320 || enemy.x >= 703)
+            if (m_EnemyTarget.x < 320 || m_EnemyTarget.x >= 703 || m_EnemyTarget.y < 320 || m_EnemyTarget.x >= 703)
                 reset_target = true;
         }
 
@@ -307,35 +313,16 @@ void Bot::Update(DWORD dt) {
         reset_target = true;
     }
 
-    if (reset_target)
+    if (reset_target) {
         m_EnemyTarget = Vec2(0, 0);
+        m_EnemyTargetInfo.dist = 0.0;
+    }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
     
     m_State->Update(dt);
     
     MQueue.Dispatch();
-    
-}
-
-bool GetDebugPrivileges() {
-    HANDLE token = nullptr;
-    bool success = false;
-
-    if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &token)) {
-        TOKEN_PRIVILEGES privileges;
-
-        LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &privileges.Privileges[0].Luid);
-        privileges.PrivilegeCount = 1;
-        privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-
-        if (AdjustTokenPrivileges(token, FALSE, &privileges, sizeof(TOKEN_PRIVILEGES), 0, 0))
-            success = true;
-
-        CloseHandle(token);
-    }
-
-    return success;
 }
 
 int Bot::Run() {
@@ -435,25 +422,21 @@ int Bot::Run() {
         }
     }
 
-    tcout << "Bot started." << std::endl;
-
-    if (GetDebugPrivileges()) {
+    if (Memory::GetDebugPrivileges()) {
         DWORD pid;
         GetWindowThreadProcessId(m_Window, &pid);
 
-        m_ProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
-        
-        uintptr_t base = Memory::GetModuleBase("Continuum.exe", pid);
-        uintptr_t addr = Memory::GetPosAddress(m_ProcessHandle, base);
-
-        SetPosAddress(addr);
-        std::cout << "Pos addr:" << std::hex << addr << std::dec << std::endl;
-
-        if (!m_ProcessHandle) {
+        if (!(m_ProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid))) {
             tcerr << "Could not open process for reading.\n";
             std::cin.get();
             std::exit(1);
         }
+        
+        m_BaseAddress = Memory::GetModuleBase("Continuum.exe", pid);
+        uintptr_t addr = Memory::GetPosAddress(m_ProcessHandle, m_BaseAddress);
+
+        SetPosAddress(addr);
+        tcout << "Position address: " << std::hex << addr << std::dec << std::endl;
     } else {
         tcerr << "Could not get Windows debug privileges." << std::endl;
         std::cin.get();
@@ -476,6 +459,9 @@ int Bot::Run() {
     else
         this->SetState(std::make_shared<PatrolState>(*this));
 
+    tcout << "Bot name: " << GetName() << std::endl;
+
+    tcout << "Bot started." << std::endl;
     DWORD last_update = timeGetTime();
     
     while (true) {

@@ -4,6 +4,27 @@
 
 namespace Memory {
 
+
+bool GetDebugPrivileges() {
+    HANDLE token = nullptr;
+    bool success = false;
+
+    if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &token)) {
+        TOKEN_PRIVILEGES privileges;
+
+        LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &privileges.Privileges[0].Luid);
+        privileges.PrivilegeCount = 1;
+        privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+        if (AdjustTokenPrivileges(token, FALSE, &privileges, sizeof(TOKEN_PRIVILEGES), 0, 0))
+            success = true;
+
+        CloseHandle(token);
+    }
+
+    return success;
+}
+
 std::vector<WritableArea> GetWritableAreas(HANDLE handle) {
     MEMORY_BASIC_INFORMATION meminfo;
     DWORD pos = 0;
@@ -39,6 +60,18 @@ unsigned int GetPosAddress(HANDLE handle, uintptr_t base) {
     }
 
     return 0;
+}
+
+std::string GetBotName(HANDLE handle, uintptr_t base) {
+    std::vector<unsigned int> jumps = { 0x2B104, 0x25C, 0x32C, 0x4E8 };
+    uintptr_t addr = base;
+
+    for (unsigned int jump : jumps) {
+        addr = Memory::GetU32(handle, addr + jump);
+        if (base == 0) return "";
+    }
+
+    return Memory::GetString(handle, addr + 0x257, 23);
 }
 
 std::vector<unsigned int> FindU32(HANDLE handle, const unsigned int value) {
@@ -104,6 +137,18 @@ unsigned int GetU32(HANDLE handle, const unsigned int address) {
         return value;
 
     return 0;
+}
+
+std::string GetString(HANDLE handle, const unsigned int address, size_t len) {
+    std::string value;
+    SIZE_T read;
+
+    value.resize(len);
+
+    if (ReadProcessMemory(handle, (LPVOID)address, const_cast<char*>(value.c_str()), len, &read)) 
+        return value;
+
+    return "";
 }
 
 ULONG GetModuleBase(char *name, ULONG pid) {

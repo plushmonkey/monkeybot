@@ -191,7 +191,8 @@ State::State(Bot& bot)
 
 AttachState::AttachState(Bot& bot)
     : State(bot),
-      m_Direction(Direction::Down)
+      m_Direction(Direction::Down),
+      m_Count(0)
 {
     bot.GetClient()->ReleaseKeys();
     m_SpawnX = m_Bot.GetConfig().Get<int>(_T("SpawnX"));
@@ -207,17 +208,20 @@ void AttachState::Update(DWORD dt) {
         return;
     }
 
-    std::string bot_name = client->GetName();
+    std::string bot_name = m_Bot.GetName();
     int bot_freq = client->GetFreq();
     auto selected = client->GetSelectedPlayer();
     std::string attach_target = m_Bot.GetAttachTarget();
 
     // If the bot is out of center
-    if (!(pos.x >= m_SpawnX - 20 && pos.x <= m_SpawnX + 20 &&
-          pos.y >= m_SpawnY - 20 && pos.y <= m_SpawnY + 20))
-    {
+   /* if (!(pos.x >= m_SpawnX - 20 && pos.x <= m_SpawnX + 20 &&
+          pos.y >= m_SpawnY - 20 && pos.y <= m_SpawnY + 20))*/
+    if (!m_Bot.InCenter()) {
         // Detach if previous attach was successful
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+        if (attach_target.length() > 0)
+            client->SelectPlayer(attach_target);
         client->Attach();
         m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
         return;
@@ -225,7 +229,7 @@ void AttachState::Update(DWORD dt) {
 
     // Check if there is a specific person to attach to
     if (attach_target.length() == 0) {
-        if (selected->GetName().compare(bot_name) == 0) {
+        if (selected->GetName().compare(bot_name.substr(0, 12)) == 0) {
             // Ticker is at the top of the list, reverse direction
             m_Direction = Direction::Down;
             client->MoveTicker(m_Direction);
@@ -248,7 +252,10 @@ void AttachState::Update(DWORD dt) {
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
     if (m_Bot.GetEnergyPercent() == 100) {
         client->Attach();
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+        double multiplier = 1.0 + (m_Count++ / 2.0);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(std::ceil(200 * multiplier))));
     }
 
     client->MoveTicker(m_Direction);

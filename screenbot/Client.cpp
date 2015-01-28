@@ -65,14 +65,6 @@ void ScreenClient::Update(DWORD dt) {
     }
 }
 
-std::string ScreenClient::GetName() {
-    return m_Config.Get<std::string>("Name");
-    try {
-        return m_PlayerWindow.GetPlayer(0)->GetName();
-    } catch (...) {}
-    return "";
-}
-
 int ScreenClient::GetFreq() {
     try {
         return m_PlayerWindow.GetPlayer(0)->GetFreq();
@@ -98,7 +90,7 @@ PlayerPtr ScreenClient::GetSelectedPlayer() {
 }
 
 void ScreenClient::MoveTicker(Direction dir) {
-    if (dir == Direction::Left || dir == Direction::Right) return;
+    if (dir != Direction::Up && dir != Direction::Down) return;
 
     int key = dir == Direction::Down ? VK_NEXT : VK_PRIOR;
 
@@ -331,22 +323,31 @@ std::vector<Vec2> ScreenClient::GetEnemies(Vec2 real_pos, const Level& level) {
     return enemies;
 }
 
-Vec2 ScreenClient::GetClosestEnemy(Vec2 real_pos, const Level& level, int* dx, int* dy, double* dist) {
-    std::vector<Vec2> enemies = GetEnemies(real_pos, level);
-    *dist = std::numeric_limits<double>::max();
-    Vec2 closest = enemies.at(0);
+Vec2 ScreenClient::GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist) {
+    std::vector<Vec2> enemies = GetEnemies(real_pos, level); // Grab all of the players visible on radar. Returns position in world space
+    *dist = std::numeric_limits<double>::max(); // Distance of closest enemy
+    double closest_calc_dist = std::numeric_limits<double>::max(); // Distance of closest enemy with multiplier applied
+    Vec2& closest = enemies.at(0); // The closest enemy
+    const double RotationMultiplier = 2.5; // Determines how much the rotation difference will increase distance by
 
     for (unsigned int i = 0; i < enemies.size(); i++) {
+        Vec2& enemy = enemies.at(i);
         int cdx, cdy;
         double cdist;
 
-        Util::GetDistance(enemies.at(i), real_pos, &cdx, &cdy, &cdist);
+        Util::GetDistance(enemy, real_pos, &cdx, &cdy, &cdist);
 
-        if (cdist < *dist) {
+        Vec2 to_target = Vec2Normalize(enemy - real_pos); // Unit vector pointing towards this enemy
+        double dot = heading.Dot(to_target);
+        double multiplier = 1.0 + ((1.0 - dot) / RotationMultiplier);
+        double calc_dist = cdist * multiplier;
+
+        if (calc_dist < closest_calc_dist) {
+            closest_calc_dist = calc_dist;
             *dist = cdist;
             *dx = cdx;
             *dy = cdy;
-            closest = enemies.at(i);
+            closest = enemy;
         }
     }
 

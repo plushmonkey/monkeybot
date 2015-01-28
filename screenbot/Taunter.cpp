@@ -29,7 +29,7 @@ void Taunter::HandleMessage(KillMessage* mesg) {
 
     if (current_time - m_LastTaunt < TauntCooldown) return;
 
-    std::string bot_name = m_Bot->GetClient()->GetName();
+    std::string bot_name = m_Bot->GetName();
     std::string killer = mesg->GetKiller();
     std::string killed = mesg->GetKilled();
     std::string bounty = std::to_string(mesg->GetBounty());
