@@ -281,47 +281,18 @@ void ScreenClient::EnterShip(int num) {
 }
 
 std::vector<Vec2> ScreenClient::GetEnemies(Vec2 real_pos, const Level& level) {
-    // TODO: Fix ball carrier and flags dropped looking exactly the same
-    std::vector<Pixel> ign_colors = { Colors::EnemyColor[0], Colors::EnemyColor[1] };
-
-    if (!m_IgnoreCarriers)
-        ign_colors.push_back(Colors::EnemyBallColor);
-
-    auto IsEnemy = [&](Pixel pix) -> bool {
-        for (Pixel& check : ign_colors)
-            if (pix == check) return true;
-        return false;
-    };
-
     std::vector<Vec2> enemies;
+    int freq = GetFreq();
+    PlayerList players = m_MemorySensor.GetPlayers();
+    for (auto p : players) {
+        if (p->GetFreq() != GetFreq() &&
+            p->GetShip() != Ship::Spectator &&
+            p->GetName().at(0) != '<') 
+        {
+            Vec2 pos = p->GetPosition() / 16;
 
-    for (int y = 0; y < m_Radar->GetWidth(); y++) {
-        for (int x = 0; x < m_Radar->GetWidth(); x++) {
-            Pixel pix = m_Radar->GetPixel(x, y);
-            if (pix == Colors::EnemyColor[0] || pix == Colors::EnemyColor[1] || pix == Colors::EnemyBallColor) {
-                int count = 0;
-                try {
-                    Pixel pixel;
-
-                    // right
-                    pixel = m_Radar->GetPixel(x + 1, y);
-                    if (IsEnemy(pixel)) count++;
-
-                    // bottom-right
-                    pixel = m_Radar->GetPixel(x + 1, y + 1);
-                    if (IsEnemy(pixel)) count++;
-
-                    // bottom
-                    pixel = m_Radar->GetPixel(x, y + 1);
-                    if (IsEnemy(pixel)) count++;
-                } catch (std::exception&) {}
-
-                if (count >= 3) {
-                    Vec2 coord(static_cast<float>(x), static_cast<float>(y));
-                    if (!Util::InSafe(m_Radar, coord))
-                        enemies.push_back(this->GetRealPosition(real_pos, coord, level));
-                }
-            }
+            if (!InSafe(pos, level))
+                enemies.push_back(pos);
         }
     }
 

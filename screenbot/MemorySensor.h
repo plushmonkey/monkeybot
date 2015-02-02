@@ -27,7 +27,9 @@ private:
     uintptr_t m_MenuBaseAddr;
     uintptr_t m_PositionAddr;
     DWORD m_Pid;
-    bool m_Initialied;
+    bool m_Initialized;
+
+    DWORD m_PlayerUpdateTimer;
 
     std::map<PlayerID, PlayerPtr> m_Players;
     Vec2 m_Position;

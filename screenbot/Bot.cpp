@@ -246,7 +246,7 @@ void Bot::Update(DWORD dt) {
         m_Client->ReleaseKeys();
 
         if (GetEnergyPercent() == 100)
-            tcout << "Warping because position is out of center (" << GetPos() << ")." << std::endl;
+            tcout << "Warping because position is out of center " << GetPos() << "." << std::endl;
         m_Client->Warp();
     }
 

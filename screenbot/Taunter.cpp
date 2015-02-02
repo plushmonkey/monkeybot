@@ -14,9 +14,9 @@ namespace {
 const std::vector<std::string> taunts = { "get rekt nerd", "{name} so ez", "im not even trying", "yawn",
     "$$", "$", "u suck kid", "ez {name}", "sit son", "rofl nice try",
     "i win", "e z", "zzz", "i hope you arent trying", "owned",
-    "you should just uninstall", "i didnt know it was possible to be as bad as {name} is" };
+    "i didnt know it was possible to be as bad as {name} is" };
 
-const std::vector<std::string> whitelist = { "bzap-bot", "nn", "nn2", "nn3", "nn4", "dabombofsubspace", "ycombinator-3", "ub-dr brain", "kirino", "ub", "taz" };
+const std::vector<std::string> whitelist = { "bzap-bot", "nn", "nn2", "nn3", "nn4", "dabombofsubspace", "ycombinator-3", "ub-dr brain", "kirino", "ub", "taz", "android #17" };
 
 const unsigned int TauntCooldown = 6000;
 

@@ -24,11 +24,12 @@ MemorySensor::MemorySensor()
       m_MenuBaseAddr(0),
       m_PositionAddr(0),
       m_Pid(0),
-      m_Initialied(false),
+      m_Initialized(false),
       m_Position(0, 0),
       m_Velocity(0, 0),
       m_Freq(9999),
-      m_Name("")
+      m_Name(""),
+      m_PlayerUpdateTimer(0)
 {
 
 }
@@ -52,7 +53,7 @@ SensorError MemorySensor::Initialize(HWND window) {
     DetectName();
     DetectPosition();
 
-    m_Initialied = true;
+    m_Initialized = true;
 
     return SensorError::None;
 }
@@ -137,6 +138,10 @@ void MemorySensor::DetectPlayers() {
     const unsigned char PosOffset = 0x04;
     const unsigned char SpeedOffset = 0x10;
     const unsigned char IDOffset = 0x18;
+    const unsigned char ShipOffset = 0x5C;
+
+    for (auto kv : m_Players)
+        kv.second->SetInArena(false);
 
     for (unsigned short i = 0; i < count; ++i) {
         uintptr_t player_addr = Memory::GetU32(m_ProcessHandle, players_addr + (i * 4));
@@ -149,6 +154,7 @@ void MemorySensor::DetectPlayers() {
         unsigned short rot = Memory::GetU32(m_ProcessHandle, player_addr + RotOffset) / 1000;
         unsigned short freq = Memory::GetU32(m_ProcessHandle, player_addr + FreqOffset) & 0xFFFF;
         unsigned short pid = Memory::GetU32(m_ProcessHandle, player_addr + IDOffset);
+        unsigned short ship = Memory::GetU32(m_ProcessHandle, player_addr + ShipOffset);
         std::string name = Memory::GetString(m_ProcessHandle, player_addr + NameOffset, 23);
         name = name.substr(0, strlen(name.c_str())); // trim nulls
 
@@ -157,12 +163,14 @@ void MemorySensor::DetectPlayers() {
         PlayerPtr player;
 
         auto found = m_Players.find(pid);
-        if (found == m_Players.end())
+        if (found == m_Players.end()) {
             player = std::make_shared<Player>();
-         else
+            m_Players[pid] = player;
+        } else {
             player = found->second;
+        }
 
-        m_Players[pid] = player;
+        player->SetInArena(true);
 
         player->SetName(name);
         player->SetFreq(freq);
@@ -170,11 +178,21 @@ void MemorySensor::DetectPlayers() {
         player->SetPosition(Vec2(x, y));
         player->SetVelocity(Vec2(xspeed, yspeed));
         player->SetPid(pid);
+        player->SetShip(static_cast<Ship>(ship));
+    }
+
+    for (auto iter = m_Players.begin(); iter != m_Players.end(); ) {
+        if (!iter->second->InArena()) {
+            std::cout << "Erasing " << iter->second->GetName() << std::endl;
+            iter = m_Players.erase(iter);
+        } else {
+            ++iter;
+        }
     }
 }
 
 void MemorySensor::Update(unsigned long dt) {
-    if (!m_Initialied) return;
+    if (!m_Initialized) return;
 
     if (m_PositionAddr != 0) {
         m_Position.x = Memory::GetU32(m_ProcessHandle, m_PositionAddr);
@@ -182,8 +200,15 @@ void MemorySensor::Update(unsigned long dt) {
         m_Velocity.x = Memory::GetU32(m_ProcessHandle, m_PositionAddr + 8);
         m_Velocity.y = Memory::GetU32(m_ProcessHandle, m_PositionAddr + 12);
     }
+
     DetectFreq();
-    DetectPlayers();
+
+    m_PlayerUpdateTimer += dt;
+
+    if (m_PlayerUpdateTimer > 1000 || dt == 0) {
+        DetectPlayers();
+        m_PlayerUpdateTimer = 0;
+    }
 }
 
 } // ns Memory
