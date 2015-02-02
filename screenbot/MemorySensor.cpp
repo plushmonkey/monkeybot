@@ -20,15 +20,15 @@ void MapToVector(const Map& m, Vec& v) {
 
 MemorySensor::MemorySensor()
     : m_ProcessHandle(nullptr),
-    m_ContBaseAddr(0),
-    m_MenuBaseAddr(0),
-    m_PositionAddr(0),
-    m_Pid(0),
-    m_Initialied(false),
-    m_Position(0, 0),
-    m_Velocity(0, 0),
-    m_Freq(9999),
-    m_Name("")
+      m_ContBaseAddr(0),
+      m_MenuBaseAddr(0),
+      m_PositionAddr(0),
+      m_Pid(0),
+      m_Initialied(false),
+      m_Position(0, 0),
+      m_Velocity(0, 0),
+      m_Freq(9999),
+      m_Name("")
 {
 
 }
@@ -125,8 +125,6 @@ void MemorySensor::DetectPlayers() {
     uintptr_t addr = Memory::GetU32(m_ProcessHandle, m_ContBaseAddr + 0xC1AFC); // Starting address
 
     addr += 0x127EC;
-
-    std::vector<PlayerData> players;
 
     uintptr_t count_addr = addr + 0x1884;
     uintptr_t players_addr = addr + 0x884;

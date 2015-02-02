@@ -6,18 +6,6 @@
 #include <string>
 
 namespace Memory {
-
-    struct PlayerData {
-        std::string name;
-        unsigned int freq;
-        unsigned short rot;
-        unsigned short x;
-        unsigned short y;
-        int xspeed;
-        int yspeed;
-        unsigned short pid;
-    };
-
     struct WritableArea {
         unsigned int base;
         unsigned int size;
