@@ -81,6 +81,10 @@ namespace Ships {
     class RotationStore;
 }
 
+namespace Memory {
+    class MemorySensor;
+}
+
 class ScreenClient : public Client {
 private:
     Config& m_Config;
@@ -93,6 +97,8 @@ private:
     ScreenAreaPtr m_Player;
     ScreenAreaPtr m_EnergyArea[5];
     PlayerWindow m_PlayerWindow;
+
+    Memory::MemorySensor& m_MemorySensor;
 
     DWORD m_LastBullet;
     DWORD m_LastBomb;
@@ -114,7 +120,7 @@ private:
 
     void GrabRadar();
 public:
-    ScreenClient(HWND hwnd, Config& config);
+    ScreenClient(HWND hwnd, Config& config, Memory::MemorySensor& memsensor);
 
     virtual void Update(DWORD dt);
 

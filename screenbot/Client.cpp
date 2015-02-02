@@ -6,13 +6,15 @@
 #include "Util.h"
 #include "RotationStore.h"
 #include "Level.h"
+#include "Memory.h"
+#include "MemorySensor.h"
 
 #include <iostream>
 #include <iostream>
 #include <thread>
 #include <unordered_map>
 
-ScreenClient::ScreenClient(HWND hwnd, Config& config)
+ScreenClient::ScreenClient(HWND hwnd, Config& config, Memory::MemorySensor& memsensor)
     : m_Window(hwnd),
       m_Config(config),
       m_LastBomb(0),
@@ -22,7 +24,8 @@ ScreenClient::ScreenClient(HWND hwnd, Config& config)
       m_Rotations(nullptr),
       m_MapZoom(9),
       m_EmpEnd(0),
-      m_Thrusting(false)
+      m_Thrusting(false),
+      m_MemorySensor(memsensor)
 { 
     m_Screen = std::make_shared<ScreenGrabber>(m_Window);
     m_Ship = m_Screen->GetArea(m_Screen->GetWidth() / 2 - 18, m_Screen->GetHeight() / 2 - 18, 36, 36);
@@ -66,18 +69,22 @@ void ScreenClient::Update(DWORD dt) {
 }
 
 int ScreenClient::GetFreq() {
-    try {
-        return m_PlayerWindow.GetPlayer(0)->GetFreq();
-    } catch (...) {}
-    return -1;
+    return m_MemorySensor.GetFrequency();
 }
 
 PlayerList ScreenClient::GetFreqPlayers(int freq) {
-    return m_PlayerWindow.GetFrequency(freq);
+    auto players = m_MemorySensor.GetPlayers();
+    PlayerList team;
+
+    for (auto p : players) {
+        if (freq == p->GetFreq())
+            team.push_back(p);
+    }
+    return team;
 }
 
 PlayerList ScreenClient::GetPlayers() {
-    return m_PlayerWindow.GetPlayers();
+    return m_MemorySensor.GetPlayers();
 }
 
 bool ScreenClient::OnSoloFreq() {

@@ -76,6 +76,65 @@ std::string GetBotName(HANDLE handle, uintptr_t menu_base) {
     return name.substr(0, strlen(name.c_str()));
 }
 
+unsigned short GetBotFreq(HANDLE handle, uintptr_t base) {
+    uintptr_t addr = Memory::GetU32(handle, base + 0xC1AFC) + 0x30;
+    const unsigned int FreqOffset = 0x12664;
+    addr += FreqOffset;
+    return Memory::GetU32(handle, addr) & 0xFFFF;
+}
+
+std::vector<PlayerData> GetPlayerData(HANDLE handle, uintptr_t base) {
+    uintptr_t addr = Memory::GetU32(handle, base + 0xC1AFC); // Starting address
+
+    addr += 0x127EC;
+
+    std::vector<PlayerData> players;
+
+    uintptr_t count_addr = addr + 0x1884;
+    uintptr_t players_addr = addr + 0x884;
+
+    unsigned short count = Memory::GetU32(handle, count_addr) & 0xFFFF;
+
+    const unsigned char NameOffset = 0x6D;
+    const unsigned char FreqOffset = 0x58;
+    const unsigned char RotOffset = 0x3C;
+    const unsigned char PosOffset = 0x04;
+    const unsigned char SpeedOffset = 0x10;
+    const unsigned char IDOffset = 0x18;
+
+    for (unsigned short i = 0; i < count; ++i) {
+        uintptr_t player_addr = Memory::GetU32(handle, players_addr + (i * 4));
+        if (player_addr == 0) continue;
+
+        unsigned short x = Memory::GetU32(handle, player_addr + PosOffset) / 1000;
+        unsigned short y = Memory::GetU32(handle, player_addr + PosOffset + 4) / 1000;
+        int xspeed = Memory::GetU32(handle, player_addr + SpeedOffset);
+        int yspeed = Memory::GetU32(handle, player_addr + SpeedOffset + 4);
+        unsigned short rot = Memory::GetU32(handle, player_addr + RotOffset) / 1000;
+        unsigned short freq = Memory::GetU32(handle, player_addr + FreqOffset) & 0xFFFF;
+        unsigned short pid = Memory::GetU32(handle, player_addr + IDOffset);
+        std::string name = Memory::GetString(handle, player_addr + NameOffset, 23);
+        name = name.substr(0, strlen(name.c_str())); // trim nulls
+
+        if (freq > 9999) freq = 9999;
+
+        PlayerData pd;
+
+        pd.name = name;
+        pd.freq = freq;
+        pd.rot = rot;
+        pd.x = x;
+        pd.y = y;
+        pd.xspeed = xspeed;
+        pd.yspeed = yspeed;
+        pd.pid = pid;
+
+        players.push_back(pd);
+    }
+
+    return players;
+}
+
 std::vector<unsigned int> FindU32(HANDLE handle, const unsigned int value) {
     const unsigned int upper = 0x7FFFFFFF;
     std::vector<unsigned int> found;

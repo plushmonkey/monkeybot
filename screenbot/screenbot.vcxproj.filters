@@ -87,6 +87,9 @@
     <ClCompile Include="Taunter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MemorySensor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -168,6 +171,12 @@
       <Filter>Header Files\Messages</Filter>
     </ClInclude>
     <ClInclude Include="Taunter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MemorySensor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

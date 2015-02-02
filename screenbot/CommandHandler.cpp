@@ -58,12 +58,14 @@ void CommandHandler::CommandFlag(const std::string& args) {
 
         flagging = false;
 
+        m_Bot->SetCenterRadius(250);
+
         int freq = Random::GetU32(10, 80);
         client->ReleaseKeys();
         client->SetXRadar(false);
         while (client->GetEnergy() < m_Bot->GetMaxEnergy()) {
-            client->Update(100);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            client->Update(100);
         }
         client->SendString("=" + std::to_string(freq));
     } else {
@@ -75,16 +77,38 @@ void CommandHandler::CommandFlag(const std::string& args) {
 
         flagging = true;
 
+        m_Bot->SetCenterRadius(200);
+
+        int current_freq = client->GetFreq();
+
         client->ReleaseKeys();
         client->SetXRadar(false);
         while (client->GetEnergy() < m_Bot->GetMaxEnergy()) {
-            client->Update(100);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            client->Update(100);
         }
         client->SendString("?flag");
     }
 
     m_Bot->SetFlagging(flagging);
+}
+
+void CommandHandler::CommandConfig(const std::string& args) {
+    std::size_t pos = args.find(" ");
+
+    if (pos == std::string::npos) {
+        tcerr << "Error with config command" << std::endl;
+        return;
+    }
+
+    std::string variable = args.substr(0, pos);
+    std::string value = args.substr(pos + 1);
+
+    m_Bot->GetConfig().Set(variable, value);
+
+    m_Bot->ReloadConfig();
+
+    tcout << "Config set." << std::endl;
 }
 
 void CommandHandler::HandleMessage(ChatMessage* mesg) {
@@ -133,6 +157,7 @@ void CommandHandler::HandleMessage(ChatMessage* mesg) {
 CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
     RegisterCommand("flag", CommandFlag);
     RegisterCommand("freq", CommandFreq);
+    RegisterCommand("config", CommandConfig);
     RegisterCommand("taunt", CommandTaunt);
 }
 

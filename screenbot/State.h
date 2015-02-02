@@ -10,7 +10,6 @@
 class Bot;
 
 enum class StateType {
-    MemoryState,
     ChaseState,
     PatrolState,
     AggressiveState,
@@ -118,21 +117,6 @@ public:
     virtual void Update(DWORD dt);
 
     virtual StateType GetType() const { return StateType::AggressiveState; }
-};
-
-class MemoryState : public State {
-private:
-    typedef unsigned int Address;
-    typedef unsigned int Value;
-    std::map<Address, Value> m_FindSpace;
-    int m_SpawnX;
-    int m_SpawnY;
-    bool m_Up;
-
-public:
-    MemoryState(Bot& bot);
-    virtual void Update(DWORD dt);
-    virtual StateType GetType() const { return StateType::MemoryState; }
 };
 
 #endif

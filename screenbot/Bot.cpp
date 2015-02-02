@@ -30,9 +30,7 @@ Bot::Bot(int ship)
       m_EnemyTargetInfo(0, 0, 0),
       m_Energy(0),
       m_MaxEnergy(0),
-      m_PosAddr(0),
       m_Level(),
-      m_ProcessHandle(nullptr),
       m_AliveTime(0),
       m_Grid(1024, 1024),
       m_LastEnemy(0),
@@ -45,39 +43,15 @@ Bot::Bot(int ship)
       m_LancTimer(20000),
       m_Flagging(false),
       m_CommandHandler(this),
-      m_Hyperspace(false),
-      m_ContBaseAddr(0),
-      m_MenuBaseAddr(0)
+      m_Hyperspace(false)
 { }
 
 ClientPtr Bot::GetClient() {
     return m_Client;
 }
 
-unsigned int Bot::GetX() const {
-    if (m_PosAddr == 0) return 0;
-
-    return Memory::GetU32(m_ProcessHandle, m_PosAddr) / 16;
-}
-unsigned int Bot::GetY() const {
-    if (m_PosAddr == 0) return 0;
-
-    return Memory::GetU32(m_ProcessHandle, m_PosAddr + 4) / 16;
-}
-
-unsigned int Bot::GetPixelX() const {
-    if (m_PosAddr == 0) return 0;
-
-    return Memory::GetU32(m_ProcessHandle, m_PosAddr);
-}
-unsigned int Bot::GetPixelY() const {
-    if (m_PosAddr == 0) return 0;
-
-    return Memory::GetU32(m_ProcessHandle, m_PosAddr + 4);
-}
-
 std::string Bot::GetName() const {
-    return m_Name;
+    return m_MemorySensor.GetName();
 }
 
 Vec2 Bot::GetHeading() const {
@@ -86,12 +60,7 @@ Vec2 Bot::GetHeading() const {
 }
 
 Vec2 Bot::GetVelocity() const {
-    if (m_PosAddr == 0) return Vec2(0, 0);
-
-    int xspeed = Memory::GetU32(m_ProcessHandle, m_PosAddr + 8);
-    int yspeed = Memory::GetU32(m_ProcessHandle, m_PosAddr + 12);
-
-    return Vec2(xspeed / 16.0, yspeed / 16.0);
+    return m_MemorySensor.GetVelocity() / 16;
 }
 
 void Bot::SetSpeed(float target) {
@@ -227,6 +196,19 @@ void Bot::HandleMessage(ChatMessage* mesg) {
         CheckLancs(line);
 }
 
+void Bot::ReloadConfig() {
+    m_Attach = m_Config.Get<bool>("Attach");
+    m_CenterOnly = m_Config.Get<bool>("OnlyCenter");
+    m_SpawnX = m_Config.Get<int>("SpawnX");
+    m_SpawnY = m_Config.Get<int>("SpawnY");
+    m_CenterRadius = m_Config.Get<int>("CenterRadius");
+    m_RepelPercent = m_Config.Get<int>("RepelPercent");
+    m_Taunt = m_Config.Get<bool>("Taunt");
+    m_Hyperspace = m_Config.Get<bool>("Hyperspace");
+
+    m_Taunter.SetEnabled(m_Taunt);
+}
+
 void Bot::Update(DWORD dt) {
     m_Client->Update(dt);
 
@@ -258,16 +240,14 @@ void Bot::Update(DWORD dt) {
 
     bool reset_target = false;
 
-    if (m_PosAddr && GetStateType() != StateType::MemoryState) {
-        m_AliveTime += dt;
+    m_AliveTime += dt;
 
-        if (!InCenter() && m_CenterOnly && !m_Attach) {
-            m_Client->ReleaseKeys();
+    if (!InCenter() && m_CenterOnly && !m_Attach) {
+        m_Client->ReleaseKeys();
 
-            if (GetEnergyPercent() == 100)
-                tcout << "Warping because position is out of center (" << GetX() << ", " << GetY() << ")." << std::endl;
-            m_Client->Warp();
-        }
+        if (GetEnergyPercent() == 100)
+            tcout << "Warping because position is out of center (" << GetPos() << ")." << std::endl;
+        m_Client->Warp();
     }
 
     m_LancTimer += dt;
@@ -288,6 +268,7 @@ void Bot::Update(DWORD dt) {
         if (InCenter())
             SetState(std::make_shared<AttachState>(*this));
     }
+
     
     try {
         m_EnemyTarget = m_Client->GetClosestEnemy(pos, GetHeading(), m_Level, &dx, &dy, &dist);
@@ -298,7 +279,7 @@ void Bot::Update(DWORD dt) {
         
         SetLastEnemy(timeGetTime());
 
-        if (m_PosAddr && m_CenterOnly) {
+        if (m_CenterOnly) {
             if (m_EnemyTarget.x < 320 || m_EnemyTarget.x >= 703 || m_EnemyTarget.y < 320 || m_EnemyTarget.x >= 703)
                 reset_target = true;
         }
@@ -320,6 +301,7 @@ void Bot::Update(DWORD dt) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
     
+    m_MemorySensor.Update(dt);
     m_State->Update(dt);
     
     MQueue.Dispatch();
@@ -334,8 +316,6 @@ int Bot::Run() {
                 m_Window = SelectWindow();
 
             SelectShip();
-
-            m_Client = std::make_shared<ScreenClient>(m_Window, m_Config);
 
             ready = true;
         } catch (const std::exception& e) {
@@ -422,27 +402,15 @@ int Bot::Run() {
         }
     }
 
-    if (Memory::GetDebugPrivileges()) {
-        DWORD pid;
-        GetWindowThreadProcessId(m_Window, &pid);
+    Memory::SensorError result = m_MemorySensor.Initialize(m_Window);
 
-        if (!(m_ProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid))) {
-            tcerr << "Could not open process for reading.\n";
-            std::cin.get();
-            std::exit(1);
-        }
-        
-        m_ContBaseAddr = Memory::GetModuleBase("Continuum.exe", pid);
-        m_MenuBaseAddr = Memory::GetModuleBase("menu040.dll", pid);
-        uintptr_t addr = Memory::GetPosAddress(m_ProcessHandle, m_ContBaseAddr);
-
-        SetPosAddress(addr);
-        tcout << "Position address: " << std::hex << addr << std::dec << std::endl;
-    } else {
-        tcerr << "Could not get Windows debug privileges." << std::endl;
+    if (result != Memory::SensorError::None) {
+        tcerr << "Memory::SensorError::" << result << std::endl;
         std::cin.get();
         std::exit(1);
     }
+
+    m_MemorySensor.Update(0);
 
     m_Attach = m_Config.Get<bool>("Attach");
     m_CenterOnly = m_Config.Get<bool>("OnlyCenter");
@@ -455,23 +423,20 @@ int Bot::Run() {
 
     m_Taunter.SetEnabled(m_Taunt);
 
-    if (m_PosAddr == 0)
-        this->SetState(std::make_shared<MemoryState>(*this));
-    else
-        this->SetState(std::make_shared<PatrolState>(*this));
+    m_Client = std::make_shared<ScreenClient>(m_Window, m_Config, m_MemorySensor);
 
-    std::string conf_name = m_Config.Get<std::string>("Name");
-
-    if (conf_name.length() > 0) {
-        m_Name = conf_name;
-        tcout << "Using the name from conf file. Remove it from the conf if you want it to try to detect the name automatically." << std::endl;
-    } else {
-        m_Name = Memory::GetBotName(m_ProcessHandle, m_MenuBaseAddr);
-        tcout << "Set the Name variable in the conf file if the detected name is wrong." << std::endl;
-    }
+    this->SetState(std::make_shared<PatrolState>(*this));
 
     tcout << "Bot name: " << GetName() << std::endl;
     tcout << "Bot started." << std::endl;
+
+    auto players = m_MemorySensor.GetPlayers();
+
+    std::cout << "Count: " << players.size() << std::endl;
+    for (auto p : players) {
+        std::cout << p->GetName() << ": Pos: " << p->GetPosition() << " Vel: " << p->GetVelocity();
+        std::cout << " Rot: " << p->GetRotation() << " Freq: " << p->GetFreq() << " pid: " << p->GetPid() << std::endl;
+    }
 
     DWORD last_update = timeGetTime();
     

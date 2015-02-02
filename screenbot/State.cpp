@@ -23,168 +23,10 @@
 #define RADIUS 1
 
 std::ostream& operator<<(std::ostream& out, StateType type) {
-    static std::vector<std::string> states = { "Memory", "Chase", "Patrol", "Aggressive", "Attach", "Baseduel" };
+    static std::vector<std::string> states = { "Chase", "Patrol", "Aggressive", "Attach", "Baseduel" };
     out << states.at(static_cast<int>(type));
     return out;
 }
-
-MemoryState::MemoryState(Bot& bot) : State(bot) {
-    m_SpawnX = bot.GetConfig().Get<int>("SpawnX");
-    m_SpawnY = bot.GetConfig().Get<int>("SpawnY");
-}
-
-void MemoryState::Update(DWORD dt) {
-    ClientPtr client = m_Bot.GetClient();
-
-    const Vec2 target_heading(0, -1);
-    Vec2 heading = m_Bot.GetHeading();
-
-    // Rotate until ship is pointing upwards
-    while (heading != target_heading) {
-        bool clockwise = Util::GetRotationDirection(heading, target_heading) == Direction::Right;
-
-        client->Left(!clockwise);
-        client->Right(clockwise);
-        client->Update(dt);
-        heading = m_Bot.GetHeading();
-    }
-
-    client->Left(false);
-    client->Right(false);
-
-
-    // Move a random vertical direction
-    m_Up = Random::GetU32(0, 1) == 0;
-
-    if (m_Up)
-        client->Up(true);
-    else
-        client->Down(true);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
-
-    client->Up(false);
-    client->Down(false);
-
-    client->Gun(GunState::Constant);
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
-    client->Gun(GunState::Off);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-    unsigned short minX = std::max((m_SpawnX * 16) - 300, 0);
-    unsigned short maxX = std::max((m_SpawnX * 16) + 300, 0);
-    unsigned short minY = std::max((m_SpawnY * 16) - 300, 0);
-    unsigned short maxY = std::max((m_SpawnY * 16) + 300, 0);
-
-    if (m_FindSpace.size() == 0) {
-        // Find the initial possible addresses by searching for values around spawn
-        std::vector<unsigned int> found = Memory::FindRange(m_Bot.GetProcessHandle(), minY, maxY);
-
-        for (unsigned int i = 0; i < found.size(); ++i) {
-            unsigned int value = Memory::GetU32(m_Bot.GetProcessHandle(), found[i]);
-
-            m_FindSpace[found[i]] = value;
-        }
-    } else {
-        typedef std::map<unsigned, unsigned> FindMap;
-
-        FindMap::iterator it = m_FindSpace.begin();
-        FindMap::iterator end = m_FindSpace.end();
-
-        // Loop through the found values and remove ones that don't match the movement
-        while (it != end) {
-            auto kv = *it;
-            
-            FindMap::iterator this_iter = it;
-            ++it;
-            // Get the new value at this address
-            unsigned int x = Memory::GetU32(m_Bot.GetProcessHandle(), kv.first - 4);
-            unsigned int y = Memory::GetU32(m_Bot.GetProcessHandle(), kv.first);
-
-            // Remove the address from the list if it doesn't match the movement
-            if ((y == kv.second || y < minY || y > maxY || x < minX || x > maxX) ||
-                (m_Up && y > kv.second) ||
-                (!m_Up && y < kv.second))
-            {
-                m_FindSpace.erase(this_iter);
-                continue;
-            }
-            
-            // Set the new value of the address
-            m_FindSpace[kv.first] = y;
-        }
-    }
-
-    tcout << "Possible memory locations: " << m_FindSpace.size() << std::endl;
-
-    /* Restart the search and make sure it's at spawn */
-    if (m_FindSpace.size() == 0) {
-        client->Warp();
-        return;
-    }
-
-    if (m_FindSpace.size() <= 5) {
-        client->Gun(GunState::Constant);
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));
-        client->Gun(GunState::Off);
-
-        // Do a bunch of checks to make sure the value is still near spawn
-        for (int i = 0; i < 25; ++i) {
-            for (auto it = m_FindSpace.begin(); it != m_FindSpace.end();) {
-                unsigned int x = Memory::GetU32(m_Bot.GetProcessHandle(), it->first - 4);
-                unsigned int y = Memory::GetU32(m_Bot.GetProcessHandle(), it->first);
-                auto this_it = it;
-                ++it;
-
-                if (x <= minX || x >= maxX|| y <= minY || y >= maxY) {
-                    // Remove this address because it's out of range
-                    m_FindSpace.erase(this_it);
-                }
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-
-        // All of the addresses were discarded in the check loop
-        if (m_FindSpace.size() <= 1) {
-            client->Warp();
-            return;
-        }
-        std::vector<unsigned> possible;
-        
-        possible.reserve(m_FindSpace.size());
-
-        for (auto &kv : m_FindSpace)
-            possible.push_back(kv.first);
-
-        // Subtract 4 to get the x position address instead of y
-        auto found = m_FindSpace.begin();
-
-        // Get the second to last address (this is usually the right one)
-        for (size_t i = 1; i < m_FindSpace.size() - 1; ++i)
-            found++;
-
-        m_Bot.SetPosAddress(found->first - 4);
-        
-        tcout << "Position location found at " << std::hex << m_Bot.GetPosAddress() << std::dec << std::endl;
-
-        m_Bot.SetPossibleAddr(possible);
-
-        StatePtr state;
-
-        if (m_Bot.GetConfig().Get<bool>("Attach"))
-            state = std::make_shared<AttachState>(m_Bot);
-        else if (m_Bot.GetConfig().Get<bool>("Patrol"))
-            state = std::make_shared<PatrolState>(m_Bot);
-        else
-            state = std::make_shared<AggressiveState>(m_Bot);
-
-        // Make sure the bot doesn't warp automatically by setting the last enemy detected to now
-        m_Bot.SetLastEnemy(timeGetTime());
-        m_Bot.SetState(state);
-    }
-}
-
 
 State::State(Bot& bot)
     : m_Bot(bot) { }
@@ -649,6 +491,8 @@ void PatrolState::Update(DWORD dt) {
             if (warp_timer >= 45000) {
                 // Warp if inactive for 45 seconds
                 if (m_Attach) {
+                    client->SetXRadar(false);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(200));
                     client->Attach();
                     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                     client->Attach();

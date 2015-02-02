@@ -9,6 +9,7 @@
 #include "LogReader.h"
 #include "CommandHandler.h"
 #include "Taunter.h"
+#include "MemorySensor.h"
 
 #include <memory>
 #include <vector>
@@ -52,13 +53,7 @@ private:
 
     ClientPtr m_Client;
 
-    std::string m_Name;
-
-    uintptr_t m_ContBaseAddr;
-    uintptr_t m_MenuBaseAddr;
-    HANDLE m_ProcessHandle;
-    std::vector<unsigned> m_PossibleAddr;
-    unsigned int m_PosAddr;
+    Memory::MemorySensor m_MemorySensor;
 
     DWORD m_LancTimer;
     Taunter m_Taunter;
@@ -94,24 +89,14 @@ public:
         return static_cast<int>((m_Energy / (float)m_MaxEnergy) * 100);
     }
 
-    HANDLE GetProcessHandle() const { return m_ProcessHandle; }
-
     std::string GetName() const;
-    unsigned int GetX() const;
-    unsigned int GetY() const;
-    unsigned int GetPixelX() const;
-    unsigned int GetPixelY() const;
-    Vec2 GetPos() const { return Vec2(static_cast<float>(GetX()), static_cast<float>(GetY())); }
-    Vec2 GetPixelPos() const { return Vec2(static_cast<float>(GetPixelX()), static_cast<float>(GetPixelY())); }
+    Vec2 GetPos() const { return m_MemorySensor.GetPosition() / 16; }
+    Vec2 GetPixelPos() const { return m_MemorySensor.GetPosition(); }
 
     Vec2 GetVelocity() const;
     Vec2 GetHeading() const;
     double GetSpeed() const { return GetVelocity().Length(); }
     void SetSpeed(float target);
-    
-    unsigned int GetPosAddress() const { return m_PosAddr; }
-    void SetPosAddress(unsigned int addr) { m_PosAddr = addr; }
-    void SetPossibleAddr(std::vector<unsigned> addr) { m_PossibleAddr = addr; }
     
     const std::string& GetAttachTarget() const { return m_AttachTarget; }
     bool GetFlagging() const { return m_Flagging; }
@@ -125,8 +110,14 @@ public:
         m_Taunter.SetEnabled(b);
     }
 
+    void ReloadConfig();
+
+    void SetCenterRadius(int r) { 
+        m_CenterRadius = r; 
+        m_Config.Set("CenterRadius", std::to_string(r));
+    }
+
     bool InCenter() const {
-        if (m_PosAddr == 0) return true;
         Vec2 pos = GetPos();
         Vec2 spawn((float)m_SpawnX, (float)m_SpawnY);
 

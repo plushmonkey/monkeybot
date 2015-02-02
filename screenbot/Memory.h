@@ -6,6 +6,18 @@
 #include <string>
 
 namespace Memory {
+
+    struct PlayerData {
+        std::string name;
+        unsigned int freq;
+        unsigned short rot;
+        unsigned short x;
+        unsigned short y;
+        int xspeed;
+        int yspeed;
+        unsigned short pid;
+    };
+
     struct WritableArea {
         unsigned int base;
         unsigned int size;
@@ -26,6 +38,9 @@ namespace Memory {
 
     unsigned int GetPosAddress(HANDLE handle, uintptr_t base);
     std::string GetBotName(HANDLE handle, uintptr_t menu_base);
+    unsigned short GetBotFreq(HANDLE handle, uintptr_t base);
+    std::vector<PlayerData> GetPlayerData(HANDLE handle, uintptr_t base);
+    
 }
 
 #endif

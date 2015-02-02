@@ -157,6 +157,7 @@
     <ClCompile Include="LogReader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Memory.cpp" />
+    <ClCompile Include="MemorySensor.cpp" />
     <ClCompile Include="MessageQueue.cpp" />
     <ClCompile Include="Pathing.cpp" />
     <ClCompile Include="PlayerList.cpp" />
@@ -184,7 +185,9 @@
     <ClInclude Include="Memory.h" />
     <ClInclude Include="Messages\ChatMessage.h" />
     <ClInclude Include="Messages\KillMessage.h" />
+    <ClInclude Include="MemorySensor.h" />
     <ClInclude Include="Messages\Messages.h" />
+    <ClInclude Include="Player.h" />
     <ClInclude Include="Taunter.h" />
     <ClInclude Include="Pathing.h" />
     <ClInclude Include="PlayerList.h" />

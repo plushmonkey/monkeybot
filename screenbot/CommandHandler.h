@@ -21,6 +21,7 @@ private:
     void CommandFreq(const std::string& args);
     void CommandFlag(const std::string& args);
     void CommandTaunt(const std::string& args);
+    void CommandConfig(const std::string& args);
 public:
     CommandHandler(Bot* bot);
     ~CommandHandler();
