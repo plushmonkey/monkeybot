@@ -35,11 +35,6 @@ namespace Memory {
     std::vector<WritableArea> GetWritableAreas(HANDLE handle);
     ULONG GetModuleBase(char *name, ULONG pid);
     bool GetDebugPrivileges();
-
-    unsigned int GetPosAddress(HANDLE handle, uintptr_t base);
-    std::string GetBotName(HANDLE handle, uintptr_t menu_base);
-    unsigned short GetBotFreq(HANDLE handle, uintptr_t base);
-    std::vector<PlayerData> GetPlayerData(HANDLE handle, uintptr_t base);
     
 }
 
