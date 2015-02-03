@@ -18,6 +18,7 @@ private:
 
     void HandleMessage(ChatMessage* mesg);
 
+    void CommandTarget(const std::string& args);
     void CommandFreq(const std::string& args);
     void CommandFlag(const std::string& args);
     void CommandTaunt(const std::string& args);

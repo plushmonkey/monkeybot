@@ -29,8 +29,6 @@ private:
     DWORD m_Pid;
     bool m_Initialized;
 
-    DWORD m_PlayerUpdateTimer;
-
     std::map<PlayerID, PlayerPtr> m_Players;
     Vec2 m_Position;
     Vec2 m_Velocity;

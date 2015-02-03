@@ -88,8 +88,6 @@ public:
 class AggressiveState : public State {
 private:
     Vec2 m_LastEnemyPos;
-    DWORD m_LastEnemyTimer;
-    Vec2 m_EnemyVelocity;
     DWORD m_LastNonSafeTime;
     DWORD m_NearWall;
     DWORD m_BurstTimer;

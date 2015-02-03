@@ -138,7 +138,7 @@ void ChaseState::Update(DWORD dt) {
     ClientPtr client = m_Bot.GetClient();
     float target_speed = 100000.0f;
 
-    if (m_Bot.GetEnemyTarget() == Vec2(0, 0)) {
+    if (!m_Bot.GetEnemyTarget().get()) {
         // Switch to patrol state if there is no enemy
         // Set the waypoint to the last enemy spotted
         client->ReleaseKeys();
@@ -152,12 +152,13 @@ void ChaseState::Update(DWORD dt) {
     }
 
     Vec2 pos = m_Bot.GetPos();
-    Vec2 enemy = m_Bot.GetEnemyTarget();
+    PlayerPtr enemy = m_Bot.GetEnemyTarget();
+    Vec2 enemy_pos = enemy->GetPosition() / 16;
 
-    m_LastRealEnemyCoord = enemy;
+    m_LastRealEnemyCoord = enemy_pos;
 
     // Switch to aggressive state if there is direct line of sight
-    if (Util::IsClearPath(pos, enemy, RADIUS, m_Bot.GetLevel())) {
+    if (Util::IsClearPath(pos, enemy_pos, RADIUS, m_Bot.GetLevel())) {
         m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
         return;
     }
@@ -195,7 +196,7 @@ void ChaseState::Update(DWORD dt) {
     }
 
     // Update the path if the bot and the enemy are both in reachable positions
-    if (m_Bot.GetGrid().IsOpen((short)pos.x, (short)pos.y) && m_Bot.GetGrid().IsOpen((short)enemy.x, (short)enemy.y)) {
+    if (m_Bot.GetGrid().IsOpen((short)pos.x, (short)pos.y) && m_Bot.GetGrid().IsOpen((short)enemy_pos.x, (short)enemy_pos.y)) {
         static DWORD path_timer = 0;
 
         path_timer += dt;
@@ -204,12 +205,12 @@ void ChaseState::Update(DWORD dt) {
         if (path_timer >= 1000 || m_Plan.size() == 0) {
             Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
 
-            m_Plan = jps((short)enemy.x, (short)enemy.y, (short)pos.x, (short)pos.y, m_Bot.GetGrid());
+            m_Plan = jps((short)enemy_pos.x, (short)enemy_pos.y, (short)pos.x, (short)pos.y, m_Bot.GetGrid());
             path_timer = 0;
         }
     } else {
         if (m_Plan.size() == 0)
-            m_Plan.push_back(m_Bot.GetGrid().GetNode((short)enemy.x, (short)enemy.y));
+            m_Plan.push_back(m_Bot.GetGrid().GetNode((short)enemy_pos.x, (short)enemy_pos.y));
     }
 
     if (m_Plan.size() == 0) {
@@ -403,7 +404,7 @@ void PatrolState::ResetWaypoints(bool full) {
 void PatrolState::Update(DWORD dt) {
     ClientPtr client = m_Bot.GetClient();
 
-    if (!m_Patrol || m_Bot.GetEnemyTarget() != Vec2(0, 0)) {
+    if (!m_Patrol || m_Bot.GetEnemyTarget().get()) {
         // Target found, switch to aggressive
         m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
         return;
@@ -594,8 +595,6 @@ bool PointingAtWall(int rot, unsigned x, unsigned y, const Level& level) {
 AggressiveState::AggressiveState(Bot& bot)
     : State(bot), 
       m_LastEnemyPos(0,0),
-      m_LastEnemyTimer(0),
-      m_EnemyVelocity(0, 0),
       m_LastNonSafeTime(timeGetTime()),
       m_NearWall(0),
       m_BurstTimer(0)
@@ -704,13 +703,14 @@ void AggressiveState::Update(DWORD dt) {
         return;
     }
 
-    Vec2 target = m_Bot.GetEnemyTarget();
     DWORD cur_time = timeGetTime();
     int rot = client->GetRotation();
     Vec2 heading = m_Bot.GetHeading();
 
     /* Only update if there is a target enemy */
-    if (target != Vec2(0, 0)) {
+    if (m_Bot.GetEnemyTarget().get() && m_Bot.GetEnemyTarget()->GetPosition() != Vec2(0, 0)) {
+        Vec2 target = m_Bot.GetEnemyTarget()->GetPosition() / 16;
+
         int dx, dy;
         double dist;
 
@@ -721,12 +721,7 @@ void AggressiveState::Update(DWORD dt) {
             return;
         }
         
-        m_LastEnemyTimer += dt;
-        if (m_LastEnemyTimer >= 250) {
-            m_EnemyVelocity = (target - m_LastEnemyPos) / (m_LastEnemyTimer / 250.0f);
-            m_LastEnemyPos = target;
-            m_LastEnemyTimer = 0;
-        }
+        m_LastEnemyPos = target;
 
         if (!insafe)
             m_LastNonSafeTime = cur_time;
@@ -737,7 +732,7 @@ void AggressiveState::Update(DWORD dt) {
             m_LastNonSafeTime = cur_time;
         }
 
-        Vec2 vEnemy = m_EnemyVelocity * 4;
+        Vec2 vEnemy = m_Bot.GetEnemyTarget()->GetVelocity() / 16;
         Vec2 vBot = m_Bot.GetVelocity();
         Vec2 solution = CalculateShot(pos, target, vBot, vEnemy, m_ProjectileSpeed / 16.0 / 10.0);
 

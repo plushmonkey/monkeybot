@@ -273,6 +273,9 @@ void Bot::Update(DWORD dt) {
     try {
         m_EnemyTarget = m_Client->GetClosestEnemy(pos, GetHeading(), m_Level, &dx, &dy, &dist);
 
+        if (!m_EnemyTarget->InArena())
+            reset_target = true;
+
         m_EnemyTargetInfo.dx = dx;
         m_EnemyTargetInfo.dy = dy;
         m_EnemyTargetInfo.dist = dist;
@@ -280,7 +283,9 @@ void Bot::Update(DWORD dt) {
         SetLastEnemy(timeGetTime());
 
         if (m_CenterOnly) {
-            if (m_EnemyTarget.x < 320 || m_EnemyTarget.x >= 703 || m_EnemyTarget.y < 320 || m_EnemyTarget.x >= 703)
+            Vec2 enemy_pos = m_EnemyTarget->GetPosition() / 16;
+
+            if (enemy_pos.x < 320 || enemy_pos.x >= 703 || enemy_pos.y < 320 || enemy_pos.x >= 703)
                 reset_target = true;
         }
 
@@ -295,7 +300,7 @@ void Bot::Update(DWORD dt) {
     }
 
     if (reset_target) {
-        m_EnemyTarget = Vec2(0, 0);
+        m_EnemyTarget = nullptr;
         m_EnemyTargetInfo.dist = 0.0;
     }
 

@@ -9,6 +9,12 @@
 
 #define RegisterCommand(cmd, func) m_Commands[cmd] = std::bind(&CommandHandler::func, this, std::placeholders::_1);
 
+void CommandHandler::CommandTarget(const std::string& args) {
+    m_Bot->GetClient()->SetTarget(args);
+
+    std::cout << "Target: " << (args.length() > 0 ? args : "None") << std::endl;
+}
+
 void CommandHandler::CommandTaunt(const std::string& args) {
     bool taunt = !m_Bot->GetTaunt();
 
@@ -47,7 +53,7 @@ void CommandHandler::CommandFlag(const std::string& args) {
 
     if (!cfg.Get<bool>("Hyperspace")) return;
 
-    std::cout << "switching flagged" << std::endl;
+    std::cout << "Flagging: " << std::boolalpha << !flagging << std::endl;
 
     if (flagging) {
         m_Bot->SetAttaching(false);
@@ -108,7 +114,7 @@ void CommandHandler::CommandConfig(const std::string& args) {
 
     m_Bot->ReloadConfig();
 
-    tcout << "Config set." << std::endl;
+    tcout << variable << " = " << value  << std::endl;
 }
 
 void CommandHandler::HandleMessage(ChatMessage* mesg) {
@@ -159,6 +165,7 @@ CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
     RegisterCommand("freq", CommandFreq);
     RegisterCommand("config", CommandConfig);
     RegisterCommand("taunt", CommandTaunt);
+    RegisterCommand("target", CommandTarget);
 }
 
 CommandHandler::~CommandHandler() {

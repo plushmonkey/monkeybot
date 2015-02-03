@@ -48,8 +48,8 @@ public:
     virtual bool InShip() const = 0;
     virtual void EnterShip(int num) = 0;
 
-    virtual std::vector<Vec2> GetEnemies(Vec2 real_pos, const Level& level) = 0;
-    virtual Vec2 GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist) = 0;
+    virtual std::vector<PlayerPtr> GetEnemies(Vec2 real_pos, const Level& level) = 0;
+    virtual PlayerPtr GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist) = 0;
 
     virtual Vec2 GetRealPosition(Vec2 bot_pos, Vec2 target, const Level& level) = 0;
 
@@ -75,6 +75,8 @@ public:
     virtual void UseMacro(short num) = 0;
 
     virtual void SelectPlayer(const std::string& name) = 0;
+
+    virtual void SetTarget(const std::string& name) = 0;
 };
 
 namespace Ships {
@@ -97,6 +99,8 @@ private:
     ScreenAreaPtr m_Player;
     ScreenAreaPtr m_EnergyArea[5];
     PlayerWindow m_PlayerWindow;
+
+    std::string m_Target;
 
     Memory::MemorySensor& m_MemorySensor;
 
@@ -148,8 +152,8 @@ public:
     virtual bool InShip() const;
     virtual void EnterShip(int num);
 
-    virtual std::vector<Vec2> GetEnemies(Vec2 real_pos, const Level& level);
-    virtual Vec2 GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist);
+    virtual std::vector<PlayerPtr> GetEnemies(Vec2 real_pos, const Level& level);
+    virtual PlayerPtr GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist);
 
     virtual Vec2 GetRealPosition(Vec2 bot_pos, Vec2 target, const Level& level);
 
@@ -178,6 +182,8 @@ public:
     virtual void UseMacro(short num);
 
     virtual void SelectPlayer(const std::string& name);
+
+    virtual void SetTarget(const std::string& name);
 };
 
 #endif

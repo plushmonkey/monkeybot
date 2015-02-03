@@ -31,7 +31,7 @@ private:
     HWND m_Window;
     StatePtr m_State;
     int m_ShipNum;
-    Vec2 m_EnemyTarget;
+    PlayerPtr m_EnemyTarget;
     TargetInfo m_EnemyTargetInfo;
     int m_MaxEnergy;
     int m_Energy;
@@ -79,7 +79,7 @@ public:
     Pathing::Grid<short>& GetGrid() { return m_Grid; }
     const Level& GetLevel() const { return m_Level; }
 
-    Vec2 GetEnemyTarget() const { return m_EnemyTarget; }
+    PlayerPtr GetEnemyTarget() const { return m_EnemyTarget; }
     TargetInfo GetEnemyTargetInfo() const { return m_EnemyTargetInfo; }
 
     int GetEnergy() const { return m_Energy; }

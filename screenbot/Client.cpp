@@ -10,7 +10,7 @@
 #include "MemorySensor.h"
 
 #include <iostream>
-#include <iostream>
+#include <algorithm>
 #include <thread>
 #include <unordered_map>
 
@@ -280,8 +280,8 @@ void ScreenClient::EnterShip(int num) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
 
-std::vector<Vec2> ScreenClient::GetEnemies(Vec2 real_pos, const Level& level) {
-    std::vector<Vec2> enemies;
+std::vector<PlayerPtr> ScreenClient::GetEnemies(Vec2 real_pos, const Level& level) {
+    std::vector<PlayerPtr> enemies;
     int freq = GetFreq();
     PlayerList players = m_MemorySensor.GetPlayers();
     for (auto p : players) {
@@ -291,8 +291,8 @@ std::vector<Vec2> ScreenClient::GetEnemies(Vec2 real_pos, const Level& level) {
         {
             Vec2 pos = p->GetPosition() / 16;
 
-            if (!InSafe(pos, level))
-                enemies.push_back(pos);
+            if (!InSafe(pos, level) && p->InArena())
+                enemies.push_back(p);
         }
     }
 
@@ -301,24 +301,45 @@ std::vector<Vec2> ScreenClient::GetEnemies(Vec2 real_pos, const Level& level) {
     return enemies;
 }
 
-Vec2 ScreenClient::GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist) {
-    std::vector<Vec2> enemies = GetEnemies(real_pos, level); // Grab all of the players visible on radar. Returns position in world space
+void ScreenClient::SetTarget(const std::string& name) {
+    m_Target = name;
+    std::transform(m_Target.begin(), m_Target.end(), m_Target.begin(), tolower);
+}
+
+PlayerPtr ScreenClient::GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist) {
+    std::vector<PlayerPtr> enemies = GetEnemies(real_pos, level); // Grab all of the players visible on radar. Returns position in world space
     *dist = std::numeric_limits<double>::max(); // Distance of closest enemy
     double closest_calc_dist = std::numeric_limits<double>::max(); // Distance of closest enemy with multiplier applied
-    Vec2& closest = enemies.at(0); // The closest enemy
+    PlayerPtr& closest = enemies.at(0); // The closest enemy
     const double RotationMultiplier = 2.5; // Determines how much the rotation difference will increase distance by
 
     for (unsigned int i = 0; i < enemies.size(); i++) {
-        Vec2& enemy = enemies.at(i);
+        PlayerPtr& enemy = enemies.at(i);
         int cdx, cdy;
         double cdist;
 
-        Util::GetDistance(enemy, real_pos, &cdx, &cdy, &cdist);
+        Vec2 pos = enemy->GetPosition() / 16;
 
-        Vec2 to_target = Vec2Normalize(enemy - real_pos); // Unit vector pointing towards this enemy
+        if (pos.x <= 0 && pos.y <= 0) continue;
+
+        Util::GetDistance(pos, real_pos, &cdx, &cdy, &cdist);
+
+        Vec2 to_target = Vec2Normalize(pos - real_pos); // Unit vector pointing towards this enemy
         double dot = heading.Dot(to_target);
         double multiplier = 1.0 + ((1.0 - dot) / RotationMultiplier);
         double calc_dist = cdist * multiplier;
+
+        std::string enemy_name = enemy->GetName();
+
+        std::transform(enemy_name.begin(), enemy_name.end(), enemy_name.begin(), tolower);
+        
+        if (enemy_name.compare(m_Target) == 0 && cdist < 250) {
+            *dist = cdist;
+            *dx = cdx;
+            *dy = cdy;
+            closest = enemy;
+            break;
+        }
 
         if (calc_dist < closest_calc_dist) {
             closest_calc_dist = calc_dist;

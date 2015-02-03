@@ -3,6 +3,7 @@
 #include "Memory.h"
 
 #include <iostream>
+#include <algorithm>
 
 namespace Memory {
 
@@ -28,8 +29,7 @@ MemorySensor::MemorySensor()
       m_Position(0, 0),
       m_Velocity(0, 0),
       m_Freq(9999),
-      m_Name(""),
-      m_PlayerUpdateTimer(0)
+      m_Name("")
 {
 
 }
@@ -147,10 +147,10 @@ void MemorySensor::DetectPlayers() {
         uintptr_t player_addr = Memory::GetU32(m_ProcessHandle, players_addr + (i * 4));
         if (player_addr == 0) continue;
 
-        unsigned short x = Memory::GetU32(m_ProcessHandle, player_addr + PosOffset) / 1000;
-        unsigned short y = Memory::GetU32(m_ProcessHandle, player_addr + PosOffset + 4) / 1000;
-        int xspeed = Memory::GetU32(m_ProcessHandle, player_addr + SpeedOffset);
-        int yspeed = Memory::GetU32(m_ProcessHandle, player_addr + SpeedOffset + 4);
+        short x = Memory::GetU32(m_ProcessHandle, player_addr + PosOffset) / 1000;
+        short y = Memory::GetU32(m_ProcessHandle, player_addr + PosOffset + 4) / 1000;
+        int xspeed = static_cast<int>(Memory::GetU32(m_ProcessHandle, player_addr + SpeedOffset)) / 10;
+        int yspeed = static_cast<int>(Memory::GetU32(m_ProcessHandle, player_addr + SpeedOffset + 4)) / 10;
         unsigned short rot = Memory::GetU32(m_ProcessHandle, player_addr + RotOffset) / 1000;
         unsigned short freq = Memory::GetU32(m_ProcessHandle, player_addr + FreqOffset) & 0xFFFF;
         unsigned short pid = Memory::GetU32(m_ProcessHandle, player_addr + IDOffset);
@@ -170,6 +170,9 @@ void MemorySensor::DetectPlayers() {
             player = found->second;
         }
 
+        x = (short)std::max(std::min((int)x, 1023 * 16), 0);
+        y = (short)std::max(std::min((int)y, 1023 * 16), 0);
+
         player->SetInArena(true);
 
         player->SetName(name);
@@ -183,7 +186,7 @@ void MemorySensor::DetectPlayers() {
 
     for (auto iter = m_Players.begin(); iter != m_Players.end(); ) {
         if (!iter->second->InArena()) {
-            std::cout << "Erasing " << iter->second->GetName() << std::endl;
+            //std::cout << "Erasing " << iter->second->GetName() << std::endl;
             iter = m_Players.erase(iter);
         } else {
             ++iter;
@@ -195,20 +198,15 @@ void MemorySensor::Update(unsigned long dt) {
     if (!m_Initialized) return;
 
     if (m_PositionAddr != 0) {
-        m_Position.x = Memory::GetU32(m_ProcessHandle, m_PositionAddr);
-        m_Position.y = Memory::GetU32(m_ProcessHandle, m_PositionAddr + 4);
-        m_Velocity.x = Memory::GetU32(m_ProcessHandle, m_PositionAddr + 8);
-        m_Velocity.y = Memory::GetU32(m_ProcessHandle, m_PositionAddr + 12);
+        m_Position.x = std::max(std::min((int)Memory::GetU32(m_ProcessHandle, m_PositionAddr), 1023 * 16), 0);
+        m_Position.y = std::max(std::min((int)Memory::GetU32(m_ProcessHandle, m_PositionAddr + 4), 1023 * 16), 0);
+
+        m_Velocity.x = (int)Memory::GetU32(m_ProcessHandle, m_PositionAddr + 8);
+        m_Velocity.y = (int)Memory::GetU32(m_ProcessHandle, m_PositionAddr + 12);
     }
 
     DetectFreq();
-
-    m_PlayerUpdateTimer += dt;
-
-    if (m_PlayerUpdateTimer > 1000 || dt == 0) {
-        DetectPlayers();
-        m_PlayerUpdateTimer = 0;
-    }
+    DetectPlayers();
 }
 
 } // ns Memory
