@@ -83,8 +83,7 @@ namespace std {
     struct hash <Pixel> {
         size_t operator()(const Pixel& pix) const {
             u32 val = (pix.b << 24) | (pix.g << 16) | (pix.r << 8) | pix.a;
-            std::hash<u32> v;
-            return v(val);
+            return val;
         }
     };
 }

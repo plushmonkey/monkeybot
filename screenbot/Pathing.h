@@ -67,7 +67,7 @@ public:
     IntType GetWidth() const { return m_Width; }
     IntType GetHeight() const { return m_Height; }
 
-    Node* GetNode(IntType x, IntType y) {
+    inline Node* GetNode(IntType x, IntType y) {
         return &m_Nodes[y * m_Height + x];
     }
 

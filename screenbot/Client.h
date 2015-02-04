@@ -8,6 +8,7 @@
 
 #include <Windows.h>
 #include <vector>
+#include <unordered_map>
 
 class Level;
 
@@ -99,6 +100,9 @@ private:
     ScreenAreaPtr m_Player;
     ScreenAreaPtr m_EnergyArea[5];
     PlayerWindow m_PlayerWindow;
+
+    typedef std::function<void(ScreenGrabberPtr, int, int)> PixelHandler;
+    std::unordered_map<Pixel, PixelHandler> m_PixelHandlers;
 
     std::string m_Target;
 

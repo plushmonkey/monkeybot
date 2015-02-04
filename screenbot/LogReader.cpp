@@ -13,7 +13,12 @@ LogReader::LogReader(const std::string& filename, const unsigned int frequency)
       m_UpdateFrequency(frequency),
       m_UpdateTimer(0)
 {
+    std::ifstream in(filename, std::ios::in);
 
+    if (!in.is_open())
+        std::cout << "Could not open " << filename << " for reading." << std::endl;
+    else
+        in.close();
 }
 
 void LogReader::Update(unsigned long dt) {

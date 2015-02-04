@@ -117,6 +117,16 @@ void CommandHandler::CommandConfig(const std::string& args) {
     tcout << variable << " = " << value  << std::endl;
 }
 
+void CommandHandler::CommandPause(const std::string& args) {
+    bool paused = !m_Bot->GetPaused();
+
+    m_Bot->SetPaused(paused);
+    tcout << "Paused: " << std::boolalpha << paused << std::endl;
+
+    if (paused)
+        m_Bot->GetClient()->ReleaseKeys();
+}
+
 void CommandHandler::HandleMessage(ChatMessage* mesg) {
     std::string line = mesg->GetLine();
 
@@ -151,6 +161,9 @@ void CommandHandler::HandleMessage(ChatMessage* mesg) {
         }
     }
 
+    if (player_name.compare(m_Owner) == 0)
+        allowed = true;
+
     if (!allowed) return;
 
     std::transform(command.begin(), command.end(), command.begin(), tolower);
@@ -160,12 +173,19 @@ void CommandHandler::HandleMessage(ChatMessage* mesg) {
         cmd->second(args);
 }
 
+bool CommandHandler::Initialize() {
+    m_Owner = m_Bot->GetConfig().Get<std::string>("Owner");
+    std::transform(m_Owner.begin(), m_Owner.end(), m_Owner.begin(), tolower);
+    return true;
+}
+
 CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
     RegisterCommand("flag", CommandFlag);
     RegisterCommand("freq", CommandFreq);
     RegisterCommand("config", CommandConfig);
     RegisterCommand("taunt", CommandTaunt);
     RegisterCommand("target", CommandTarget);
+    RegisterCommand("pause", CommandPause);
 }
 
 CommandHandler::~CommandHandler() {

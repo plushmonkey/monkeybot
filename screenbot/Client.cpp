@@ -12,7 +12,6 @@
 #include <iostream>
 #include <algorithm>
 #include <thread>
-#include <unordered_map>
 
 ScreenClient::ScreenClient(HWND hwnd, Config& config, Memory::MemorySensor& memsensor)
     : m_Window(hwnd),
@@ -42,6 +41,8 @@ ScreenClient::ScreenClient(HWND hwnd, Config& config, Memory::MemorySensor& mems
     m_EnergyArea[3] = m_Screen->GetArea(width - 46, 0, 16, 21);
     m_EnergyArea[4] = m_Screen->GetArea(width - 30, 0, 16, 21);
     m_PlayerWindow.SetScreenArea(m_Screen->GetArea(3, 3, 172, m_Screen->GetHeight() - 50));
+
+    m_PixelHandlers[Pixel(255, 255, 255, 0)] = std::bind(&ScreenClient::EMPPixelHandler, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
 }
 
 
@@ -333,7 +334,7 @@ PlayerPtr ScreenClient::GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level
 
         std::transform(enemy_name.begin(), enemy_name.end(), enemy_name.begin(), tolower);
         
-        if (enemy_name.compare(m_Target) == 0 && cdist < 250) {
+        if (enemy_name.compare(m_Target) == 0 && cdist < 350) {
             *dist = cdist;
             *dx = cdx;
             *dy = cdy;
@@ -493,19 +494,18 @@ void ScreenClient::EMPPixelHandler(ScreenGrabberPtr screen, int x, int y) {
 void ScreenClient::Scan() {
     const int width = m_Screen->GetWidth();
     const int height = m_Screen->GetHeight();
-
-    typedef std::function<void(ScreenGrabberPtr, int, int)> PixelHandler;
-    std::unordered_map<Pixel, PixelHandler> handlers;
-    
-    handlers[Pixel(255, 255, 255, 0)] = std::bind(&ScreenClient::EMPPixelHandler, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+    static const Pixel emp_pixel(255, 255, 255, 0);
 
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             Pixel pixel = m_Screen->GetPixel(x, y);
 
-            auto found = handlers.find(pixel);
-            if (found != handlers.end())
-                found->second(m_Screen, x, y);
+            if (pixel == emp_pixel)
+                EMPPixelHandler(m_Screen, x, y);
+            
+            /*auto found = m_PixelHandlers.find(pixel);
+            if (found != m_PixelHandlers.end())
+                found->second(m_Screen, x, y);*/
         }
     }
 }

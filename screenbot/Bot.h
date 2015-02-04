@@ -41,6 +41,7 @@ private:
     DWORD m_LastEnemy;
     DWORD m_RepelTimer;
     int m_RepelPercent;
+    bool m_Paused;
 
     Config m_Config;
     bool m_Attach;
@@ -109,6 +110,9 @@ public:
         m_Taunt = b;
         m_Taunter.SetEnabled(b);
     }
+
+    bool GetPaused() const { return m_Paused; }
+    void SetPaused(bool b) { m_Paused = b; }
 
     void ReloadConfig();
 

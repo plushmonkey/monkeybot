@@ -43,7 +43,8 @@ Bot::Bot(int ship)
       m_LancTimer(20000),
       m_Flagging(false),
       m_CommandHandler(this),
-      m_Hyperspace(false)
+      m_Hyperspace(false),
+      m_Paused(false)
 { }
 
 ClientPtr Bot::GetClient() {
@@ -210,6 +211,14 @@ void Bot::ReloadConfig() {
 }
 
 void Bot::Update(DWORD dt) {
+    m_LogReader->Update(dt);
+
+    if (m_Paused) {
+        MQueue.Dispatch();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        return;
+    }
+
     m_Client->Update(dt);
 
     if (!m_Client->InShip()) {
@@ -251,8 +260,6 @@ void Bot::Update(DWORD dt) {
     }
 
     m_LancTimer += dt;
-
-    m_LogReader->Update(dt);
 
     if (m_LancTimer >= 35000 && m_Hyperspace) {
         if (m_Attach)
@@ -366,6 +373,7 @@ int Bot::Run() {
     m_Config.Set(_T("Taunt"),           _T("False"));
     m_Config.Set(_T("Name"),            _T(""));
     m_Config.Set(_T("Hyperspace"),      _T("false"));
+    m_Config.Set(_T("Owner"),           _T("monkey"));
     
     if (!m_Config.Load(_T("bot.conf")))
         tcout << "Could not load bot.conf. Using default values." << std::endl;
@@ -427,6 +435,11 @@ int Bot::Run() {
     m_Hyperspace = m_Config.Get<bool>("Hyperspace");
 
     m_Taunter.SetEnabled(m_Taunt);
+    if (!m_CommandHandler.Initialize()) {
+        tcout << "CommandHandler::Initialize failed." << std::endl;
+        std::cin.get();
+        std::exit(1);
+    }
 
     m_Client = std::make_shared<ScreenClient>(m_Window, m_Config, m_MemorySensor);
 

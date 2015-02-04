@@ -101,7 +101,7 @@ void MemorySensor::DetectPosition() {
                 }
             }
             if (okay) {
-                address = addr;
+                address = addr + 0x1C;
                 break;
             }
         }

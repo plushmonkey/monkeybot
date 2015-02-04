@@ -22,7 +22,10 @@ bool Level::Load(const tstring& filename) {
 
     std::ifstream in(m_Filename, std::ios::in | std::ios::binary);
     
-    if (!in.is_open()) return false;
+    if (!in.is_open()) {
+        std::cout << strerror(errno) << std::endl;
+        return false;
+    }
 
     in.seekg(0, std::ios::end);
     unsigned int len = static_cast<int>(in.tellg());
