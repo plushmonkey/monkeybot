@@ -244,6 +244,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Bot.h" />
+    <ClInclude Include="ClientSettings.h" />
     <ClInclude Include="CommandHandler.h" />
     <ClInclude Include="MessageQueue.h" />
     <ClInclude Include="Client.h" />

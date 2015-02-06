@@ -3,6 +3,7 @@
 
 #include "Vector.h"
 #include "Player.h"
+#include "ClientSettings.h"
 
 #include <string>
 #include <windows.h>
@@ -28,6 +29,7 @@ private:
     uintptr_t m_PositionAddr;
     DWORD m_Pid;
     bool m_Initialized;
+    DWORD m_SettingsTimer;
 
     std::map<PlayerID, PlayerPtr> m_Players;
     Vec2 m_Position;
@@ -35,6 +37,9 @@ private:
     unsigned short m_Freq;
     std::string m_Name;
 
+    ShipSettings m_ShipSettings[8];
+
+    void DetectSettings();
     void DetectName();
     void DetectPosition();
     void DetectFreq();
@@ -51,6 +56,8 @@ public:
     unsigned short GetFrequency() const { return m_Freq; }
     const std::string& GetName() const { return m_Name; }
     PlayerList GetPlayers();
+
+    const ShipSettings& GetShipSettings(Ship ship) const { return m_ShipSettings[(int)ship]; }
 };
 
 } // ns Memory

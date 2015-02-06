@@ -17,6 +17,7 @@ namespace Memory {
     std::vector<unsigned int> FindRange(HANDLE handle, const unsigned int start, const unsigned int end);
     std::vector<unsigned int> FindU32(HANDLE handle, const unsigned int value);
     
+    bool Read(HANDLE handle, const uintptr_t addr, void* buffer, size_t size);
     unsigned int GetU32(HANDLE handle, const unsigned int address);
     std::string GetString(HANDLE handle, const unsigned int address, size_t len);
 

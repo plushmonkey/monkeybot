@@ -94,6 +94,13 @@ std::vector<unsigned int> FindRange(HANDLE handle, const unsigned int start, con
     return found;
 }
 
+bool Read(HANDLE handle, const uintptr_t addr, void* buffer, size_t size) {
+    SIZE_T num_read;
+
+    if (ReadProcessMemory(handle, (LPVOID)addr, buffer, size, &num_read))
+        return true;
+    return false;
+}
 
 unsigned int GetU32(HANDLE handle, const unsigned int address) {
     unsigned int value;

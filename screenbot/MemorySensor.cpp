@@ -29,7 +29,8 @@ MemorySensor::MemorySensor()
       m_Position(0, 0),
       m_Velocity(0, 0),
       m_Freq(9999),
-      m_Name("")
+      m_Name(""),
+      m_SettingsTimer(0)
 {
 
 }
@@ -64,6 +65,15 @@ PlayerList MemorySensor::GetPlayers() {
     MapToVector(m_Players, players);
 
     return players;
+}
+
+void MemorySensor::DetectSettings() {
+    uintptr_t addr = Memory::GetU32(m_ProcessHandle, m_ContBaseAddr + 0xC1AFC); // Starting address
+    size_t size = sizeof(ShipSettings);
+    addr += 0x127EC + 0x1AE70 + 0x04;
+
+    for (size_t i = 0; i < 8; ++i)
+        Memory::Read(m_ProcessHandle, addr + ((size+16) * i), &m_ShipSettings[i], size);
 }
 
 void MemorySensor::DetectName() {
@@ -203,6 +213,13 @@ void MemorySensor::Update(unsigned long dt) {
 
         m_Velocity.x = (int)Memory::GetU32(m_ProcessHandle, m_PositionAddr + 8);
         m_Velocity.y = (int)Memory::GetU32(m_ProcessHandle, m_PositionAddr + 12);
+    }
+
+    m_SettingsTimer += dt;
+
+    if (m_SettingsTimer >= 1000 || dt == 0) {
+        DetectSettings();
+        m_SettingsTimer = 0;
     }
 
     DetectFreq();

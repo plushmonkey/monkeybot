@@ -441,7 +441,13 @@ int Bot::Run() {
         std::exit(1);
     }
 
-    m_Client = std::make_shared<ScreenClient>(m_Window, m_Config, m_MemorySensor);
+    try {
+        m_Client = std::make_shared<ScreenClient>(m_Window, m_Config, m_MemorySensor);
+    } catch (const std::exception& e) {
+        tcerr << e.what() << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        std::exit(1);
+    }
 
     this->SetState(std::make_shared<PatrolState>(*this));
 
@@ -455,9 +461,9 @@ int Bot::Run() {
         std::cout << p->GetName() << ": Pos: " << p->GetPosition() << " Vel: " << p->GetVelocity();
         std::cout << " Rot: " << p->GetRotation() << " Freq: " << p->GetFreq() << " pid: " << p->GetPid() << std::endl;
     }
-
-    DWORD last_update = timeGetTime();
     
+    DWORD last_update = timeGetTime();
+
     while (true) {
         DWORD dt = timeGetTime() - last_update;
         //std::cout << dt << " ";
