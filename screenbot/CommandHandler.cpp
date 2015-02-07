@@ -128,23 +128,19 @@ void CommandHandler::CommandPause(const std::string& args) {
 }
 
 void CommandHandler::HandleMessage(ChatMessage* mesg) {
-    std::string line = mesg->GetLine();
+    if (mesg->GetType() != ChatMessage::Type::Private && mesg->GetType() != ChatMessage::Type::Channel) return;
 
-    std::regex cmd_regex(R"::(^P\s+(.+)> !(.+)$)::");
-    std::sregex_iterator begin(line.begin(), line.end(), cmd_regex);
-    std::sregex_iterator end;
+    std::string player_name = mesg->GetPlayer();
+    std::string command_line = mesg->GetMessage();
 
-    if (begin == end) return;
+    if (command_line.size() <= 1 || command_line.at(0) != '!') return;
 
-    std::smatch match = *begin;
-    std::string player_name = match[1];
-    std::string command_line = match[2];
+    command_line = command_line.substr(1);
 
-    std::cout << "Command from " << player_name << " : " << command_line << std::endl;
-
-    size_t pos = command_line.find(" ");
     std::string command(command_line);
     std::string args;
+
+    size_t pos = command_line.find(" ");
 
     if (pos != std::string::npos) {
         command = command_line.substr(0, pos);
@@ -164,13 +160,20 @@ void CommandHandler::HandleMessage(ChatMessage* mesg) {
     if (player_name.compare(m_Owner) == 0)
         allowed = true;
 
-    if (!allowed) return;
+    if (!allowed) {
+        std::cout << player_name << " tried to use command " << command_line << " but doesn't have permission" << std::endl;
+        return;
+    }
+
+    std::cout << "Command from " << player_name << " : " << command_line << std::endl;
 
     std::transform(command.begin(), command.end(), command.begin(), tolower);
     auto cmd = m_Commands.find(command);
 
     if (cmd != m_Commands.end())
         cmd->second(args);
+    else
+        std::cout << "Command " << command << " not recognized." << std::endl;
 }
 
 bool CommandHandler::Initialize() {

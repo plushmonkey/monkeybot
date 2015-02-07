@@ -51,8 +51,11 @@ private:
     int m_CenterRadius;
     bool m_Taunt;
     bool m_Hyperspace;
+    bool m_Commander;
 
     ClientPtr m_Client;
+
+    PlayerPtr m_LastTarget;
 
     Memory::MemorySensor m_MemorySensor;
 

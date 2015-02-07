@@ -191,7 +191,9 @@ void Bot::CheckLancs(const std::string& line) {
 }
 
 void Bot::HandleMessage(ChatMessage* mesg) {
-    std::string line = mesg->GetLine();
+    if (mesg->GetType() != ChatMessage::Type::Other) return;
+
+    std::string line = mesg->GetMessage();
 
     if (m_Hyperspace)
         CheckLancs(line);
@@ -311,6 +313,17 @@ void Bot::Update(DWORD dt) {
         m_EnemyTargetInfo.dist = 0.0;
     }
 
+    static DWORD target_timer = 0;
+
+    target_timer += dt;
+
+    if (m_Commander && target_timer >= 10000 && m_Energy > 0 && m_EnemyTarget != nullptr && m_EnemyTarget != m_LastTarget) {
+        m_Client->SendString(";!target " + m_EnemyTarget->GetName());
+
+        m_LastTarget = m_EnemyTarget;
+        target_timer = 0;
+    }
+
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
     
     m_MemorySensor.Update(dt);
@@ -373,6 +386,7 @@ int Bot::Run() {
     m_Config.Set(_T("Taunt"),           _T("False"));
     m_Config.Set(_T("Name"),            _T(""));
     m_Config.Set(_T("Hyperspace"),      _T("false"));
+    m_Config.Set(_T("Commander"),       _T("false"));
     m_Config.Set(_T("Owner"),           _T("monkey"));
     
     if (!m_Config.Load(_T("bot.conf")))
@@ -433,6 +447,7 @@ int Bot::Run() {
     m_RepelPercent = m_Config.Get<int>("RepelPercent");
     m_Taunt = m_Config.Get<bool>("Taunt");
     m_Hyperspace = m_Config.Get<bool>("Hyperspace");
+    m_Commander = m_Config.Get<bool>("Commander");
 
     m_Taunter.SetEnabled(m_Taunt);
     if (!m_CommandHandler.Initialize()) {
