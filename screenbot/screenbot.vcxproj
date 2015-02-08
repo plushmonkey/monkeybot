@@ -238,6 +238,7 @@
     <ClCompile Include="ScreenArea.cpp" />
     <ClCompile Include="ScreenGrabber.cpp" />
     <ClCompile Include="State.cpp" />
+    <ClCompile Include="Survivor.cpp" />
     <ClCompile Include="Taunter.cpp" />
     <ClCompile Include="Util.cpp" />
     <ClCompile Include="WindowFinder.cpp" />
@@ -261,6 +262,7 @@
     <ClInclude Include="MemorySensor.h" />
     <ClInclude Include="Messages\Messages.h" />
     <ClInclude Include="Player.h" />
+    <ClInclude Include="Survivor.h" />
     <ClInclude Include="Taunter.h" />
     <ClInclude Include="Pathing.h" />
     <ClInclude Include="PlayerList.h" />

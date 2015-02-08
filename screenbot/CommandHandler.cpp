@@ -9,10 +9,37 @@
 
 #define RegisterCommand(cmd, func) m_Commands[cmd] = std::bind(&CommandHandler::func, this, std::placeholders::_1);
 
+void CommandHandler::CommandShip(const std::string& args) {
+    if (args.length() == 0) return;
+
+    int ship = atoi(args.c_str());
+    if (ship < 1 || ship > 8) return;
+
+    ClientPtr client = m_Bot->GetClient();
+
+    client->ReleaseKeys();
+    client->SetXRadar(false);
+    while (client->GetEnergy() < m_Bot->GetMaxEnergy() || m_Bot->GetEnergy() == 0) {
+        client->Update(100);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    m_Bot->SetShip((Ship)(ship - 1));
+
+    std::cout << "Ship: " << ship << std::endl;
+}
+
 void CommandHandler::CommandTarget(const std::string& args) {
     m_Bot->GetClient()->SetTarget(args);
 
     std::cout << "Target: " << (args.length() > 0 ? args : "None") << std::endl;
+}
+
+void CommandHandler::CommandPriority(const std::string& args) {
+    m_Bot->GetClient()->SetPriorityTarget(args);
+
+    std::cout << "Priority Target: " << (args.length() > 0 ? args : "None") << std::endl;
+
+    m_Bot->GetSurvivorGame()->SetTarget(args);
 }
 
 void CommandHandler::CommandTaunt(const std::string& args) {
@@ -22,10 +49,7 @@ void CommandHandler::CommandTaunt(const std::string& args) {
 
     std::cout << "Taunt: " << std::boolalpha << taunt << std::endl;
 
-    if (taunt)
-        m_Bot->GetConfig().Set("Taunt", "True");
-    else
-        m_Bot->GetConfig().Set("Taunt", "False");
+    m_Bot->GetConfig().Set("Taunt", std::to_string(taunt));
 }
 
 void CommandHandler::CommandFreq(const std::string& args) {
@@ -39,7 +63,7 @@ void CommandHandler::CommandFreq(const std::string& args) {
 
     client->ReleaseKeys();
     client->SetXRadar(false);
-    while (client->GetEnergy() < m_Bot->GetMaxEnergy()) {
+    while (client->GetEnergy() < m_Bot->GetMaxEnergy() || m_Bot->GetEnergy() == 0) {
         client->Update(100);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
@@ -69,7 +93,7 @@ void CommandHandler::CommandFlag(const std::string& args) {
         int freq = Random::GetU32(10, 80);
         client->ReleaseKeys();
         client->SetXRadar(false);
-        while (client->GetEnergy() < m_Bot->GetMaxEnergy()) {
+        while (client->GetEnergy() < m_Bot->GetMaxEnergy() || m_Bot->GetEnergy() == 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             client->Update(100);
         }
@@ -89,7 +113,7 @@ void CommandHandler::CommandFlag(const std::string& args) {
 
         client->ReleaseKeys();
         client->SetXRadar(false);
-        while (client->GetEnergy() < m_Bot->GetMaxEnergy()) {
+        while (client->GetEnergy() < m_Bot->GetMaxEnergy() || m_Bot->GetEnergy() == 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             client->Update(100);
         }
@@ -147,7 +171,7 @@ void CommandHandler::HandleMessage(ChatMessage* mesg) {
         args = command_line.substr(pos + 1);
     }
 
-    static const std::vector<std::string> staff = { "monkey", "ceiu", "bzap", "baked cake", "cdb-man", "nn" };
+    static const std::vector<std::string> staff = { "monkey", "ceiu", "bzap", "baked cake", "cdb-man", "nn", "pity." };
     std::transform(player_name.begin(), player_name.end(), player_name.begin(), tolower);
     bool allowed = false;
     for (auto s : staff) {
@@ -183,11 +207,13 @@ bool CommandHandler::Initialize() {
 }
 
 CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
+    RegisterCommand("ship", CommandShip);
     RegisterCommand("flag", CommandFlag);
     RegisterCommand("freq", CommandFreq);
     RegisterCommand("config", CommandConfig);
     RegisterCommand("taunt", CommandTaunt);
     RegisterCommand("target", CommandTarget);
+    RegisterCommand("priority", CommandPriority);
     RegisterCommand("pause", CommandPause);
 }
 

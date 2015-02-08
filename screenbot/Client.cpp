@@ -61,8 +61,11 @@ void ScreenClient::Update(DWORD dt) {
         m_ScaleDelay = m_Config.Get<bool>(_T("ScaleDelay"));
         m_FireBombs = m_Config.Get<bool>(_T("FireBombs"));
         m_FireGuns = m_Config.Get<bool>(_T("FireGuns"));
-        m_MapZoom = m_Config.Get<int>("MapZoom");
-        m_IgnoreCarriers = m_Config.Get<bool>("IgnoreCarriers");
+        m_MapZoom = m_Config.Get<int>(_T("MapZoom"));
+        m_IgnoreCarriers = m_Config.Get<bool>(_T("IgnoreCarriers"));
+        m_CenterOnly = m_Config.Get<bool>(_T("OnlyCenter"));
+        m_Hyperspace = m_Config.Get<bool>(_T("Hyperspace"));
+
         m_CurrentBulletDelay = m_BulletDelay;
         m_ConfigLoaded = true;
         m_Rotations = new Ships::RotationStore(m_Config);
@@ -292,6 +295,11 @@ std::vector<PlayerPtr> ScreenClient::GetEnemies(Vec2 real_pos, const Level& leve
         {
             Vec2 pos = p->GetPosition() / 16;
 
+            if (m_CenterOnly && m_Hyperspace) {
+                if (pos.x < 320 || pos.x >= 703 || pos.y < 320 || pos.x >= 703)
+                    continue;
+            }
+
             if (!InSafe(pos, level) && p->InArena())
                 enemies.push_back(p);
         }
@@ -307,12 +315,18 @@ void ScreenClient::SetTarget(const std::string& name) {
     std::transform(m_Target.begin(), m_Target.end(), m_Target.begin(), tolower);
 }
 
+void ScreenClient::SetPriorityTarget(const std::string& name) {
+    m_PriorityTarget = name;
+    std::transform(m_PriorityTarget.begin(), m_PriorityTarget.end(), m_PriorityTarget.begin(), tolower);
+}
+
 PlayerPtr ScreenClient::GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist) {
     std::vector<PlayerPtr> enemies = GetEnemies(real_pos, level); // Grab all of the players visible on radar. Returns position in world space
     *dist = std::numeric_limits<double>::max(); // Distance of closest enemy
     double closest_calc_dist = std::numeric_limits<double>::max(); // Distance of closest enemy with multiplier applied
     PlayerPtr& closest = enemies.at(0); // The closest enemy
     const double RotationMultiplier = 2.5; // Determines how much the rotation difference will increase distance by
+    bool using_target = false;
 
     for (unsigned int i = 0; i < enemies.size(); i++) {
         PlayerPtr& enemy = enemies.at(i);
@@ -334,7 +348,7 @@ PlayerPtr ScreenClient::GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level
 
         std::transform(enemy_name.begin(), enemy_name.end(), enemy_name.begin(), tolower);
         
-        if (enemy_name.compare(m_Target) == 0 && cdist < 350) {
+        if (enemy_name.compare(m_PriorityTarget) == 0) {
             *dist = cdist;
             *dx = cdx;
             *dy = cdy;
@@ -342,12 +356,16 @@ PlayerPtr ScreenClient::GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level
             break;
         }
 
-        if (calc_dist < closest_calc_dist) {
+        bool is_target = enemy_name.compare(m_Target) == 0;
+
+        if ((calc_dist < closest_calc_dist || is_target) && !using_target) {
             closest_calc_dist = calc_dist;
             *dist = cdist;
             *dx = cdx;
             *dy = cdy;
             closest = enemy;
+
+            if (is_target) using_target = true;
         }
     }
 

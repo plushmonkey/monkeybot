@@ -78,6 +78,8 @@ public:
     virtual void SelectPlayer(const std::string& name) = 0;
 
     virtual void SetTarget(const std::string& name) = 0;
+    virtual void SetPriorityTarget(const std::string& name) = 0;
+    virtual std::string GetPriorityTarget() const = 0;
 };
 
 namespace Ships {
@@ -105,6 +107,7 @@ private:
     std::unordered_map<Pixel, PixelHandler> m_PixelHandlers;
 
     std::string m_Target;
+    std::string m_PriorityTarget;
 
     Memory::MemorySensor& m_MemorySensor;
 
@@ -121,6 +124,8 @@ private:
     int m_CurrentBulletDelay;
     int m_BombDelay;
     bool m_IgnoreCarriers;
+    bool m_CenterOnly;
+    bool m_Hyperspace;
 
     bool m_Thrusting;
 
@@ -188,6 +193,11 @@ public:
     virtual void SelectPlayer(const std::string& name);
 
     virtual void SetTarget(const std::string& name);
+    virtual void SetPriorityTarget(const std::string& name);
+
+    virtual std::string GetPriorityTarget() const {
+        return m_PriorityTarget;
+    }
 };
 
 #endif

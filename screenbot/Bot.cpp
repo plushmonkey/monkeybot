@@ -44,7 +44,9 @@ Bot::Bot(int ship)
       m_Flagging(false),
       m_CommandHandler(this),
       m_Hyperspace(false),
-      m_Paused(false)
+      m_Paused(false),
+      m_Survivor(this),
+      m_PlaySurvivor(false)
 { }
 
 ClientPtr Bot::GetClient() {
@@ -62,6 +64,11 @@ Vec2 Bot::GetHeading() const {
 
 Vec2 Bot::GetVelocity() const {
     return m_MemorySensor.GetVelocity() / 16;
+}
+
+void Bot::SetShip(Ship ship) {
+    m_ShipNum = (int)ship + 1;
+    m_Client->EnterShip(m_ShipNum);
 }
 
 void Bot::SetSpeed(float target) {
@@ -208,6 +215,7 @@ void Bot::ReloadConfig() {
     m_RepelPercent = m_Config.Get<int>("RepelPercent");
     m_Taunt = m_Config.Get<bool>("Taunt");
     m_Hyperspace = m_Config.Get<bool>("Hyperspace");
+    m_Commander = m_Config.Get<bool>("Commander");
 
     m_Taunter.SetEnabled(m_Taunt);
 }
@@ -314,20 +322,22 @@ void Bot::Update(DWORD dt) {
     }
 
     static DWORD target_timer = 0;
-
+    static DWORD alive_timer = 0;
     target_timer += dt;
 
-    if (m_Commander && target_timer >= 10000 && m_Energy > 0 && m_EnemyTarget != nullptr && m_EnemyTarget != m_LastTarget) {
-        m_Client->SendString(";!target " + m_EnemyTarget->GetName());
+    if (m_Commander && m_PlaySurvivor)
+        m_Survivor.Update(dt);
 
+    if (m_Commander && target_timer >= 10000 && m_EnemyTarget != nullptr && m_EnemyTarget != m_LastTarget) {
+        m_Client->SendString(";!target " + m_EnemyTarget->GetName());
         m_LastTarget = m_EnemyTarget;
         target_timer = 0;
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    
     m_MemorySensor.Update(dt);
     m_State->Update(dt);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
     
     MQueue.Dispatch();
 }
@@ -388,6 +398,7 @@ int Bot::Run() {
     m_Config.Set(_T("Hyperspace"),      _T("false"));
     m_Config.Set(_T("Commander"),       _T("false"));
     m_Config.Set(_T("Owner"),           _T("monkey"));
+    m_Config.Set(_T("Survivor"),        _T("false"));
     
     if (!m_Config.Load(_T("bot.conf")))
         tcout << "Could not load bot.conf. Using default values." << std::endl;
@@ -448,6 +459,7 @@ int Bot::Run() {
     m_Taunt = m_Config.Get<bool>("Taunt");
     m_Hyperspace = m_Config.Get<bool>("Hyperspace");
     m_Commander = m_Config.Get<bool>("Commander");
+    m_PlaySurvivor = m_Config.Get<bool>("Survivor");
 
     m_Taunter.SetEnabled(m_Taunt);
     if (!m_CommandHandler.Initialize()) {

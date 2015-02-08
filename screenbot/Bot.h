@@ -10,6 +10,7 @@
 #include "CommandHandler.h"
 #include "Taunter.h"
 #include "MemorySensor.h"
+#include "Survivor.h"
 
 #include <memory>
 #include <vector>
@@ -52,10 +53,13 @@ private:
     bool m_Taunt;
     bool m_Hyperspace;
     bool m_Commander;
+    bool m_PlaySurvivor;
 
     ClientPtr m_Client;
 
     PlayerPtr m_LastTarget;
+
+    SurvivorGame m_Survivor;
 
     Memory::MemorySensor m_MemorySensor;
 
@@ -143,6 +147,14 @@ public:
 
     int Run();
     void Update(DWORD dt);
+
+    void SetShip(Ship ship);
+
+    Memory::MemorySensor GetMemorySensor() {
+        return m_MemorySensor;
+    }
+
+    SurvivorGame* GetSurvivorGame() { return &m_Survivor; }
 };
 
 #endif
