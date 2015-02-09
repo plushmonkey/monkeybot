@@ -64,7 +64,7 @@ ChatMessage* LogReader::GetChatMessage(const std::string& line) {
 void LogReader::Update(unsigned long dt) {
     m_UpdateTimer += dt;
 
-    if (m_UpdateTimer < m_UpdateFrequency) return;
+    if (m_UpdateTimer < m_UpdateFrequency && dt != 0) return;
     m_UpdateTimer = 0;
 
     std::string data;

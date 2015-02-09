@@ -30,15 +30,17 @@ private:
     DWORD m_Pid;
     bool m_Initialized;
     DWORD m_SettingsTimer;
+    int m_SelectedIndex;
 
     std::map<PlayerID, PlayerPtr> m_Players;
     Vec2 m_Position;
     Vec2 m_Velocity;
-    unsigned short m_Freq;
+    unsigned int m_Freq;
     std::string m_Name;
 
     ShipSettings m_ShipSettings[8];
 
+    void DetectSelected();
     void DetectSettings();
     void DetectName();
     void DetectPosition();
@@ -53,7 +55,7 @@ public:
 
     Vec2 GetPosition() const { return m_Position; }
     Vec2 GetVelocity() const { return m_Velocity; }
-    unsigned short GetFrequency() const { return m_Freq; }
+    unsigned int GetFrequency() const { return m_Freq; }
     const std::string& GetName() const { return m_Name; }
     PlayerList GetPlayers();
 

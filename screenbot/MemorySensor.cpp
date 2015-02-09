@@ -30,7 +30,8 @@ MemorySensor::MemorySensor()
       m_Velocity(0, 0),
       m_Freq(9999),
       m_Name(""),
-      m_SettingsTimer(0)
+      m_SettingsTimer(0),
+      m_SelectedIndex(-1)
 {
 
 }
@@ -65,6 +66,13 @@ PlayerList MemorySensor::GetPlayers() {
     MapToVector(m_Players, players);
 
     return players;
+}
+
+void MemorySensor::DetectSelected() {
+    uintptr_t addr = Memory::GetU32(m_ProcessHandle, m_ContBaseAddr + 0xC1AFC); // Starting address
+    addr += 0x2DF44;
+
+    m_SelectedIndex = Memory::GetU32(m_ProcessHandle, addr) & 0xFFFF;
 }
 
 void MemorySensor::DetectSettings() {
@@ -129,7 +137,7 @@ void MemorySensor::DetectFreq() {
     uintptr_t addr = Memory::GetU32(m_ProcessHandle, m_ContBaseAddr + 0xC1AFC) + 0x30;
     const unsigned int FreqOffset = 0x12664;
     addr += FreqOffset;
-    m_Freq = Memory::GetU32(m_ProcessHandle, addr) & 0xFFFF;
+    m_Freq = Memory::GetU32(m_ProcessHandle, addr);
 }
 
 void MemorySensor::DetectPlayers() {
@@ -162,13 +170,11 @@ void MemorySensor::DetectPlayers() {
         int xspeed = static_cast<int>(Memory::GetU32(m_ProcessHandle, player_addr + SpeedOffset)) / 10;
         int yspeed = static_cast<int>(Memory::GetU32(m_ProcessHandle, player_addr + SpeedOffset + 4)) / 10;
         unsigned short rot = Memory::GetU32(m_ProcessHandle, player_addr + RotOffset) / 1000;
-        unsigned short freq = Memory::GetU32(m_ProcessHandle, player_addr + FreqOffset) & 0xFFFF;
+        unsigned int freq = Memory::GetU32(m_ProcessHandle, player_addr + FreqOffset);
         unsigned short pid = Memory::GetU32(m_ProcessHandle, player_addr + IDOffset);
         unsigned short ship = Memory::GetU32(m_ProcessHandle, player_addr + ShipOffset);
         std::string name = Memory::GetString(m_ProcessHandle, player_addr + NameOffset, 23);
         name = name.substr(0, strlen(name.c_str())); // trim nulls
-
-        if (freq > 9999) freq = 9999;
 
         PlayerPtr player;
 
@@ -224,6 +230,7 @@ void MemorySensor::Update(unsigned long dt) {
 
     DetectFreq();
     DetectPlayers();
+    DetectSelected();
 }
 
 } // ns Memory

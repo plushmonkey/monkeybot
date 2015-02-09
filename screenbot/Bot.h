@@ -104,7 +104,7 @@ public:
     Vec2 GetVelocity() const;
     Vec2 GetHeading() const;
     double GetSpeed() const { return GetVelocity().Length(); }
-    void SetSpeed(float target);
+    void SetSpeed(double target);
     
     const std::string& GetAttachTarget() const { return m_AttachTarget; }
     bool GetFlagging() const { return m_Flagging; }
@@ -150,11 +150,15 @@ public:
 
     void SetShip(Ship ship);
 
+    Ship GetShip() const { return (Ship)(m_ShipNum - 1); }
+
     Memory::MemorySensor GetMemorySensor() {
         return m_MemorySensor;
     }
 
     SurvivorGame* GetSurvivorGame() { return &m_Survivor; }
+
+    void ForceLogRead();
 };
 
 #endif

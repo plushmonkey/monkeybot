@@ -136,7 +136,7 @@ ChaseState::ChaseState(Bot& bot)
 
 void ChaseState::Update(DWORD dt) {
     ClientPtr client = m_Bot.GetClient();
-    float target_speed = 100000.0f;
+    double target_speed = 100000.0;
 
     if (!m_Bot.GetEnemyTarget().get()) {
         // Switch to patrol state if there is no enemy
@@ -155,6 +155,8 @@ void ChaseState::Update(DWORD dt) {
     PlayerPtr enemy = m_Bot.GetEnemyTarget();
     Vec2 enemy_pos = enemy->GetPosition() / 16;
 
+    bool near_wall = Util::NearWall(pos, m_Bot.GetGrid());
+
     m_LastRealEnemyCoord = enemy_pos;
 
     // Switch to aggressive state if there is direct line of sight
@@ -168,11 +170,7 @@ void ChaseState::Update(DWORD dt) {
     // TODO: improve this, it's annoying with slow moving ships. Maybe check if pointing right at wall without any rotation.
     // Check if stuck every 2.5 seconds
     if (m_StuckTimer >= 2500) {
-        double stuckdist;
-
-        Util::GetDistance(pos, m_LastCoord, nullptr, nullptr, &stuckdist);
-
-        if (stuckdist <= 10) {
+        if (m_Bot.GetSpeed() < 1.0 && near_wall) {
             // Stuck
             client->Up(false);
             client->Down(true);
@@ -227,7 +225,7 @@ void ChaseState::Update(DWORD dt) {
     Util::GetDistance(pos, next, &dx, &dy, &dist);
 
     // Grab the next node in the plan that isn't right beside the bot. NOTE: This can mess things up so the bot gets stuck on corners.
-    while (dist < 3 && m_Plan.size() > 1) {
+    while (dist < 3 && m_Plan.size() > 1 && !near_wall) {
         m_Plan.erase(m_Plan.begin());
         next_node = m_Plan.at(0);
         next = Vec2(next_node->x, next_node->y);
@@ -259,16 +257,19 @@ void ChaseState::Update(DWORD dt) {
         client->Right(false);
     }
 
-    if (dist < 5)
-        target_speed = 250.0f;
+    if (dist <= 7 && dist > 0) {
+        int max_speed = m_Bot.GetMemorySensor().GetShipSettings(m_Bot.GetShip()).InitialSpeed / 16 / 10;
+        
+        target_speed = dist / 7 * max_speed;
+    }
 
     if (total_dist > 20 && m_Bot.GetEnergyPercent() > 80)
         client->SetThrust(true);
     else
         client->SetThrust(false);
 
-    client->Up(true);
-    //m_Bot.SetSpeed(target_speed);
+    //client->Up(true);
+    m_Bot.SetSpeed(target_speed);
 }
 
 BaseduelState::BaseduelState(Bot& bot) 
@@ -426,16 +427,13 @@ void PatrolState::Update(DWORD dt) {
 
     Vec2 target = m_Waypoints.front();
     Vec2 pos = m_Bot.GetPos();
+    bool near_wall = Util::NearWall(pos, m_Bot.GetGrid());
 
     m_StuckTimer += dt;
 
-    // Check if stuck every 3.5 seconds
-    if (m_StuckTimer >= 3500) {
-        double stuckdist;
-
-        Util::GetDistance(pos, m_LastCoord, nullptr, nullptr, &stuckdist);
-
-        if (stuckdist <= 10) {
+    // Check if stuck every 2.5 seconds
+    if (m_StuckTimer >= 2500) {
+        if (m_Bot.GetSpeed() < 1.0 && near_wall) {
             // Stuck
             client->Up(false);
             client->Down(true);
@@ -516,7 +514,7 @@ void PatrolState::Update(DWORD dt) {
 
     Util::GetDistance(pos, next, &dx, &dy, &dist);
 
-    while (dist < 3 && m_Plan.size() > 1) {
+    while (dist < 3 && m_Plan.size() > 1 && !near_wall) {
         m_Plan.erase(m_Plan.begin());
         next_node = m_Plan.at(0);
         next = Vec2(next_node->x, next_node->y);
@@ -538,18 +536,21 @@ void PatrolState::Update(DWORD dt) {
         client->Right(false);
     }
 
-    float target_speed = 100000.0f;
+    double target_speed = 100000.0;
 
-    if (dist < 10)
-        target_speed = 200.0f;
+    if (dist <= 7 && dist > 0) {
+        int max_speed = m_Bot.GetMemorySensor().GetShipSettings(m_Bot.GetShip()).InitialSpeed / 16 / 10;
+
+        target_speed = dist / 7 * max_speed;
+    }
 
     if (m_Bot.GetEnergyPercent() > 70)
         client->SetThrust(true);
     else
         client->SetThrust(false);
 
-    client->Up(true);
-    //m_Bot.SetSpeed(target_speed);
+    //client->Up(true);
+    m_Bot.SetSpeed(target_speed);
 }
 
 bool PointingAtWall(int rot, unsigned x, unsigned y, const Level& level) {

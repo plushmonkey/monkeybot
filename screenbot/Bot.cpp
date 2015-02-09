@@ -71,7 +71,7 @@ void Bot::SetShip(Ship ship) {
     m_Client->EnterShip(m_ShipNum);
 }
 
-void Bot::SetSpeed(float target) {
+void Bot::SetSpeed(double target) {
     Vec2 velocity = GetVelocity();
     
     double len = velocity.Length();
@@ -96,6 +96,10 @@ void Bot::SetSpeed(float target) {
     }
 
     //std::cout << "Speed: " << len << ", Target: " << target << std::endl;
+}
+
+void Bot::ForceLogRead() {
+    m_LogReader->Update(0);
 }
 
 HWND Bot::SelectWindow() {
@@ -192,8 +196,8 @@ void Bot::CheckLancs(const std::string& line) {
 
     if (target.length() > 0) {
         m_LancTimer = 5001;
-        std::cout << "Target: " << target << std::endl;
-        m_Client->SelectPlayer(target);
+        std::cout << "Target: " << m_AttachTarget << std::endl;
+        m_Client->SelectPlayer(m_AttachTarget);
     }
 }
 

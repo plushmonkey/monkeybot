@@ -27,8 +27,6 @@ void SurvivorGame::SetTarget(const std::string& target) {
 }
 
 void SurvivorGame::HandleMessage(KillMessage* mesg) {
-    m_Bot->GetClient()->GetPriorityTarget();
-
     std::string killer = mesg->GetKiller();
     
     std::transform(killer.begin(), killer.end(), killer.begin(), tolower);
@@ -62,6 +60,9 @@ void SurvivorGame::Update(DWORD dt) {
                 std::transform(name.begin(), name.end(), name.begin(), tolower);
                 return name.compare(m_Target) == 0;
             });
+
+            /* Read any kill messages in log so the kill count is correct */
+            m_Bot->ForceLogRead();
 
             std::stringstream ss;
 

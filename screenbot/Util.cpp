@@ -26,6 +26,20 @@ void str_replace(std::string& str, const std::string& from, const std::string& t
     }
 }
 
+bool NearWall(Vec2 pos, Pathing::Grid<short>& grid) {
+    const int SearchLength = 2;
+
+    for (Vec2 dir : directions) {
+        for (int i = 0; i < SearchLength; ++i) {
+
+            if (grid.IsSolid(pos.x + (dir.x * i), pos.y + (dir.y * i)))
+                return true;
+        }
+    }
+
+    return false;
+}
+
 float GetRadarPerPixel(const ScreenAreaPtr& radar, int mapzoom) {
     int rwidth = radar->GetWidth();
     float amountseen = (1024.0f / 2.0f) / mapzoom;
