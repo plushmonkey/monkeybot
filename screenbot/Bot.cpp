@@ -228,7 +228,9 @@ void Bot::ReloadConfig() {
     m_Taunt = m_Config.Get<bool>("Taunt");
     m_Hyperspace = m_Config.Get<bool>("Hyperspace");
     m_Commander = m_Config.Get<bool>("Commander");
+    m_PlaySurvivor = m_Config.Get<bool>("Survivor");
 
+    m_Client->ReloadConfig();
     m_Taunter.SetEnabled(m_Taunt);
 }
 

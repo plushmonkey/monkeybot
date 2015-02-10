@@ -32,7 +32,7 @@ bool NearWall(Vec2 pos, Pathing::Grid<short>& grid) {
     for (Vec2 dir : directions) {
         for (int i = 0; i < SearchLength; ++i) {
 
-            if (grid.IsSolid(pos.x + (dir.x * i), pos.y + (dir.y * i)))
+            if (grid.IsSolid((short)(pos.x + (dir.x * i)), (short)(pos.y + (dir.y * i))))
                 return true;
         }
     }

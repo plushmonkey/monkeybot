@@ -80,6 +80,8 @@ public:
     virtual void SetTarget(const std::string& name) = 0;
     virtual void SetPriorityTarget(const std::string& name) = 0;
     virtual std::string GetPriorityTarget() const = 0;
+
+    virtual void ReloadConfig() = 0;
 };
 
 namespace Ships {
@@ -198,6 +200,8 @@ public:
     virtual std::string GetPriorityTarget() const {
         return m_PriorityTarget;
     }
+
+    virtual void ReloadConfig();
 };
 
 #endif

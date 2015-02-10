@@ -46,6 +46,20 @@ ScreenClient::ScreenClient(HWND hwnd, Config& config, Memory::MemorySensor& mems
 }
 
 
+void ScreenClient::ReloadConfig() {
+    m_BombDelay = m_Config.Get<int>(_T("BombTime"));
+    m_BulletDelay = m_Config.Get<int>(_T("BulletDelay")) * 10;
+    m_ScaleDelay = m_Config.Get<bool>(_T("ScaleDelay"));
+    m_FireBombs = m_Config.Get<bool>(_T("FireBombs"));
+    m_FireGuns = m_Config.Get<bool>(_T("FireGuns"));
+    m_MapZoom = m_Config.Get<int>(_T("MapZoom"));
+    m_IgnoreCarriers = m_Config.Get<bool>(_T("IgnoreCarriers"));
+    m_CenterOnly = m_Config.Get<bool>(_T("OnlyCenter"));
+    m_Hyperspace = m_Config.Get<bool>(_T("Hyperspace"));
+
+    m_CurrentBulletDelay = m_BulletDelay;
+}
+
 void ScreenClient::Update(DWORD dt) {
     m_Screen->Update();
     m_Radar->Update();
@@ -56,17 +70,7 @@ void ScreenClient::Update(DWORD dt) {
     Scan();
 
     if (!m_ConfigLoaded) {
-        m_BombDelay = m_Config.Get<int>(_T("BombTime"));
-        m_BulletDelay = m_Config.Get<int>(_T("BulletDelay")) * 10;
-        m_ScaleDelay = m_Config.Get<bool>(_T("ScaleDelay"));
-        m_FireBombs = m_Config.Get<bool>(_T("FireBombs"));
-        m_FireGuns = m_Config.Get<bool>(_T("FireGuns"));
-        m_MapZoom = m_Config.Get<int>(_T("MapZoom"));
-        m_IgnoreCarriers = m_Config.Get<bool>(_T("IgnoreCarriers"));
-        m_CenterOnly = m_Config.Get<bool>(_T("OnlyCenter"));
-        m_Hyperspace = m_Config.Get<bool>(_T("Hyperspace"));
-
-        m_CurrentBulletDelay = m_BulletDelay;
+        ReloadConfig();
         m_ConfigLoaded = true;
         m_Rotations = new Ships::RotationStore(m_Config);
     }

@@ -598,7 +598,7 @@ AggressiveState::AggressiveState(Bot& bot)
       m_LastEnemyPos(0,0),
       m_LastNonSafeTime(timeGetTime()),
       m_NearWall(0),
-      m_BurstTimer(0)
+      m_BurstTimer(100000)
 {
     m_RunPercent     = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
     m_XPercent       = m_Bot.GetConfig().Get<int>(_T("XPercent"));

@@ -26,6 +26,7 @@ void CommandHandler::CommandShip(const std::string& args) {
     m_Bot->SetShip((Ship)(ship - 1));
 
     std::cout << "Ship: " << ship << std::endl;
+    m_Bot->ReloadConfig();
 }
 
 void CommandHandler::CommandTarget(const std::string& args) {
@@ -50,6 +51,7 @@ void CommandHandler::CommandTaunt(const std::string& args) {
     std::cout << "Taunt: " << std::boolalpha << taunt << std::endl;
 
     m_Bot->GetConfig().Set("Taunt", std::to_string(taunt));
+    m_Bot->ReloadConfig();
 }
 
 void CommandHandler::CommandFreq(const std::string& args) {
@@ -121,6 +123,7 @@ void CommandHandler::CommandFlag(const std::string& args) {
     }
 
     m_Bot->SetFlagging(flagging);
+    m_Bot->ReloadConfig();
 }
 
 void CommandHandler::CommandConfig(const std::string& args) {
@@ -146,6 +149,8 @@ void CommandHandler::CommandPause(const std::string& args) {
 
     m_Bot->SetPaused(paused);
     tcout << "Paused: " << std::boolalpha << paused << std::endl;
+
+    m_Bot->ReloadConfig();
 
     if (paused)
         m_Bot->GetClient()->ReleaseKeys();
