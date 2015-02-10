@@ -1,0 +1,17 @@
+{
+  "name": "monkeybot_updater",
+  "version": "1.0.0",
+  "description": "Grabs a version of monkeybot",
+  "main": "updater.js",
+  "dependencies": {
+    "amqplib": "^0.3.0",
+    "request": "^2.53.0",
+    "unzip": "^0.1.11",
+    "when": "^3.7.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "plushmonkey"
+}
