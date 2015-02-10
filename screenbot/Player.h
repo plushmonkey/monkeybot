@@ -12,7 +12,7 @@ enum class Ship { Warbird, Javelin, Spider, Leviathan, Terrier, Weasel, Lancaste
 class Player {
 private:
     std::string m_Name;
-    unsigned short m_Freq;
+    unsigned int m_Freq;
     unsigned short m_Rotation;
     Vec2 m_Position;
     Vec2 m_Velocity;
@@ -26,7 +26,7 @@ public:
     Player(const std::string& name, unsigned short freq) : m_Name(name), m_Freq(freq), m_InArena(true) { }
 
     const std::string& GetName() const { return m_Name; }
-    unsigned short GetFreq() const { return m_Freq; }
+    unsigned int GetFreq() const { return m_Freq; }
     unsigned short GetRotation() const { return m_Rotation; }
     // Pixels
     Vec2 GetPosition() const { return m_Position; }
@@ -37,7 +37,7 @@ public:
     bool InArena() const { return m_InArena; }
 
     void SetName(const std::string& name) { m_Name = name; }
-    void SetFreq(unsigned short freq) { m_Freq = freq; }
+    void SetFreq(unsigned int freq) { m_Freq = freq; }
     void SetRotation(unsigned short rot) { m_Rotation = rot; }
     // Pixels
     void SetPosition(int x, int y) { m_Position = Vec2(x, y); }

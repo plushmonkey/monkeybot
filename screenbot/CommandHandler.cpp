@@ -19,7 +19,7 @@ void CommandHandler::CommandShip(const std::string& args) {
 
     client->ReleaseKeys();
     client->SetXRadar(false);
-    while (client->GetEnergy() < m_Bot->GetMaxEnergy() || m_Bot->GetEnergy() == 0) {
+    while (client->GetEnergy() < m_Bot->GetMaxEnergy() || client->GetEnergy() == 0) {
         client->Update(100);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
@@ -63,7 +63,7 @@ void CommandHandler::CommandFreq(const std::string& args) {
 
     client->ReleaseKeys();
     client->SetXRadar(false);
-    while (client->GetEnergy() < m_Bot->GetMaxEnergy() || m_Bot->GetEnergy() == 0) {
+    while (client->GetEnergy() < m_Bot->GetMaxEnergy() || client->GetEnergy() == 0) {
         client->Update(100);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
@@ -93,7 +93,7 @@ void CommandHandler::CommandFlag(const std::string& args) {
         int freq = Random::GetU32(10, 80);
         client->ReleaseKeys();
         client->SetXRadar(false);
-        while (client->GetEnergy() < m_Bot->GetMaxEnergy() || m_Bot->GetEnergy() == 0) {
+        while (client->GetEnergy() < m_Bot->GetMaxEnergy() || client->GetEnergy() == 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             client->Update(100);
         }
@@ -113,7 +113,7 @@ void CommandHandler::CommandFlag(const std::string& args) {
 
         client->ReleaseKeys();
         client->SetXRadar(false);
-        while (client->GetEnergy() < m_Bot->GetMaxEnergy() || m_Bot->GetEnergy() == 0) {
+        while (client->GetEnergy() < m_Bot->GetMaxEnergy() || client->GetEnergy() == 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             client->Update(100);
         }

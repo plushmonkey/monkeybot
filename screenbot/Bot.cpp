@@ -69,6 +69,13 @@ Vec2 Bot::GetVelocity() const {
 void Bot::SetShip(Ship ship) {
     m_ShipNum = (int)ship + 1;
     m_Client->EnterShip(m_ShipNum);
+
+    std::stringstream ss;
+
+    ss << "ship" << m_ShipNum << ".conf";
+
+    if (!m_Config.Load(ss.str()))
+        tcout << "Could not load " << ss.str() << ". Not overriding any ship specific configurations." << std::endl;
 }
 
 void Bot::SetSpeed(double target) {
@@ -100,6 +107,7 @@ void Bot::SetSpeed(double target) {
 
 void Bot::ForceLogRead() {
     m_LogReader->Update(0);
+    MQueue.Dispatch();
 }
 
 HWND Bot::SelectWindow() {
