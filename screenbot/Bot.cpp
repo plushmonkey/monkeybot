@@ -399,7 +399,6 @@ int Bot::Run() {
     m_Config.Set(_T("Waypoints"),       _T("(400, 585), (565, 580), (600, 475), (512, 460), (425, 460), (385, 505)"));
     m_Config.Set(_T("Include"),         _T(""));
     m_Config.Set(_T("Baseduel"),        _T("False"));
-    m_Config.Set(_T("ProjectileSpeed"), _T("3400"));
     m_Config.Set(_T("CenterRadius"),    _T("400"));
     m_Config.Set(_T("IgnoreCarriers"),  _T("False"));
     m_Config.Set(_T("IgnoreDelayDistance"), _T("10"));

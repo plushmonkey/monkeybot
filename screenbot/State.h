@@ -105,7 +105,6 @@ private:
     bool m_Patrol;
     int m_MinGunRange;
     bool m_Baseduel;
-    int m_ProjectileSpeed;
     int m_IgnoreDelayDistance;
     bool m_UseBurst;
 	unsigned int m_DecoyDelay;

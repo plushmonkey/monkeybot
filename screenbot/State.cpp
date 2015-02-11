@@ -22,6 +22,12 @@
 
 #define RADIUS 1
 
+namespace {
+
+const int PathUpdateFrequency = 500;
+
+} // ns
+
 std::ostream& operator<<(std::ostream& out, StateType type) {
     static std::vector<std::string> states = { "Chase", "Patrol", "Aggressive", "Attach", "Baseduel" };
     out << states.at(static_cast<int>(type));
@@ -200,7 +206,7 @@ void ChaseState::Update(DWORD dt) {
         path_timer += dt;
 
         // Recalculate path every 1 second
-        if (path_timer >= 1000 || m_Plan.size() == 0) {
+        if (path_timer >= PathUpdateFrequency || m_Plan.size() == 0) {
             Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
 
             m_Plan = jps((short)enemy_pos.x, (short)enemy_pos.y, (short)pos.x, (short)pos.y, m_Bot.GetGrid());
@@ -470,7 +476,7 @@ void PatrolState::Update(DWORD dt) {
 
         path_timer += dt;
 
-        if (path_timer >= 1000 || m_Plan.size() == 0) {
+        if (path_timer >= PathUpdateFrequency || m_Plan.size() == 0) {
             Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
 
             m_Plan = jps((short)target.x, (short)target.y, (short)pos.x, (short)pos.y, m_Bot.GetGrid());
@@ -611,7 +617,6 @@ AggressiveState::AggressiveState(Bot& bot)
     m_Patrol         = m_Bot.GetConfig().Get<bool>(_T("Patrol"));
     m_MinGunRange    = m_Bot.GetConfig().Get<int>(_T("MinGunRange"));
     m_Baseduel       = m_Bot.GetConfig().Get<bool>(_T("Baseduel"));
-    m_ProjectileSpeed = m_Bot.GetConfig().Get<int>(_T("ProjectileSpeed"));
     m_IgnoreDelayDistance = m_Bot.GetConfig().Get<int>(_T("IgnoreDelayDistance"));
     m_UseBurst       = m_Bot.GetConfig().Get<bool>(_T("UseBurst"));
 	m_DecoyDelay	 = m_Bot.GetConfig().Get<int>(_T("DecoyDelay"));
@@ -735,7 +740,9 @@ void AggressiveState::Update(DWORD dt) {
 
         Vec2 vEnemy = m_Bot.GetEnemyTarget()->GetVelocity() / 16;
         Vec2 vBot = m_Bot.GetVelocity();
-        Vec2 solution = CalculateShot(pos, target, vBot, vEnemy, m_ProjectileSpeed / 16.0 / 10.0);
+        double proj_speed = m_Bot.GetMemorySensor().GetShipSettings(m_Bot.GetShip()).BulletSpeed;
+
+        Vec2 solution = CalculateShot(pos, target, vBot, vEnemy, proj_speed / 16.0 / 10.0);
 
         Util::GetDistance(pos, solution, &dx, &dy, nullptr);
         
