@@ -123,12 +123,19 @@ amqp.connect(host).then(function(conn) {
     function do_work(message) {
       var mesg = JSON.parse(message.content.toString());
 
+      ch.ack(message);
+
       if (typeof mesg.version == 'undefined') {
         console.log('Bad version received.');
         return;
       }
 
-      ch.ack(message);
+      var url;
+
+      if (typeof mesg.url != 'undefined')
+        url = mesg.url;
+      else
+        url = GetURL(mesg.version);
           
       GetPID("screenbot.exe", function(err, pid) {
         if (!err) {
@@ -137,7 +144,7 @@ amqp.connect(host).then(function(conn) {
           process.kill(pid);
         } else { console.log(err.message); }
 
-        Download(GetURL(mesg.version), function(err, filename) {
+        Download(url, function(err, filename) {
           if (err) {
             console.log(err.message);
             return;
