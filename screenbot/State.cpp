@@ -43,8 +43,6 @@ AttachState::AttachState(Bot& bot)
       m_Count(0)
 {
     bot.GetClient()->ReleaseKeys();
-    m_SpawnX = m_Bot.GetConfig().Get<int>(_T("SpawnX"));
-    m_SpawnY = m_Bot.GetConfig().Get<int>(_T("SpawnY"));
 }
 
 void AttachState::Update(DWORD dt) {
@@ -136,8 +134,6 @@ ChaseState::ChaseState(Bot& bot)
       m_LastRealEnemyCoord(0, 0)
 {
     m_Bot.GetClient()->ReleaseKeys();
-
-    m_MinGunRange = m_Bot.GetConfig().Get<int>(_T("MinGunRange"));
 }
 
 void ChaseState::Update(DWORD dt) {
@@ -241,7 +237,7 @@ void ChaseState::Update(DWORD dt) {
     double total_dist = GetPlanDistance(m_Plan);
 
     // Only fire if the bot is close enough to fire
-    bool fire = m_MinGunRange == 0 || total_dist <= m_MinGunRange * .8;
+    bool fire = m_Bot.GetConfig().MinGunRange == 0 || total_dist <= m_Bot.GetConfig().MinGunRange * .8;
     if (fire && !client->InSafe(pos, m_Bot.GetLevel()))
         client->Gun(GunState::Tap, m_Bot.GetEnergyPercent());
     else
@@ -289,8 +285,8 @@ void BaseduelState::Update(DWORD dt) {
     const int SearchRadius = 200;
     const int CenterRadius = 60;
     const int SafeRadius = 6;
-    const int SpawnX = m_Bot.GetConfig().Get<int>("SpawnX");
-    const int SpawnY = m_Bot.GetConfig().Get<int>("SpawnY");
+    const int SpawnX = m_Bot.GetConfig().SpawnX;
+    const int SpawnY = m_Bot.GetConfig().SpawnY;
 
     Vec2 pos = m_Bot.GetPos();
 
@@ -354,26 +350,10 @@ PatrolState::PatrolState(Bot& bot, std::vector<Vec2> waypoints)
 {
     m_Bot.GetClient()->ReleaseKeys();
 
-    m_Patrol        = m_Bot.GetConfig().Get<bool>(_T("Patrol"));
-    m_Attach        = m_Bot.GetConfig().Get<bool>(_T("Attach"));
-
-    std::string waypoints_str = m_Bot.GetConfig().Get<std::string>(_T("Waypoints"));
-
     // (n, n), (n, n)
     std::regex coord_re(R"::(\(([0-9]+),\s*?([0-9]+)\))::");
 
-    std::sregex_iterator begin(waypoints_str.begin(), waypoints_str.end(), coord_re);
-    std::sregex_iterator end;
-
-    for (std::sregex_iterator iter = begin; iter != end; ++iter) {
-        std::smatch match = *iter;
-        std::string xstr = match[1];
-        std::string ystr = match[2];
-        int x = strtol(xstr.c_str(), nullptr, 10);
-        int y = strtol(ystr.c_str(), nullptr, 10);
-
-        m_FullWaypoints.emplace_back((float)x, (float)y);
-    }
+    m_FullWaypoints = m_Bot.GetConfig().Waypoints;
 
     if (waypoints.size() > 0)
         m_Waypoints = waypoints;
@@ -488,7 +468,7 @@ void PatrolState::Update(DWORD dt) {
     if (m_Plan.size() == 0) {
         m_Waypoints.erase(m_Waypoints.begin());
 
-        if (m_Bot.GetConfig().Get<bool>("Baseduel") && !m_Bot.InCenter()) {
+        if (m_Bot.GetConfig().Baseduel && !m_Bot.InCenter()) {
             m_Bot.SetState(std::make_shared<BaseduelState>(m_Bot));
         } else {
             static DWORD warp_timer = 0;
@@ -602,30 +582,12 @@ bool PointingAtWall(int rot, unsigned x, unsigned y, const Level& level) {
 AggressiveState::AggressiveState(Bot& bot)
     : State(bot), 
       m_LastEnemyPos(0,0),
-      m_LastNonSafeTime(timeGetTime()),
       m_NearWall(0),
       m_BurstTimer(100000)
 {
-    m_RunPercent     = m_Bot.GetConfig().Get<int>(_T("RunPercent"));
-    m_XPercent       = m_Bot.GetConfig().Get<int>(_T("XPercent"));
-    m_SafeResetTime  = m_Bot.GetConfig().Get<int>(_T("SafeResetTime"));
-    m_TargetDist     = m_Bot.GetConfig().Get<int>(_T("TargetDistance"));
-    m_RunDist        = m_Bot.GetConfig().Get<int>(_T("RunDistance"));
-    m_StopBombing    = m_Bot.GetConfig().Get<int>(_T("StopBombing"));
-    m_DistFactor     = m_Bot.GetConfig().Get<int>(_T("DistanceFactor"));
-    m_OnlyCenter     = m_Bot.GetConfig().Get<bool>(_T("OnlyCenter"));
-    m_Patrol         = m_Bot.GetConfig().Get<bool>(_T("Patrol"));
-    m_MinGunRange    = m_Bot.GetConfig().Get<int>(_T("MinGunRange"));
-    m_Baseduel       = m_Bot.GetConfig().Get<bool>(_T("Baseduel"));
-    m_IgnoreDelayDistance = m_Bot.GetConfig().Get<int>(_T("IgnoreDelayDistance"));
-    m_UseBurst       = m_Bot.GetConfig().Get<bool>(_T("UseBurst"));
-	m_DecoyDelay	 = m_Bot.GetConfig().Get<int>(_T("DecoyDelay"));
-
-	m_DecoyTimer	 = 0;
+	m_DecoyTimer = 0;
 
     m_Bot.GetClient()->ReleaseKeys();
-    
-    if (m_DistFactor < 1) m_DistFactor = 10;
 }
 
 Vec2 CalculateShot(const Vec2& pShooter, const Vec2& pTarget, const Vec2& vShooter, const Vec2& vTarget, double sProjectile) {
@@ -691,16 +653,16 @@ void AggressiveState::Update(DWORD dt) {
     Vec2 pos = m_Bot.GetPos();
 
     bool insafe = client->InSafe(pos, m_Bot.GetLevel());
-    int tardist = m_TargetDist;
+    int tardist = m_Bot.GetConfig().TargetDistance;
     int energypct = m_Bot.GetEnergyPercent();
 
-    if ((client->Emped() || energypct < m_RunPercent) && !insafe) {
-        tardist = m_RunDist;
+    if ((client->Emped() || energypct < m_Bot.GetConfig().RunPercent) && !insafe) {
+        tardist = m_Bot.GetConfig().RunDistance;
         client->ReleaseKeys();
     }
 
     /* Turn off x if energy low, turn back on when high */
-    client->SetXRadar(energypct > m_XPercent);
+    client->SetXRadar(energypct > m_Bot.GetConfig().XPercent);
 
     /* Wait in safe for energy */
     if (insafe && energypct < 50) {
@@ -728,15 +690,6 @@ void AggressiveState::Update(DWORD dt) {
         }
         
         m_LastEnemyPos = target;
-
-        if (!insafe)
-            m_LastNonSafeTime = cur_time;
-
-        /* Handle trying to get out of safe */
-        if (m_SafeResetTime > 0 && insafe && cur_time >= m_LastNonSafeTime + m_SafeResetTime) {
-            client->Warp();
-            m_LastNonSafeTime = cur_time;
-        }
 
         Vec2 vEnemy = m_Bot.GetEnemyTarget()->GetVelocity() / 16;
         Vec2 vBot = m_Bot.GetVelocity();
@@ -804,7 +757,7 @@ void AggressiveState::Update(DWORD dt) {
 
         /* Fire bursts */
         m_BurstTimer += dt;
-        if (m_BurstTimer >= 1000 && m_UseBurst) {
+        if (m_BurstTimer >= 1000 && m_Bot.GetConfig().UseBurst) {
             if (!insafe && dist < 15 && InBurstArea(pos, m_Bot.GetGrid())) {
                 client->Burst();
 
@@ -814,7 +767,7 @@ void AggressiveState::Update(DWORD dt) {
 
         /* Fire decoys */
 		m_DecoyTimer += dt;
-		if (!insafe && m_DecoyDelay > 0 && m_DecoyTimer >= m_DecoyDelay) {
+        if (!insafe && m_Bot.GetConfig().DecoyDelay > 0 && m_DecoyTimer >= m_Bot.GetConfig().DecoyDelay) {
 			client->Decoy();
 			m_DecoyTimer = 0;
 		}
@@ -823,7 +776,7 @@ void AggressiveState::Update(DWORD dt) {
         const double MaxGunDotDiff = 0.2;
         const double MaxBombDotDiff = 0.1;
         /* Only fire weapons if pointing at enemy */
-        if ((1.0 - heading_dot) > MaxGunDotDiff && dist > 5 && (!m_Baseduel || m_Bot.InCenter())) {
+        if ((1.0 - heading_dot) > MaxGunDotDiff && dist > 5 && (!m_Bot.GetConfig().Baseduel || m_Bot.InCenter())) {
             client->Gun(GunState::Off);
             return;
         }
@@ -834,20 +787,20 @@ void AggressiveState::Update(DWORD dt) {
         double dot = heading.Dot(norm_vel);
 
         /* Handle bombing. Don't bomb if moving backwards unless energy is high. Don't close bomb. */
-        if (!insafe && energypct > m_StopBombing && (1.0 - heading_dot) <= MaxBombDotDiff) {
+        if (!insafe && energypct > m_Bot.GetConfig().StopBombing && (1.0 - heading_dot) <= MaxBombDotDiff) {
             if ((dot >= 0.0 || energypct >= 50) && !PointingAtWall(rot, (unsigned)pos.x, (unsigned)pos.y, m_Bot.GetLevel()) && dist >= 7)
                 client->Bomb();
         }
 
         // Only fire guns if the enemy is within range
-        if (m_MinGunRange != 0 && dist > m_MinGunRange) {
+        if (m_Bot.GetConfig().MinGunRange != 0 && dist > m_Bot.GetConfig().MinGunRange) {
             client->Gun(GunState::Off);
             return;
         }
 
         /* Handle gunning */
-        if (energypct < m_RunPercent) {
-            if (dist <= m_IgnoreDelayDistance)
+        if (energypct < m_Bot.GetConfig().RunPercent) {
+            if (dist <= m_Bot.GetConfig().IgnoreDelayDistance)
                 client->Gun(GunState::Constant);
             else
                 client->Gun(GunState::Off);
@@ -856,7 +809,7 @@ void AggressiveState::Update(DWORD dt) {
                 client->Gun(GunState::Off);
             } else {
                 // Do bullet delay if the closest enemy isn't close, ignore otherwise
-                if (dist > m_IgnoreDelayDistance)
+                if (dist > m_Bot.GetConfig().IgnoreDelayDistance)
                     client->Gun(GunState::Tap, energypct);
                 else
                     client->Gun(GunState::Constant);
@@ -864,13 +817,11 @@ void AggressiveState::Update(DWORD dt) {
         }
 
     } else {
-        m_LastNonSafeTime = cur_time;
-
 		/* Clear input when there is no enemy */
 		client->ReleaseKeys();
 
         /* Switch to patrol state when there is no enemy to fight */
-        if (m_Patrol) {
+        if (m_Bot.GetConfig().Patrol) {
             if (m_LastEnemyPos != Vec2(0, 0)) {
                 std::vector<Vec2> waypoints = { m_LastEnemyPos };
                 m_Bot.SetState(std::make_shared<PatrolState>(m_Bot, waypoints));

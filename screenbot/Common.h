@@ -62,6 +62,8 @@ namespace Ships {
     extern const u64 Rotations[8][40];
 }
 
+enum class Ship { Warbird, Javelin, Spider, Leviathan, Terrier, Weasel, Lancaster, Shark, Spectator };
+
 struct Pixel {
     u8 b;
     u8 g;

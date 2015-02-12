@@ -13,12 +13,14 @@ LogReader::LogReader(const std::string& filename, const unsigned int frequency)
       m_UpdateFrequency(frequency),
       m_UpdateTimer(0)
 {
-    std::ifstream in(filename, std::ios::in);
+    std::ifstream in(filename, std::ios::in | std::ios::binary);
 
-    if (!in.is_open())
+    if (in.fail()) {
         std::cout << "Could not open " << filename << " for reading." << std::endl;
-    else
+        std::cerr << strerror(errno) << std::endl;
+    } else {
         in.close();
+    }
 }
 
 ChatMessage* LogReader::GetChatMessage(const std::string& line) {

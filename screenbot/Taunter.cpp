@@ -9,30 +9,22 @@
 #include <Windows.h>
 #include <algorithm>
 
-namespace {
-
-const std::vector<std::string> taunts = { "get rekt nerd", "{name} so ez", "im not even trying", "yawn",
-    "$$", "$", "u suck kid", "ez {name}", "sit son", "rofl nice try",
-    "i win", "e z", "zzz", "i hope you arent trying", "owned",
-    "i didnt know it was possible to be as bad as {name} is" };
-
-const std::vector<std::string> whitelist = { "bzap-bot", "nn", "nn2", "nn3", "nn4", "dabombofsubspace", "ycombinator-3", "ub-dr brain", "kirino", "ub", "taz", "android #17" };
-
-const unsigned int TauntCooldown = 6000;
-
-} // ns
-
 void Taunter::HandleMessage(KillMessage* mesg) {
     if (!m_Enabled) return;
 
     DWORD current_time = timeGetTime();
 
-    if (current_time - m_LastTaunt < TauntCooldown) return;
+    if (current_time - m_LastTaunt < m_Bot->GetConfig().TauntCooldown) return;
 
     std::string bot_name = m_Bot->GetName();
     std::string killer = mesg->GetKiller();
     std::string killed = mesg->GetKilled();
     std::string bounty = std::to_string(mesg->GetBounty());
+
+    const auto& taunts = m_Bot->GetConfig().Taunts;
+    const auto& whitelist = m_Bot->GetConfig().TauntWhitelist;
+
+    if (taunts.size() == 0) return;
 
     unsigned int tid = Random::GetU32(0, taunts.size() - 1);
     std::string tosend = taunts.at(tid);
@@ -75,5 +67,5 @@ Taunter::Taunter(Bot* bot)
       m_LastTaunt(0),
       m_Enabled(true)
 {
-
+    
 }

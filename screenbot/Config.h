@@ -3,43 +3,64 @@
 
 #include "Common.h"
 
-#include <map>
-#include <string>
-#include <tchar.h>
+#include "Vector.h"
 
-namespace Convert {
-    template <typename T>
-    T Get(const tstring& val);
-}
+#include <string>
+#include <vector>
+#include <iosfwd>
+#include <json/json.h>
 
 class Config {
 public:
-    typedef std::map<tstring, tstring>::const_iterator const_iterator;
+    typedef std::vector<u64> RotationValues;
 
 private:
-    std::map<tstring, tstring> m_Variables;
+    Json::Value m_Root;
+
+    void LoadFromNode(const Json::Value& node);
 
 public:
-    bool Load(const tstring& filename);
+    int XPercent;
+    int RunPercent;
+    int TargetDistance;
+    int RunDistance;
+    int StopBombing;
+    int BombDelay;
+    bool FireBombs;
+    bool FireGuns;
+    std::string Level;
+    int BulletDelay;
+    bool ScaleDelay;
+    bool CenterOnly;
+    bool Patrol;
+    bool Attach;
+    int MinGunRange;
+    int SpawnX;
+    int SpawnY;
+    std::vector<Vec2> Waypoints;
+    bool Baseduel;
+    int CenterRadius;
+    int IgnoreDelayDistance;
+    int RepelPercent;
+    bool UseBurst;
+    unsigned int DecoyDelay;
+    std::string LogFile;
+    bool Taunt;
+    unsigned int TauntCooldown;
+    std::vector<std::string> Taunts;
+    std::vector<std::string> TauntWhitelist;
+    bool Hyperspace;
+    bool Commander;
+    std::vector<std::string> Staff;
+    bool Survivor;
+    std::string Zone;
+    RotationValues ShipRotations[8];
 
-    template <typename T>
-    T Get(const tstring& var) const {
-        tstring out;
-        out.resize(var.length());
-        for (unsigned int i = 0; i < var.length(); i++)
-            out[i] = _totlower(var[i]);
-
-        auto found = m_Variables.find(out);
-
-        if (found == m_Variables.end()) return T();
-
-        return Convert::Get<T>(found->second);
-    }
-
-    void Set(const tstring& var, const tstring& val);
-
-    const_iterator begin() const { return m_Variables.begin(); }
-    const_iterator end() const { return m_Variables.end(); }
+    Config();
+    bool Load(const std::string& jsonfile);
+    void LoadShip(Ship ship);
 };
+
+std::ostream& operator<<(std::ostream& os, const Config& config);
 
 #endif

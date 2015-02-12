@@ -19,29 +19,16 @@ void RotationStore::LoadDefaults() {
 }
 
 RotationStore::RotationStore(Config& config) {
-    std::string file = config.Get<std::string>("RotationStore");
-
     memset(m_Rotations, 0, sizeof(u64) * 8 * 40);
 
-    config.Load(file);
-
-    int current = 0;
-    for (const std::string& ship : ships) {
-        std::string rot_string = config.Get<std::string>(ship);
-
-        Util::Tokenizer tokenizer(rot_string);
-
-        int num_tokens = tokenizer(',');
-
-        if (num_tokens != 40) {
+    for (int ship = 0; ship < 8; ++ship) {
+        if (config.ShipRotations[ship].size() != 40) {
             LoadDefaults();
             return;
         }
 
-        for (size_t i = 0; i < 40; ++i)
-            m_Rotations[current][i] = static_cast<u64>(std::strtoll(tokenizer[i].c_str(), nullptr, 10));
-
-        current++;
+        for (size_t i = 0; i < config.ShipRotations[ship].size(); ++i)
+            m_Rotations[ship][i] = config.ShipRotations[ship][i];
     }
 }
 

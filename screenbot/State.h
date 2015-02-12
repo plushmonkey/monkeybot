@@ -34,8 +34,6 @@ typedef std::shared_ptr<State> StatePtr;
 
 class AttachState : public State {
 private:
-    int m_SpawnX;
-    int m_SpawnY;
     Direction m_Direction;
     int m_Count;
 
@@ -51,7 +49,6 @@ private:
     DWORD m_StuckTimer;
     Vec2 m_LastCoord;
     Vec2 m_LastRealEnemyCoord;
-    int m_MinGunRange;
 
 public:
     ChaseState(Bot& bot);
@@ -88,26 +85,9 @@ public:
 class AggressiveState : public State {
 private:
     Vec2 m_LastEnemyPos;
-    DWORD m_LastNonSafeTime;
     DWORD m_NearWall;
     DWORD m_BurstTimer;
 	DWORD m_DecoyTimer;
-
-    // Config
-    int m_RunPercent;
-    int m_XPercent;
-    int m_SafeResetTime;
-    int m_TargetDist;
-    int m_RunDist;
-    int m_StopBombing;
-    int m_DistFactor;
-    bool m_OnlyCenter;
-    bool m_Patrol;
-    int m_MinGunRange;
-    bool m_Baseduel;
-    int m_IgnoreDelayDistance;
-    bool m_UseBurst;
-	unsigned int m_DecoyDelay;
 
 public:
     AggressiveState(Bot& bot);

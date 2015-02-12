@@ -18,13 +18,11 @@ ScreenClient::ScreenClient(HWND hwnd, Config& config, Memory::MemorySensor& mems
       m_Config(config),
       m_LastBomb(0),
       m_LastBullet(0),
-      m_CurrentBulletDelay(0),
-      m_ConfigLoaded(false),
       m_Rotations(nullptr),
-      m_MapZoom(9),
       m_EmpEnd(0),
       m_Thrusting(false),
-      m_MemorySensor(memsensor)
+      m_MemorySensor(memsensor),
+      m_CurrentBulletDelay(0)
 { 
     m_Screen = std::make_shared<ScreenGrabber>(m_Window);
     m_Ship = m_Screen->GetArea(m_Screen->GetWidth() / 2 - 18, m_Screen->GetHeight() / 2 - 18, 36, 36);
@@ -42,22 +40,9 @@ ScreenClient::ScreenClient(HWND hwnd, Config& config, Memory::MemorySensor& mems
     m_EnergyArea[4] = m_Screen->GetArea(width - 30, 0, 16, 21);
     m_PlayerWindow.SetScreenArea(m_Screen->GetArea(3, 3, 172, m_Screen->GetHeight() - 50));
 
+    m_Rotations = new Ships::RotationStore(m_Config);
+
     m_PixelHandlers[Pixel(255, 255, 255, 0)] = std::bind(&ScreenClient::EMPPixelHandler, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-}
-
-
-void ScreenClient::ReloadConfig() {
-    m_BombDelay = m_Config.Get<int>(_T("BombTime"));
-    m_BulletDelay = m_Config.Get<int>(_T("BulletDelay")) * 10;
-    m_ScaleDelay = m_Config.Get<bool>(_T("ScaleDelay"));
-    m_FireBombs = m_Config.Get<bool>(_T("FireBombs"));
-    m_FireGuns = m_Config.Get<bool>(_T("FireGuns"));
-    m_MapZoom = m_Config.Get<int>(_T("MapZoom"));
-    m_IgnoreCarriers = m_Config.Get<bool>(_T("IgnoreCarriers"));
-    m_CenterOnly = m_Config.Get<bool>(_T("OnlyCenter"));
-    m_Hyperspace = m_Config.Get<bool>(_T("Hyperspace"));
-
-    m_CurrentBulletDelay = m_BulletDelay;
 }
 
 void ScreenClient::Update(DWORD dt) {
@@ -68,12 +53,6 @@ void ScreenClient::Update(DWORD dt) {
     m_PlayerWindow.Update(dt);
 
     Scan();
-
-    if (!m_ConfigLoaded) {
-        ReloadConfig();
-        m_ConfigLoaded = true;
-        m_Rotations = new Ships::RotationStore(m_Config);
-    }
 }
 
 int ScreenClient::GetFreq() {
@@ -118,17 +97,17 @@ void ScreenClient::MoveTicker(Direction dir) {
 }
 
 void ScreenClient::Bomb() {
-    if (!m_FireBombs) return;
+    if (!m_Config.FireBombs) return;
     if (Emped()) {
         m_Keyboard.Up(VK_TAB);
         return;
     }
-    if (m_BombDelay > 0 && (timeGetTime() < m_LastBomb + m_BombDelay)) return;
+    if (m_Config.BombDelay > 0 && (timeGetTime() < m_LastBomb + m_Config.BombDelay * 10)) return;
 
     if (m_Thrusting)
         SetThrust(false);
 
-    if (m_BombDelay == 0) {
+    if (m_Config.BombDelay == 0) {
         m_Keyboard.Down(VK_TAB);
     } else {
         m_Keyboard.ToggleDown();
@@ -142,17 +121,17 @@ void ScreenClient::Bomb() {
 }
 
 void ScreenClient::Gun(GunState state, int energy_percent) {
-    if (!m_FireGuns) state = GunState::Off;
+    if (!m_Config.FireGuns) state = GunState::Off;
 
     if (Emped()) {
         m_Keyboard.Up(VK_CONTROL);
         return;
     }
 
-    if (m_ScaleDelay)
-        m_CurrentBulletDelay = static_cast<int>(std::ceil(m_BulletDelay * (1.0f + (100.0f - energy_percent) / 100)));
+    if (m_Config.ScaleDelay)
+        m_CurrentBulletDelay = static_cast<int>(std::ceil(m_Config.BulletDelay * 10 * (1.0f + (100.0f - energy_percent) / 100)));
 
-    if (state == GunState::Tap && m_BulletDelay == 0) state = GunState::Constant;
+    if (state == GunState::Tap && m_Config.BulletDelay == 0) state = GunState::Constant;
     if (state == GunState::Tap && timeGetTime() < m_LastBullet + m_CurrentBulletDelay) return;
 
     if (m_Thrusting)
@@ -299,7 +278,7 @@ std::vector<PlayerPtr> ScreenClient::GetEnemies(Vec2 real_pos, const Level& leve
         {
             Vec2 pos = p->GetPosition() / 16;
 
-            if (m_CenterOnly && m_Hyperspace) {
+            if (m_Config.CenterOnly && m_Config.Hyperspace) {
                 if (pos.x < 320 || pos.x >= 703 || pos.y < 320 || pos.x >= 703)
                     continue;
             }
@@ -377,7 +356,7 @@ PlayerPtr ScreenClient::GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level
 }
 
 Vec2 ScreenClient::GetRealPosition(Vec2 bot_pos, Vec2 target, const Level& level) {
-    return Util::FindTargetPos(bot_pos, target, m_Screen, m_Radar, level, m_MapZoom);
+    return Util::FindTargetPos(bot_pos, target, m_Screen, m_Radar, level, 9);
 }
 
 int ScreenClient::GetEnergy()  {

@@ -2,6 +2,8 @@
 
 #include "Memory.h"
 
+#include "Common.h"
+
 #include <iostream>
 #include <algorithm>
 

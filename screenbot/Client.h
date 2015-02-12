@@ -80,8 +80,6 @@ public:
     virtual void SetTarget(const std::string& name) = 0;
     virtual void SetPriorityTarget(const std::string& name) = 0;
     virtual std::string GetPriorityTarget() const = 0;
-
-    virtual void ReloadConfig() = 0;
 };
 
 namespace Ships {
@@ -113,21 +111,11 @@ private:
 
     Memory::MemorySensor& m_MemorySensor;
 
+    int m_CurrentBulletDelay;
+
     DWORD m_LastBullet;
     DWORD m_LastBomb;
     DWORD m_EmpEnd;
-
-    bool m_ConfigLoaded;
-    int m_MapZoom;
-    bool m_FireBombs;
-    bool m_FireGuns;
-    bool m_ScaleDelay;
-    int m_BulletDelay;
-    int m_CurrentBulletDelay;
-    int m_BombDelay;
-    bool m_IgnoreCarriers;
-    bool m_CenterOnly;
-    bool m_Hyperspace;
 
     bool m_Thrusting;
 
@@ -200,8 +188,6 @@ public:
     virtual std::string GetPriorityTarget() const {
         return m_PriorityTarget;
     }
-
-    virtual void ReloadConfig();
 };
 
 #endif

@@ -26,7 +26,6 @@ void CommandHandler::CommandShip(const std::string& args) {
     m_Bot->SetShip((Ship)(ship - 1));
 
     std::cout << "Ship: " << ship << std::endl;
-    m_Bot->ReloadConfig();
 }
 
 void CommandHandler::CommandTarget(const std::string& args) {
@@ -44,14 +43,11 @@ void CommandHandler::CommandPriority(const std::string& args) {
 }
 
 void CommandHandler::CommandTaunt(const std::string& args) {
-    bool taunt = !m_Bot->GetTaunt();
+    bool taunt = !m_Bot->GetConfig().Taunt;
 
     m_Bot->SetTaunt(taunt);
 
     std::cout << "Taunt: " << std::boolalpha << taunt << std::endl;
-
-    m_Bot->GetConfig().Set("Taunt", std::to_string(taunt));
-    m_Bot->ReloadConfig();
 }
 
 void CommandHandler::CommandFreq(const std::string& args) {
@@ -77,20 +73,17 @@ void CommandHandler::CommandFlag(const std::string& args) {
     Config& cfg = m_Bot->GetConfig();
     ClientPtr client = m_Bot->GetClient();
 
-    if (!cfg.Get<bool>("Hyperspace")) return;
+    if (!cfg.Hyperspace) return;
 
     std::cout << "Flagging: " << std::boolalpha << !flagging << std::endl;
 
     if (flagging) {
-        m_Bot->SetAttaching(false);
-        m_Bot->SetCenterOnly(true);
-        
-        cfg.Set("Attach", "False");
-        cfg.Set("OnlyCenter", "True");
+        cfg.Attach = false;
+        cfg.CenterOnly = true;
 
         flagging = false;
 
-        m_Bot->SetCenterRadius(250);
+        cfg.CenterRadius = 250;
 
         int freq = Random::GetU32(10, 80);
         client->ReleaseKeys();
@@ -101,15 +94,12 @@ void CommandHandler::CommandFlag(const std::string& args) {
         }
         client->SendString("=" + std::to_string(freq));
     } else {
-        m_Bot->SetAttaching(true);
-        m_Bot->SetCenterOnly(false);
-
-        cfg.Set("Attach", "True");
-        cfg.Set("OnlyCenter", "False");
+        cfg.Attach = true;
+        cfg.CenterOnly = false;
 
         flagging = true;
 
-        m_Bot->SetCenterRadius(200);
+        cfg.CenterRadius = 200;
 
         int current_freq = client->GetFreq();
 
@@ -123,25 +113,6 @@ void CommandHandler::CommandFlag(const std::string& args) {
     }
 
     m_Bot->SetFlagging(flagging);
-    m_Bot->ReloadConfig();
-}
-
-void CommandHandler::CommandConfig(const std::string& args) {
-    std::size_t pos = args.find(" ");
-
-    if (pos == std::string::npos) {
-        tcerr << "Error with config command" << std::endl;
-        return;
-    }
-
-    std::string variable = args.substr(0, pos);
-    std::string value = args.substr(pos + 1);
-
-    m_Bot->GetConfig().Set(variable, value);
-
-    m_Bot->ReloadConfig();
-
-    tcout << variable << " = " << value  << std::endl;
 }
 
 void CommandHandler::CommandPause(const std::string& args) {
@@ -150,10 +121,14 @@ void CommandHandler::CommandPause(const std::string& args) {
     m_Bot->SetPaused(paused);
     tcout << "Paused: " << std::boolalpha << paused << std::endl;
 
-    m_Bot->ReloadConfig();
-
     if (paused)
         m_Bot->GetClient()->ReleaseKeys();
+}
+
+void CommandHandler::CommandCommander(const std::string& args) {
+    m_Bot->GetConfig().Commander = !m_Bot->GetConfig().Commander;
+
+    std::cout << "Commander: " << std::boolalpha << m_Bot->GetConfig().Commander << std::endl;
 }
 
 void CommandHandler::HandleMessage(ChatMessage* mesg) {
@@ -176,7 +151,11 @@ void CommandHandler::HandleMessage(ChatMessage* mesg) {
         args = command_line.substr(pos + 1);
     }
 
-    static const std::vector<std::string> staff = { "monkey", "ceiu", "bzap", "baked cake", "cdb-man", "nn", "pity." };
+    std::vector<std::string> staff = { "monkey", "ceiu", "bzap", "baked cake", "cdb-man", "nn", "pity.", "noldec" };
+
+    /* Append config staff list to hardcoded staff list */
+    staff.insert(staff.end(), m_Bot->GetConfig().Staff.begin(), m_Bot->GetConfig().Staff.end());
+
     std::transform(player_name.begin(), player_name.end(), player_name.begin(), tolower);
     bool allowed = false;
     for (auto s : staff) {
@@ -185,9 +164,6 @@ void CommandHandler::HandleMessage(ChatMessage* mesg) {
             break;
         }
     }
-
-    if (player_name.compare(m_Owner) == 0)
-        allowed = true;
 
     if (!allowed) {
         std::cout << player_name << " tried to use command " << command_line << " but doesn't have permission" << std::endl;
@@ -205,21 +181,15 @@ void CommandHandler::HandleMessage(ChatMessage* mesg) {
         std::cout << "Command " << command << " not recognized." << std::endl;
 }
 
-bool CommandHandler::Initialize() {
-    m_Owner = m_Bot->GetConfig().Get<std::string>("Owner");
-    std::transform(m_Owner.begin(), m_Owner.end(), m_Owner.begin(), tolower);
-    return true;
-}
-
 CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
     RegisterCommand("ship", CommandShip);
     RegisterCommand("flag", CommandFlag);
     RegisterCommand("freq", CommandFreq);
-    RegisterCommand("config", CommandConfig);
     RegisterCommand("taunt", CommandTaunt);
     RegisterCommand("target", CommandTarget);
     RegisterCommand("priority", CommandPriority);
     RegisterCommand("pause", CommandPause);
+    RegisterCommand("commander", CommandCommander);
 }
 
 CommandHandler::~CommandHandler() {

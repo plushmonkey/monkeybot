@@ -15,7 +15,6 @@ class CommandHandler : public MessageHandler<ChatMessage> {
 private:
     std::unordered_map<std::string, CommandFunction> m_Commands;
     Bot* m_Bot;
-    std::string m_Owner;
 
     void HandleMessage(ChatMessage* mesg);
 
@@ -26,12 +25,11 @@ private:
     void CommandFreq(const std::string& args);
     void CommandFlag(const std::string& args);
     void CommandTaunt(const std::string& args);
-    void CommandConfig(const std::string& args);
+    void CommandCommander(const std::string& args);
+
 public:
     CommandHandler(Bot* bot);
     ~CommandHandler();
-
-    bool Initialize();
 };
 
 #endif

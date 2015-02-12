@@ -34,6 +34,7 @@ private:
     int m_ShipNum;
     PlayerPtr m_EnemyTarget;
     TargetInfo m_EnemyTargetInfo;
+    PlayerPtr m_LastTarget;
     int m_MaxEnergy;
     int m_Energy;
     Level m_Level;
@@ -41,41 +42,22 @@ private:
     Pathing::Grid<short> m_Grid;
     DWORD m_LastEnemy;
     DWORD m_RepelTimer;
-    int m_RepelPercent;
+    DWORD m_LancTimer;
     bool m_Paused;
+    bool m_Flagging;
 
     Config m_Config;
-    bool m_Attach;
-    bool m_CenterOnly;
-    int m_SpawnX;
-    int m_SpawnY;
-    int m_CenterRadius;
-    bool m_Taunt;
-    bool m_Hyperspace;
-    bool m_Commander;
-    bool m_PlaySurvivor;
-
     ClientPtr m_Client;
-
-    PlayerPtr m_LastTarget;
-
     SurvivorGame m_Survivor;
-
     Memory::MemorySensor m_MemorySensor;
-
-    DWORD m_LancTimer;
     Taunter m_Taunter;
-
     std::shared_ptr<LogReader> m_LogReader;
     CommandHandler m_CommandHandler;
 
     std::string m_AttachTarget;
 
-    bool m_Flagging;
-
     HWND SelectWindow();
     void SelectShip();
-
     void HandleMessage(ChatMessage* mesg);
     
 public:
@@ -109,30 +91,19 @@ public:
     const std::string& GetAttachTarget() const { return m_AttachTarget; }
     bool GetFlagging() const { return m_Flagging; }
     void SetFlagging(bool f) { m_Flagging = f; }
-    bool GetAttaching() const { return m_Attach; }
-    void SetAttaching(bool b) { m_Attach = b; }
-    void SetCenterOnly(bool b) { m_CenterOnly = b; }
-    bool GetTaunt() const { return m_Taunt; }
     void SetTaunt(bool b) { 
-        m_Taunt = b;
+        m_Config.Taunt = b;
         m_Taunter.SetEnabled(b);
     }
 
     bool GetPaused() const { return m_Paused; }
     void SetPaused(bool b) { m_Paused = b; }
 
-    void ReloadConfig();
-
-    void SetCenterRadius(int r) { 
-        m_CenterRadius = r; 
-        m_Config.Set("CenterRadius", std::to_string(r));
-    }
-
     bool InCenter() const {
         Vec2 pos = GetPos();
-        Vec2 spawn((float)m_SpawnX, (float)m_SpawnY);
+        Vec2 spawn((float)m_Config.SpawnX, (float)m_Config.SpawnY);
 
-        return (pos - spawn).Length() < m_CenterRadius;
+        return (pos - spawn).Length() < m_Config.CenterRadius;
     }
 
     void SetState(StatePtr state) { m_State = state; }

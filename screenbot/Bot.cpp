@@ -35,18 +35,13 @@ Bot::Bot(int ship)
       m_Grid(1024, 1024),
       m_LastEnemy(0),
       m_Client(nullptr),
-      m_Attach(false),
-      m_CenterOnly(false),
       m_RepelTimer(0),
       m_Taunter(this),
-      m_Taunt(false),
       m_LancTimer(20000),
       m_Flagging(false),
       m_CommandHandler(this),
-      m_Hyperspace(false),
       m_Paused(false),
-      m_Survivor(this),
-      m_PlaySurvivor(false)
+      m_Survivor(this)
 { }
 
 ClientPtr Bot::GetClient() {
@@ -68,14 +63,19 @@ Vec2 Bot::GetVelocity() const {
 
 void Bot::SetShip(Ship ship) {
     m_ShipNum = (int)ship + 1;
+
+    if (m_Client->InShip()) {
+        m_Client->ReleaseKeys();
+        m_Client->SetXRadar(false);
+        while (m_Client->GetEnergy() < GetMaxEnergy() || m_Client->GetEnergy() == 0) {
+            m_Client->Update(100);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+
     m_Client->EnterShip(m_ShipNum);
 
-    std::stringstream ss;
-
-    ss << "ship" << m_ShipNum << ".conf";
-
-    if (!m_Config.Load(ss.str()))
-        tcout << "Could not load " << ss.str() << ". Not overriding any ship specific configurations." << std::endl;
+    m_Config.LoadShip(GetShip());
 }
 
 void Bot::SetSpeed(double target) {
@@ -214,24 +214,8 @@ void Bot::HandleMessage(ChatMessage* mesg) {
 
     std::string line = mesg->GetMessage();
 
-    if (m_Hyperspace)
+    if (m_Config.Hyperspace)
         CheckLancs(line);
-}
-
-void Bot::ReloadConfig() {
-    m_Attach = m_Config.Get<bool>("Attach");
-    m_CenterOnly = m_Config.Get<bool>("OnlyCenter");
-    m_SpawnX = m_Config.Get<int>("SpawnX");
-    m_SpawnY = m_Config.Get<int>("SpawnY");
-    m_CenterRadius = m_Config.Get<int>("CenterRadius");
-    m_RepelPercent = m_Config.Get<int>("RepelPercent");
-    m_Taunt = m_Config.Get<bool>("Taunt");
-    m_Hyperspace = m_Config.Get<bool>("Hyperspace");
-    m_Commander = m_Config.Get<bool>("Commander");
-    m_PlaySurvivor = m_Config.Get<bool>("Survivor");
-
-    m_Client->ReloadConfig();
-    m_Taunter.SetEnabled(m_Taunt);
 }
 
 void Bot::Update(DWORD dt) {
@@ -252,7 +236,7 @@ void Bot::Update(DWORD dt) {
         m_Client->Update(30);
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-        if (m_Client->InShip() && m_Attach && m_Hyperspace) {
+        if (m_Client->InShip() && m_Config.Attach && m_Config.Hyperspace) {
             if (m_Flagging) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 m_Client->SendString("?flag");
@@ -275,7 +259,7 @@ void Bot::Update(DWORD dt) {
 
     m_AliveTime += dt;
 
-    if (!InCenter() && m_CenterOnly && !m_Attach) {
+    if (!InCenter() && m_Config.CenterOnly && !m_Config.Attach) {
         m_Client->ReleaseKeys();
 
         if (GetEnergyPercent() == 100)
@@ -285,8 +269,8 @@ void Bot::Update(DWORD dt) {
 
     m_LancTimer += dt;
 
-    if (m_LancTimer >= 35000 && m_Hyperspace) {
-        if (m_Attach)
+    if (m_LancTimer >= 35000 && m_Config.Hyperspace) {
+        if (m_Config.Attach)
             m_Client->SendString("?lancs");
         m_LancTimer = 0;
     }
@@ -294,8 +278,7 @@ void Bot::Update(DWORD dt) {
     Vec2 pos = GetPos();
 
     // Attach to ticked player when in center safe
-    if (m_Attach && !m_Client->OnSoloFreq() && this->GetStateType() != StateType::AttachState) {
-        //if (pos.x >= m_SpawnX - 20 && pos.x <= m_SpawnX + 20 && pos.y >= m_SpawnY - 20 && pos.y <= m_SpawnY + 20)
+    if (m_Config.Attach && !m_Client->OnSoloFreq() && this->GetStateType() != StateType::AttachState) {
         if (InCenter())
             SetState(std::make_shared<AttachState>(*this));
     }
@@ -313,7 +296,7 @@ void Bot::Update(DWORD dt) {
         
         SetLastEnemy(timeGetTime());
 
-        if (m_CenterOnly) {
+        if (m_Config.CenterOnly) {
             Vec2 enemy_pos = m_EnemyTarget->GetPosition() / 16;
 
             if (enemy_pos.x < 320 || enemy_pos.x >= 703 || enemy_pos.y < 320 || enemy_pos.x >= 703)
@@ -322,7 +305,7 @@ void Bot::Update(DWORD dt) {
 
         m_RepelTimer += dt;
         int epct = GetEnergyPercent();
-        if (m_RepelTimer >= 1200 && epct > 0 && epct < m_RepelPercent) {
+        if (m_RepelTimer >= 1200 && epct > 0 && epct < m_Config.RepelPercent) {
             m_Client->Repel();
             m_RepelTimer = 0;
         }
@@ -339,10 +322,10 @@ void Bot::Update(DWORD dt) {
     static DWORD alive_timer = 0;
     target_timer += dt;
 
-    if (m_Commander && m_PlaySurvivor)
+    if (m_Config.Commander && m_Config.Survivor)
         m_Survivor.Update(dt);
 
-    if (m_Commander && target_timer >= 10000 && m_EnemyTarget != nullptr && m_EnemyTarget != m_LastTarget) {
+    if (m_Config.Commander && target_timer >= 10000 && m_EnemyTarget != nullptr && m_EnemyTarget != m_LastTarget) {
         m_Client->SendString(";!target " + m_EnemyTarget->GetName());
         m_LastTarget = m_EnemyTarget;
         target_timer = 0;
@@ -373,76 +356,20 @@ int Bot::Run() {
         }
     }
 
-    tcout << "Loading config file bot.conf" << std::endl;
+    tcout << "Loading config file config.json" << std::endl;
 
-    m_Config.Set(_T("XPercent"),        _T("75"));
-    m_Config.Set(_T("RunPercent"),      _T("30"));
-    m_Config.Set(_T("SafeResetTime"),   _T("10000"));
-    m_Config.Set(_T("TargetDistance"),  _T("10"));
-    m_Config.Set(_T("RunDistance"),     _T("30"));
-    m_Config.Set(_T("StopBombing"),     _T("90"));
-    m_Config.Set(_T("BombTime"),        _T("5000"));
-    m_Config.Set(_T("FireBombs"),       _T("True"));
-    m_Config.Set(_T("FireGuns"),        _T("True"));
-    m_Config.Set(_T("DistanceFactor"),  _T("10"));
-    m_Config.Set(_T("Level"),           _T("C:\\Program Files (x86)\\Continuum\\zones\\SSCE Hyperspace\\pub20140727.lvl"));
-    m_Config.Set(_T("BulletDelay"),     _T("20"));
-    m_Config.Set(_T("ScaleDelay"),      _T("True"));
-    m_Config.Set(_T("OnlyCenter"),      _T("True"));
-    m_Config.Set(_T("Patrol"),          _T("True"));
-    m_Config.Set(_T("RotationStore"),   _T("hyperspace.rot"));
-    m_Config.Set(_T("Attach"),          _T("False"));
-    m_Config.Set(_T("MapZoom"),         _T("9"));
-    m_Config.Set(_T("MinGunRange"),     _T("0"));
-    m_Config.Set(_T("SpawnX"),          _T("512"));
-    m_Config.Set(_T("SpawnY"),          _T("512"));
-    m_Config.Set(_T("Waypoints"),       _T("(400, 585), (565, 580), (600, 475), (512, 460), (425, 460), (385, 505)"));
-    m_Config.Set(_T("Include"),         _T(""));
-    m_Config.Set(_T("Baseduel"),        _T("False"));
-    m_Config.Set(_T("CenterRadius"),    _T("400"));
-    m_Config.Set(_T("IgnoreCarriers"),  _T("False"));
-    m_Config.Set(_T("IgnoreDelayDistance"), _T("10"));
-    m_Config.Set(_T("RepelPercent"),    _T("25"));
-    m_Config.Set(_T("UseBurst"),        _T("True"));
-	m_Config.Set(_T("DecoyDelay"),		_T("0"));
-    m_Config.Set(_T("LogFile"),         _T("C:\\Program Files (x86)\\Continuum\\logs\\bot.log"));
-    m_Config.Set(_T("Taunt"),           _T("False"));
-    m_Config.Set(_T("Name"),            _T(""));
-    m_Config.Set(_T("Hyperspace"),      _T("false"));
-    m_Config.Set(_T("Commander"),       _T("false"));
-    m_Config.Set(_T("Owner"),           _T("monkey"));
-    m_Config.Set(_T("Survivor"),        _T("false"));
-    
-    if (!m_Config.Load(_T("bot.conf")))
-        tcout << "Could not load bot.conf. Using default values." << std::endl;
+    if (!m_Config.Load("config.json"))
+        tcout << "Could not load config.json. Using default values." << std::endl;
 
-    std::string includes = m_Config.Get<std::string>("Include");
-    if (includes.length() > 0) {
-        Util::Tokenizer tokenizer(includes);
+    m_Config.LoadShip(GetShip());
 
-        tokenizer('|');
+    tcout << m_Config;
 
-        for (auto it = tokenizer.begin(); it != tokenizer.end(); ++it) {
-            tcout << "Loading include file " << *it << std::endl;
-            m_Config.Load(*it);
-        }
-    }
-
-    tstringstream ss;
-
-    ss << _T("ship") << to_tstring(m_ShipNum) << _T(".conf");
-
-    if (!m_Config.Load(ss.str()))
-        tcout << "Could not load " << ss.str() << ". Not overriding any ship specific configurations." << std::endl;
-
-    for (auto iter = m_Config.begin(); iter != m_Config.end(); ++iter)
-        tcout << iter->first << ": " << iter->second << std::endl;
-
-    m_LogReader = std::make_shared<LogReader>(m_Config.Get<std::string>("LogFile"), 3000);
+    m_LogReader = std::make_shared<LogReader>(m_Config.LogFile, 3000);
     m_LogReader->Clear();
 
-    if (!m_Level.Load(m_Config.Get<tstring>(_T("Level")))) {
-        tcerr << "Could not load level " << m_Config.Get<tstring>(_T("Level")) << "\n";
+    if (!m_Level.Load(m_Config.Level)) {
+        tcerr << "Could not load level " << m_Config.Level << "\n";
     } else {
         tcout << "Creating grid for the level." << std::endl;
         for (int y = 0; y < 1024; ++y) {
@@ -462,24 +389,7 @@ int Bot::Run() {
     }
 
     m_MemorySensor.Update(0);
-
-    m_Attach = m_Config.Get<bool>("Attach");
-    m_CenterOnly = m_Config.Get<bool>("OnlyCenter");
-    m_SpawnX = m_Config.Get<int>("SpawnX");
-    m_SpawnY = m_Config.Get<int>("SpawnY");
-    m_CenterRadius = m_Config.Get<int>("CenterRadius");
-    m_RepelPercent = m_Config.Get<int>("RepelPercent");
-    m_Taunt = m_Config.Get<bool>("Taunt");
-    m_Hyperspace = m_Config.Get<bool>("Hyperspace");
-    m_Commander = m_Config.Get<bool>("Commander");
-    m_PlaySurvivor = m_Config.Get<bool>("Survivor");
-
-    m_Taunter.SetEnabled(m_Taunt);
-    if (!m_CommandHandler.Initialize()) {
-        tcout << "CommandHandler::Initialize failed." << std::endl;
-        std::cin.get();
-        std::exit(1);
-    }
+    m_Taunter.SetEnabled(m_Config.Taunt);
 
     try {
         m_Client = std::make_shared<ScreenClient>(m_Window, m_Config, m_MemorySensor);

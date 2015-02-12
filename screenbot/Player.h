@@ -2,12 +2,11 @@
 #define PLAYER_H_
 
 #include "Vector.h"
+#include "Common.h"
 
 #include <string>
 #include <memory>
 #include <vector>
-
-enum class Ship { Warbird, Javelin, Spider, Leviathan, Terrier, Weasel, Lancaster, Shark, Spectator };
 
 class Player {
 private:
