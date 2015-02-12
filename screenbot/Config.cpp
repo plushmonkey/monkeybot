@@ -164,7 +164,6 @@ void Config::LoadShip(Ship ship) {
     if (ship_node.isNull()) return;
     
     LoadFromNode(ship_node);
-    std::cout << "f" << std::endl;
 }
 
 bool Config::Load(const std::string& jsonfile) {

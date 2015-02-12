@@ -391,7 +391,7 @@ void PatrolState::ResetWaypoints(bool full) {
 void PatrolState::Update(DWORD dt) {
     ClientPtr client = m_Bot.GetClient();
 
-    if (!m_Patrol || m_Bot.GetEnemyTarget().get()) {
+    if (!m_Bot.GetConfig().Patrol || m_Bot.GetEnemyTarget().get()) {
         // Target found, switch to aggressive
         m_Bot.SetState(std::make_shared<AggressiveState>(m_Bot));
         return;
@@ -475,7 +475,7 @@ void PatrolState::Update(DWORD dt) {
             warp_timer += dt;
             if (warp_timer >= 45000) {
                 // Warp if inactive for 45 seconds
-                if (m_Attach) {
+                if (m_Bot.GetConfig().Attach) {
                     client->SetXRadar(false);
                     std::this_thread::sleep_for(std::chrono::milliseconds(200));
                     client->Attach();

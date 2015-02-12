@@ -70,8 +70,6 @@ private:
     std::vector<Vec2> m_FullWaypoints;
     Pathing::Plan m_Plan;
     DWORD m_LastBullet;
-    bool m_Patrol;
-    bool m_Attach;
     Vec2 m_LastCoord;
     DWORD m_StuckTimer;
 
