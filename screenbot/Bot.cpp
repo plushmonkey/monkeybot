@@ -61,13 +61,17 @@ Vec2 Bot::GetVelocity() const {
     return m_MemorySensor.GetVelocity() / 16;
 }
 
+bool Bot::FullEnergy() const {
+    return !((m_Client->GetEnergy() < GetMaxEnergy() || m_Client->GetEnergy() == 0) && m_Client->InShip());
+}
+
 void Bot::SetShip(Ship ship) {
     m_ShipNum = (int)ship + 1;
 
     if (m_Client->InShip()) {
         m_Client->ReleaseKeys();
         m_Client->SetXRadar(false);
-        while (m_Client->GetEnergy() < GetMaxEnergy() || m_Client->GetEnergy() == 0) {
+        while (!FullEnergy()) {
             m_Client->Update(100);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }

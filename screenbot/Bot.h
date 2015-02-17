@@ -79,6 +79,8 @@ public:
         return static_cast<int>((m_Energy / (float)m_MaxEnergy) * 100);
     }
 
+    bool FullEnergy() const;
+
     std::string GetName() const;
     Vec2 GetPos() const { return m_MemorySensor.GetPosition() / 16; }
     Vec2 GetPixelPos() const { return m_MemorySensor.GetPosition(); }
