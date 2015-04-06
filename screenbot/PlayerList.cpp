@@ -104,8 +104,10 @@ void PlayerWindow::Update(unsigned long dt) {
 }
 
 PlayerPtr PlayerWindow::Find(const std::string& name) {
+    std::string tofind = name.substr(0, 12);
+
     for (PlayerPtr player : m_Players) {
-        if (player->GetName().compare(name) == 0) 
+        if (player->GetName().substr(0, 12).compare(tofind) == 0)
             return player;
     }
 

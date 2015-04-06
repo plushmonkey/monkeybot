@@ -31,7 +31,6 @@ Bot::Bot(int ship)
       m_Energy(0),
       m_MaxEnergy(0),
       m_Level(),
-      m_AliveTime(0),
       m_Grid(1024, 1024),
       m_LastEnemy(0),
       m_Client(nullptr),
@@ -62,7 +61,7 @@ Vec2 Bot::GetVelocity() const {
 }
 
 bool Bot::FullEnergy() const {
-    return !((m_Client->GetEnergy() < GetMaxEnergy() || m_Client->GetEnergy() == 0) && m_Client->InShip());
+    return !m_Client->InShip() || (m_Client->GetEnergy() >= GetMaxEnergy() && m_Client->GetEnergy() != 0);
 }
 
 void Bot::SetShip(Ship ship) {
@@ -105,8 +104,6 @@ void Bot::SetSpeed(double target) {
             m_Client->Down(true);
         }
     }
-
-    //std::cout << "Speed: " << len << ", Target: " << target << std::endl;
 }
 
 void Bot::ForceLogRead() {
@@ -162,6 +159,9 @@ void Bot::SelectShip() {
 }
 
 void Bot::CheckLancs(const std::string& line) {
+    // Only check the lancs if ?lancs was sent recently.
+    if (m_LancTimer > 5000) return;
+
     std::string regex_str = R"::(^\s*\(S|E\) (.+)$)::";
 
     if (m_ShipNum > 6 || m_ShipNum == 3 || m_ShipNum == 4)
@@ -169,8 +169,6 @@ void Bot::CheckLancs(const std::string& line) {
 
     std::regex summoner_regex(regex_str);
     Util::Tokenizer tokenizer(line);
-
-    if (m_LancTimer > 5000) return;
 
     tokenizer(',');
 
@@ -184,7 +182,7 @@ void Bot::CheckLancs(const std::string& line) {
         std::sregex_iterator end;
         
         if (begin != end) {
-            size_t pos = lanc.find("(S) ");
+            size_t pos = lanc.find("(S)");
             if (pos != std::string::npos) {
                 summoners.emplace_back(lanc.substr(lanc.find("(S) ") + 4));
                 continue;
@@ -193,9 +191,10 @@ void Bot::CheckLancs(const std::string& line) {
             pos = lanc.find("(E)");
             if (pos == std::string::npos) continue;
             evokers.emplace_back(lanc.substr(lanc.find("(E) ") + 4));
-            break;
         }
     }
+
+    if (evokers.size() == 0 && summoners.size() == 0) return;
 
     if (evokers.size() > 0)
         target = evokers.at(0);
@@ -233,22 +232,34 @@ void Bot::Update(DWORD dt) {
 
     m_Client->Update(dt);
 
-    if (!m_Client->InShip()) {
+    bool in_ship = m_Client->InShip();
+
+    if (!in_ship) {
         m_Client->EnterShip(m_ShipNum);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(30));
         m_Client->Update(30);
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-        if (m_Client->InShip() && m_Config.Attach && m_Config.Hyperspace) {
-            if (m_Flagging) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                m_Client->SendString("?flag");
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if (m_Client->InShip()) {
+            if (m_Config.Attach && m_Config.Hyperspace) {
+                if (m_Flagging) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    m_Client->SendString("?flag");
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
+                m_Client->SendString("?lancs");
+
+                this->SetState(std::make_shared<AttachState>(*this));
+            } else {
+                this->SetState(std::make_shared<PatrolState>(*this));
             }
-            m_Client->SendString("?lancs");
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(3500));
         }
     }
+
+    if (!in_ship) return;
     
     m_Energy = m_Client->GetEnergy();
 
@@ -261,9 +272,7 @@ void Bot::Update(DWORD dt) {
 
     bool reset_target = false;
 
-    m_AliveTime += dt;
-
-    if (!InCenter() && m_Config.CenterOnly && !m_Config.Attach) {
+    if (!InCenter() && m_Config.CenterOnly && !m_Config.Attach && in_ship) {
         m_Client->ReleaseKeys();
 
         if (GetEnergyPercent() == 100)

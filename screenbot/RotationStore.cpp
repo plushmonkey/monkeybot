@@ -47,9 +47,6 @@ int RotationStore::GetRotation(u64 pixval) {
                 closest_rot = j;
                 closest_diff = diff;
             }
-            //if (m_Rotations[i][j] == pixval) {
-           //     return j;
-            //}
         }
     }
     return closest_rot;

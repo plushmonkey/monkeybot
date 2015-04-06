@@ -12,4 +12,9 @@ namespace Random {
 
         return dist(gen);
     }
+
+    double GetReal() {
+        std::uniform_real_distribution<double> dist(0, 1);
+        return dist(gen);
+    }
 }

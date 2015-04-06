@@ -76,7 +76,6 @@ public:
     }
 
     bool IsValid(IntType x, IntType y) const {
-        //return x >= 320 && x < m_Width && y >= 320 && y < 701;
         return x >= 0 && x < m_Width && y >= 0 && y < m_Height;
     }
 

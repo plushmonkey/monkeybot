@@ -573,6 +573,8 @@ std::vector<Vec2> ScreenClient::FindMines(Vec2 bot_pixel_pos) {
 void ScreenClient::SelectPlayer(const std::string& name) {
     PlayerPtr target = m_PlayerWindow.Find(name);
 
+    std::cout << "Selecting " << name << std::endl;
+
     if (!target.get()) {
         tcerr << "ScreenClient::SelectPlayer : "<< "Could not find " << name << " in player window. Scrolling up." << std::endl;;
 

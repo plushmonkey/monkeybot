@@ -4,6 +4,7 @@
 namespace Random {
     // Inclusive
     unsigned int GetU32(unsigned int start, unsigned int end);
+    double GetReal();
 };
 
 #endif

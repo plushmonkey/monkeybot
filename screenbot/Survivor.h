@@ -17,6 +17,7 @@ private:
     std::string m_Target;
 
     void HandleMessage(KillMessage* mesg);
+    void AnnounceDeath();
 
 public:
     SurvivorGame(Bot* bot);

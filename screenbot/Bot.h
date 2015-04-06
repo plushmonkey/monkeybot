@@ -38,7 +38,6 @@ private:
     int m_MaxEnergy;
     int m_Energy;
     Level m_Level;
-    DWORD m_AliveTime;
     Pathing::Grid<short> m_Grid;
     DWORD m_LastEnemy;
     DWORD m_RepelTimer;

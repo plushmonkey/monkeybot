@@ -203,12 +203,10 @@ void MemorySensor::DetectPlayers() {
     }
 
     for (auto iter = m_Players.begin(); iter != m_Players.end(); ) {
-        if (!iter->second->InArena()) {
-            //std::cout << "Erasing " << iter->second->GetName() << std::endl;
+        if (!iter->second->InArena())
             iter = m_Players.erase(iter);
-        } else {
+        else
             ++iter;
-        }
     }
 }
 

@@ -10,8 +10,8 @@ private:
     Bot* m_Bot;
     bool m_Enabled;
     unsigned int m_LastTaunt;
+    virtual void HandleMessage(KillMessage* mesg);
 
-    void HandleMessage(KillMessage* mesg);
 public:
     Taunter(Bot* bot);
 

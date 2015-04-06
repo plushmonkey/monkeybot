@@ -59,9 +59,6 @@ void AttachState::Update(DWORD dt) {
     auto selected = client->GetSelectedPlayer();
     std::string attach_target = m_Bot.GetAttachTarget();
 
-    // If the bot is out of center
-   /* if (!(pos.x >= m_SpawnX - 20 && pos.x <= m_SpawnX + 20 &&
-          pos.y >= m_SpawnY - 20 && pos.y <= m_SpawnY + 20))*/
     if (!m_Bot.InCenter()) {
         // Detach if previous attach was successful
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -169,7 +166,6 @@ void ChaseState::Update(DWORD dt) {
 
     m_StuckTimer += dt;
 
-    // TODO: improve this, it's annoying with slow moving ships. Maybe check if pointing right at wall without any rotation.
     // Check if stuck every 2.5 seconds
     if (m_StuckTimer >= 2500) {
         if (m_Bot.GetSpeed() < 1.0 && near_wall) {
@@ -270,7 +266,6 @@ void ChaseState::Update(DWORD dt) {
     else
         client->SetThrust(false);
 
-    //client->Up(true);
     m_Bot.SetSpeed(target_speed);
 }
 
@@ -473,8 +468,8 @@ void PatrolState::Update(DWORD dt) {
         } else {
             static DWORD warp_timer = 0;
             warp_timer += dt;
-            if (warp_timer >= 45000) {
-                // Warp if inactive for 45 seconds
+            if (warp_timer >= 25000) {
+                // Warp if inactive for 25 seconds
                 if (m_Bot.GetConfig().Attach) {
                     client->SetXRadar(false);
                     std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -535,7 +530,6 @@ void PatrolState::Update(DWORD dt) {
     else
         client->SetThrust(false);
 
-    //client->Up(true);
     m_Bot.SetSpeed(target_speed);
 }
 
