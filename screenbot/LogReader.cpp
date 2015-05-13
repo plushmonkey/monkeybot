@@ -24,7 +24,7 @@ LogReader::LogReader(const std::string& filename, const unsigned int frequency)
 }
 
 ChatMessage* LogReader::GetChatMessage(const std::string& line) {
-    const std::regex chat_regex(R"::(^(P|T|C|\s)\s+([0-9]+:|\s)(.+)> (.+)$)::");
+    const std::regex chat_regex(R"::(^(P|T|C|\s)\s([0-9]+:|\s)*(.+)> (.+)$)::");
     std::sregex_iterator begin(line.begin(), line.end(), chat_regex);
     std::sregex_iterator end;
 
