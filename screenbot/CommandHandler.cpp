@@ -114,8 +114,10 @@ void CommandHandler::CommandPause(const std::string& args) {
     m_Bot->SetPaused(paused);
     tcout << "Paused: " << std::boolalpha << paused << std::endl;
 
-    if (paused)
+    if (paused) {
         m_Bot->GetClient()->ReleaseKeys();
+        m_Bot->SetShip(Ship::Spectator);
+    }
 }
 
 void CommandHandler::CommandCommander(const std::string& args) {

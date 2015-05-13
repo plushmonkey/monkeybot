@@ -267,6 +267,20 @@ void ScreenClient::EnterShip(int num) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
 
+void ScreenClient::Spec() {
+    m_Keyboard.ReleaseAll();
+
+    m_Keyboard.Send(VK_ESCAPE);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    short code = VkKeyScan('s');
+    m_Keyboard.Down(code);
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    m_Keyboard.Up(code);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+}
+
 std::vector<PlayerPtr> ScreenClient::GetEnemies(Vec2 real_pos, const Level& level) {
     std::vector<PlayerPtr> enemies;
     int freq = GetFreq();

@@ -65,7 +65,8 @@ bool Bot::FullEnergy() const {
 }
 
 void Bot::SetShip(Ship ship) {
-    m_ShipNum = (int)ship + 1;
+    if (ship != Ship::Spectator)
+        m_ShipNum = (int)ship + 1;
 
     if (m_Client->InShip()) {
         m_Client->ReleaseKeys();
@@ -76,7 +77,10 @@ void Bot::SetShip(Ship ship) {
         }
     }
 
-    m_Client->EnterShip(m_ShipNum);
+    if (ship != Ship::Spectator)
+        m_Client->EnterShip(m_ShipNum);
+    else
+        m_Client->Spec();
 
     m_Config.LoadShip(GetShip());
 }

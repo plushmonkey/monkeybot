@@ -48,6 +48,7 @@ public:
 
     virtual bool InShip() const = 0;
     virtual void EnterShip(int num) = 0;
+    virtual void Spec() = 0;
 
     virtual std::vector<PlayerPtr> GetEnemies(Vec2 real_pos, const Level& level) = 0;
     virtual PlayerPtr GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist) = 0;
@@ -150,6 +151,7 @@ public:
 
     virtual bool InShip() const;
     virtual void EnterShip(int num);
+    virtual void Spec();
 
     virtual std::vector<PlayerPtr> GetEnemies(Vec2 real_pos, const Level& level);
     virtual PlayerPtr GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist);
