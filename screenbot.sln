@@ -5,8 +5,6 @@ VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "screenbot", "screenbot\screenbot.vcxproj", "{4A888654-16A1-4FF0-B696-DA1EA06921F2}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CleverbotPlugin", "CleverbotPlugin\CleverbotPlugin.vcxproj", "{97407D93-37EB-4FEF-97BD-4432704EF71C}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
