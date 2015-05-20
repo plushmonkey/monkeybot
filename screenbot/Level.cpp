@@ -8,6 +8,11 @@ Level::Level() : m_Filename(_T("")), m_Tiles(nullptr) {
     
 }
 
+Level::~Level() {
+    if (m_Tiles)
+        delete[] m_Tiles;
+}
+
 bool Level::IsSolid(int id) {
     if (id == 0) return false;
     if (id >= 162 && id <= 169) return false; // treat doors as non-solid

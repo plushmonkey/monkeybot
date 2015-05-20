@@ -124,7 +124,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_USE_MATH_DEFINES;NOMINMAX;WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_USE_MATH_DEFINES;NOMINMAX;WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>../jsoncpp-0.8.0/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
@@ -156,9 +156,13 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_USE_MATH_DEFINES;NOMINMAX;WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NO_THRUSTING;_CRT_SECURE_NO_WARNINGS;_USE_MATH_DEFINES;NOMINMAX;WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>../jsoncpp-0.8.0/include</AdditionalIncludeDirectories>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <DisableSpecificWarnings>4351</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -240,7 +244,10 @@
     <ClCompile Include="MessageQueue.cpp" />
     <ClCompile Include="Pathing.cpp" />
     <ClCompile Include="PlayerList.cpp" />
+    <ClCompile Include="plugin\PluginInstance.cpp" />
+    <ClCompile Include="plugin\PluginManager.cpp" />
     <ClCompile Include="Random.cpp" />
+    <ClCompile Include="Revenge.cpp" />
     <ClCompile Include="RotationStore.cpp" />
     <ClCompile Include="ScreenArea.cpp" />
     <ClCompile Include="ScreenGrabber.cpp" />
@@ -248,9 +255,15 @@
     <ClCompile Include="Survivor.cpp" />
     <ClCompile Include="Taunter.cpp" />
     <ClCompile Include="Util.cpp" />
+    <ClCompile Include="Version.cpp" />
     <ClCompile Include="WindowFinder.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="api\Api.h" />
+    <ClInclude Include="api\Bot.h" />
+    <ClInclude Include="api\Client.h" />
+    <ClInclude Include="api\State.h" />
+    <ClInclude Include="api\Version.h" />
     <ClInclude Include="Bot.h" />
     <ClInclude Include="ClientSettings.h" />
     <ClInclude Include="CommandHandler.h" />
@@ -269,6 +282,10 @@
     <ClInclude Include="MemorySensor.h" />
     <ClInclude Include="Messages\Messages.h" />
     <ClInclude Include="Player.h" />
+    <ClInclude Include="plugin\Plugin.h" />
+    <ClInclude Include="plugin\PluginInstance.h" />
+    <ClInclude Include="plugin\PluginManager.h" />
+    <ClInclude Include="Revenge.h" />
     <ClInclude Include="Survivor.h" />
     <ClInclude Include="Taunter.h" />
     <ClInclude Include="Pathing.h" />
@@ -281,10 +298,8 @@
     <ClInclude Include="Tokenizer.h" />
     <ClInclude Include="Util.h" />
     <ClInclude Include="Vector.h" />
+    <ClInclude Include="Version.h" />
     <ClInclude Include="WindowFinder.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="todo.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -22,7 +22,9 @@ ScreenClient::ScreenClient(HWND hwnd, Config& config, Memory::MemorySensor& mems
       m_EmpEnd(0),
       m_Thrusting(false),
       m_MemorySensor(memsensor),
-      m_CurrentBulletDelay(0)
+      m_CurrentBulletDelay(0),
+      m_MultiState(MultiState::None),
+      m_Multi(true)
 { 
     m_Screen = std::make_shared<ScreenGrabber>(m_Window);
     m_Ship = m_Screen->GetArea(m_Screen->GetWidth() / 2 - 18, m_Screen->GetHeight() / 2 - 18, 36, 36);
@@ -52,7 +54,31 @@ void ScreenClient::Update(DWORD dt) {
     m_Player->Update();
     m_PlayerWindow.Update(dt);
 
+    m_MultiState = DetermineMultiState();
+
+    if ((m_Multi && m_MultiState == MultiState::Off) ||
+        (!m_Multi && m_MultiState == MultiState::On))
+    {
+        EnableMulti(m_Multi);
+    }
+
     Scan();
+}
+
+MultiState ScreenClient::DetermineMultiState() const {
+    const int Width = m_Screen->GetWidth();
+    const int Height = m_Screen->GetHeight();
+    const int GunIndicator = Util::GetIndicatorTop(Util::Indicator::Gun, Height);
+    const int GunPixelY = 6;
+
+    int x = Width - 18;
+    int y = GunIndicator + GunPixelY;
+
+    Pixel pixel = m_Screen->GetPixel(x, y);
+
+    if (pixel == Colors::MultiNone) return MultiState::None;
+    if (pixel == Colors::MultiOff) return MultiState::Off;
+    return MultiState::On;
 }
 
 int ScreenClient::GetFreq() {
@@ -94,6 +120,18 @@ void ScreenClient::MoveTicker(Direction dir) {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
     m_Keyboard.ToggleDown();
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+void ScreenClient::EnableMulti(bool enable) {
+    if (m_MultiState == MultiState::None) return;
+
+    if ((enable && m_MultiState == MultiState::Off) ||
+        (!enable && m_MultiState == MultiState::On))
+    {
+        m_Keyboard.Send(VK_DELETE);
+    }
+
+    m_Multi = enable;
 }
 
 void ScreenClient::Bomb() {
@@ -193,6 +231,11 @@ void ScreenClient::Decoy() {
 }
 
 void ScreenClient::SetThrust(bool on) {
+#ifdef NO_THRUSTING
+    m_Thrusting = false;
+    return;
+#endif
+
     m_Thrusting = on;
 
     if (on)
@@ -202,10 +245,9 @@ void ScreenClient::SetThrust(bool on) {
 }
 
 void ScreenClient::SetXRadar(bool on) {
-    int count = 0;
     /* Try to toggle xradar, timeout after 50 tries */
-
     try {
+        int count = 0;
         while (Util::XRadarOn(m_Screen) != on && count < 50) {
             if (m_Thrusting)
                 SetThrust(false);
@@ -249,6 +291,8 @@ void ScreenClient::Attach() {
     if (m_Thrusting)
         SetThrust(false);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
     m_Keyboard.Send(VK_F7);
 }
 
@@ -257,16 +301,18 @@ bool ScreenClient::InShip() const {
 }
 
 void ScreenClient::EnterShip(int num) {
-    if (m_Thrusting)
-        SetThrust(false);
-
-    m_Keyboard.Up(VK_CONTROL);
+    m_Keyboard.ToggleDown();
+    m_Keyboard.Up(VK_SHIFT);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     m_Keyboard.Send(VK_ESCAPE);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    m_Keyboard.Send(0x30 + num);
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    if (num == 9)
+        m_Keyboard.Send('s');
+    else 
+        m_Keyboard.Send(0x30 + num);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-}
 
+}
 void ScreenClient::Spec() {
     m_Keyboard.ReleaseAll();
 
@@ -283,7 +329,6 @@ void ScreenClient::Spec() {
 
 std::vector<PlayerPtr> ScreenClient::GetEnemies(Vec2 real_pos, const Level& level) {
     std::vector<PlayerPtr> enemies;
-    int freq = GetFreq();
     PlayerList players = m_MemorySensor.GetPlayers();
     for (auto p : players) {
         if (p->GetFreq() != GetFreq() &&
@@ -293,7 +338,7 @@ std::vector<PlayerPtr> ScreenClient::GetEnemies(Vec2 real_pos, const Level& leve
             Vec2 pos = p->GetPosition() / 16;
 
             if (m_Config.CenterOnly && m_Config.Hyperspace) {
-                if (pos.x < 320 || pos.x >= 703 || pos.y < 320 || pos.x >= 703)
+                if (pos.x < 320 || pos.x >= 703 || pos.y < 320 || pos.y >= 703)
                     continue;
             }
 
@@ -325,6 +370,9 @@ PlayerPtr ScreenClient::GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level
     const double RotationMultiplier = 2.5; // Determines how much the rotation difference will increase distance by
     bool using_target = false;
 
+    bool in_safe = InSafe(real_pos, level);
+    
+
     for (unsigned int i = 0; i < enemies.size(); i++) {
         PlayerPtr& enemy = enemies.at(i);
         int cdx, cdy;
@@ -335,6 +383,8 @@ PlayerPtr ScreenClient::GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level
         if (pos.x <= 0 && pos.y <= 0) continue;
 
         Util::GetDistance(pos, real_pos, &cdx, &cdy, &cdist);
+
+        if (cdist < 15 && in_safe) continue;
 
         Vec2 to_target = Vec2Normalize(pos - real_pos); // Unit vector pointing towards this enemy
         double dot = heading.Dot(to_target);
@@ -456,6 +506,8 @@ bool ScreenClient::Emped() {
 }
 
 void ScreenClient::SendString(const std::string& str) {
+    std::lock_guard<std::mutex> lock(m_ChatMutex);
+
     m_Keyboard.ReleaseAll();
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
@@ -466,6 +518,9 @@ void ScreenClient::SendString(const std::string& str) {
 
         if (shift)
             m_Keyboard.Down(VK_LSHIFT);
+        else
+            m_Keyboard.Up(VK_LSHIFT);
+
         m_Keyboard.Down(code);
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
         m_Keyboard.Up(code);
@@ -477,6 +532,11 @@ void ScreenClient::SendString(const std::string& str) {
     m_Keyboard.Send(VK_RETURN);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
+}
+
+void ScreenClient::SendPM(const std::string& target, const std::string& mesg) {
+    std::string str = ":" + target + ":" + mesg;
+    SendString(str);
 }
 
 void ScreenClient::UseMacro(short num) {

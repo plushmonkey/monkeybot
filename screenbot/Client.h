@@ -5,83 +5,14 @@
 #include "Config.h"
 #include "Keyboard.h"
 #include "PlayerList.h"
+#include "api/Client.h"
 
 #include <Windows.h>
 #include <vector>
 #include <unordered_map>
+#include <mutex>
 
 class Level;
-
-enum class GunState {
-    Tap,
-    Constant,
-    Off
-};
-
-class Client {
-public:
-    Client() { }
-    virtual ~Client() { }
-
-    virtual void Update(DWORD dt) = 0;
-
-    virtual void Bomb() = 0;
-    virtual void Gun(GunState state, int energy_percent = 100) = 0;
-    virtual void Burst() = 0;
-    virtual void Repel() = 0;
-	virtual void Decoy() = 0;
-    virtual void SetThrust(bool on) = 0;
-
-    virtual void SetXRadar(bool on) = 0;
-    virtual void Warp() = 0;
-    
-    virtual int GetEnergy() = 0;
-    virtual int GetRotation() = 0;
-    virtual bool InSafe(Vec2 real_pos, const Level& level) = 0;
-
-    virtual void Up(bool val) = 0;
-    virtual void Down(bool val) = 0;
-    virtual void Left(bool val) = 0;
-    virtual void Right(bool val) = 0;
-
-    virtual void Attach() = 0;
-
-    virtual bool InShip() const = 0;
-    virtual void EnterShip(int num) = 0;
-    virtual void Spec() = 0;
-
-    virtual std::vector<PlayerPtr> GetEnemies(Vec2 real_pos, const Level& level) = 0;
-    virtual PlayerPtr GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist) = 0;
-
-    virtual Vec2 GetRealPosition(Vec2 bot_pos, Vec2 target, const Level& level) = 0;
-
-    virtual void ReleaseKeys() = 0;
-    virtual void ToggleKeys() = 0;
-
-    virtual int GetFreq() = 0;
-
-    virtual PlayerList GetFreqPlayers(int freq) = 0;
-    virtual PlayerList GetPlayers() = 0;
-
-    virtual bool OnSoloFreq() = 0;
-    virtual PlayerPtr GetSelectedPlayer() = 0;
-    virtual void MoveTicker(Direction dir) = 0;
-
-    virtual std::vector<Vec2> FindMines(Vec2 bot_pixel_pos) = 0;
-
-    virtual void Scan() = 0;
-
-    virtual bool Emped() = 0;
-
-    virtual void SendString(const std::string& str) = 0;
-    virtual void UseMacro(short num) = 0;
-
-    virtual void SelectPlayer(const std::string& name) = 0;
-
-    virtual void SetTarget(const std::string& name) = 0;
-    virtual void SetPriorityTarget(const std::string& name) = 0;
-    virtual std::string GetPriorityTarget() const = 0;
-};
 
 namespace Ships {
     class RotationStore;
@@ -91,7 +22,7 @@ namespace Memory {
     class MemorySensor;
 }
 
-class ScreenClient : public Client {
+class ScreenClient : public api::Client {
 private:
     Config& m_Config;
     Keyboard m_Keyboard;
@@ -117,11 +48,16 @@ private:
     DWORD m_LastBullet;
     DWORD m_LastBomb;
     DWORD m_EmpEnd;
+    std::mutex m_ChatMutex;
+
+    bool m_Multi;
+    MultiState m_MultiState;
 
     bool m_Thrusting;
 
     Ships::RotationStore* m_Rotations;
 
+    MultiState DetermineMultiState() const;
     void GrabRadar();
 public:
     ScreenClient(HWND hwnd, Config& config, Memory::MemorySensor& memsensor);
@@ -180,6 +116,7 @@ public:
     virtual bool Emped();
 
     virtual void SendString(const std::string& str);
+    virtual void SendPM(const std::string& target, const std::string& mesg);
     virtual void UseMacro(short num);
 
     virtual void SelectPlayer(const std::string& name);
@@ -187,8 +124,15 @@ public:
     virtual void SetTarget(const std::string& name);
     virtual void SetPriorityTarget(const std::string& name);
 
+    virtual std::string GetTarget() const {
+        return m_Target;
+    }
     virtual std::string GetPriorityTarget() const {
         return m_PriorityTarget;
+    }
+    virtual void EnableMulti(bool enable);
+    virtual MultiState GetMultiState() const {
+        return m_MultiState;
     }
 };
 

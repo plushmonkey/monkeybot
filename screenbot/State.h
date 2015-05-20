@@ -7,43 +7,22 @@
 
 #include <vector>
 
-class Bot;
+class Player;
 
-enum class StateType {
-    ChaseState,
-    PatrolState,
-    AggressiveState,
-    AttachState,
-    BaseduelState
-};
+std::ostream& operator<<(std::ostream& out, api::StateType type);
 
-std::ostream& operator<<(std::ostream& out, StateType type);
-
-class State {
-protected:
-    Bot& m_Bot;
-
-public:
-    State(Bot& bot);
-    virtual ~State() { }
-
-    virtual void Update(DWORD dt) = 0;
-    virtual StateType GetType() const = 0;
-};
-typedef std::shared_ptr<State> StatePtr;
-
-class AttachState : public State {
+class AttachState : public api::State {
 private:
     Direction m_Direction;
     int m_Count;
 
 public:
-    AttachState(Bot& bot);
-    virtual void Update(DWORD dt);
-    virtual StateType GetType() const { return StateType::AttachState; }
+    AttachState(api::Bot* bot);
+    void Update(DWORD dt);
+    api::StateType GetType() const { return api::StateType::AttachState; }
 };
 
-class ChaseState : public State {
+class ChaseState : public api::State {
 private:
     Pathing::Plan m_Plan;
     DWORD m_StuckTimer;
@@ -51,20 +30,20 @@ private:
     Vec2 m_LastRealEnemyCoord;
 
 public:
-    ChaseState(Bot& bot);
+    ChaseState(api::Bot* bot);
     virtual void Update(DWORD dt);
-    virtual StateType GetType() const { return StateType::ChaseState; }
+    virtual api::StateType GetType() const { return api::StateType::ChaseState; }
 };
 
-class BaseduelState : public State {
+class BaseduelState : public api::State {
 private:
 public:
-    BaseduelState(Bot& bot);
+    BaseduelState(api::Bot* bot);
     virtual void Update(DWORD dt);
-    virtual StateType GetType() const { return StateType::BaseduelState; }
+    virtual api::StateType GetType() const { return api::StateType::BaseduelState; }
 };
 
-class PatrolState : public State {
+class PatrolState : public api::State {
 private:
     std::vector<Vec2> m_Waypoints;
     std::vector<Vec2> m_FullWaypoints;
@@ -72,15 +51,29 @@ private:
     DWORD m_LastBullet;
     Vec2 m_LastCoord;
     DWORD m_StuckTimer;
+    unsigned int m_CloseDistance;
 
 public:
-    PatrolState(Bot& bot, std::vector<Vec2> waypoints = std::vector<Vec2>());
+    PatrolState(api::Bot* bot, std::vector<Vec2> waypoints = std::vector<Vec2>(), unsigned int close_distance = 25);
     virtual void Update(DWORD dt);
     void ResetWaypoints(bool full = true);
-    virtual StateType GetType() const { return StateType::PatrolState; }
+    virtual api::StateType GetType() const { return api::StateType::PatrolState; }
 };
 
-class AggressiveState : public State {
+class FollowState : public api::State {
+private:
+    weak_ptr<Player> m_FollowPlayer;
+    Pathing::Plan m_Plan;
+    DWORD m_StuckTimer;
+
+public:
+    FollowState(api::Bot* bot, std::string follow);
+    virtual void Update(DWORD dt);
+
+    virtual api::StateType GetType() const { return api::StateType::FollowState; }
+};
+
+class AggressiveState : public api::State {
 private:
     Vec2 m_LastEnemyPos;
     DWORD m_NearWall;
@@ -88,10 +81,10 @@ private:
 	DWORD m_DecoyTimer;
 
 public:
-    AggressiveState(Bot& bot);
+    AggressiveState(api::Bot* bot);
     virtual void Update(DWORD dt);
 
-    virtual StateType GetType() const { return StateType::AggressiveState; }
+    virtual api::StateType GetType() const { return api::StateType::AggressiveState; }
 };
 
 #endif

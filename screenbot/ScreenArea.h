@@ -7,7 +7,7 @@
 
 class ScreenArea {
 public:
-    typedef std::shared_ptr<ScreenArea> Ptr;
+    typedef shared_ptr<ScreenArea> Ptr;
 
 private:
     HDC m_Screen;
@@ -31,7 +31,7 @@ public:
     HDC GetDC() { return m_DC; }
     void Update();
     const Pixel* GetPixels();
-    Pixel ScreenArea::GetPixel(int x, int y);
+    Pixel GetPixel(int x, int y);
     ScreenArea::Ptr GetArea(int x, int y, int width, int height);
     bool Save(const tstring& filename);
     Vec2 Find(Pixel pixel);

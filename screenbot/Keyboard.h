@@ -11,6 +11,7 @@ private:
     INPUT GetInput(int keycode);
 
 public:
+    Keyboard();
     void Send(int keycode);
     void Up(int keycode);
     void Down(int keycode);

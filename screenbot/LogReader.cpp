@@ -78,8 +78,7 @@ void LogReader::Update(unsigned long dt) {
     tokens('\n');
 
     for (auto line : tokens) {
-        if (line.length() == 0) continue;
-
+        if (line.length() <= 1) continue;
         ChatMessage* mesg = GetChatMessage(line);
         MQueue.PushMessage(mesg);
 

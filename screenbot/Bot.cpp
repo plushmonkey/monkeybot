@@ -29,6 +29,7 @@ Bot::Bot(int ship)
       m_ShipNum(ship),
       m_EnemyTargetInfo(0, 0, 0),
       m_Energy(0),
+      m_LastEnergy(0),
       m_MaxEnergy(0),
       m_Level(),
       m_Grid(1024, 1024),
@@ -40,7 +41,8 @@ Bot::Bot(int ship)
       m_Flagging(false),
       m_CommandHandler(this),
       m_Paused(false),
-      m_Survivor(this)
+      m_Survivor(this),
+      m_MemorySensor(this)
 { }
 
 ClientPtr Bot::GetClient() {
@@ -49,6 +51,26 @@ ClientPtr Bot::GetClient() {
 
 std::string Bot::GetName() const {
     return m_MemorySensor.GetName();
+}
+
+void Bot::SetState(api::StateType type) {
+    switch (type) {
+        case api::StateType::AggressiveState:
+            SetState(std::make_shared<AggressiveState>(this));
+            break;
+        case api::StateType::PatrolState:
+            SetState(std::make_shared<PatrolState>(this));
+            break;
+        case api::StateType::AttachState:
+            SetState(std::make_shared<AttachState>(this));
+            break;
+        case api::StateType::ChaseState:
+            SetState(std::make_shared<ChaseState>(this));
+            break;
+        case api::StateType::BaseduelState:
+            SetState(std::make_shared<BaseduelState>(this));
+            break;
+    }
 }
 
 Vec2 Bot::GetHeading() const {
@@ -64,25 +86,48 @@ bool Bot::FullEnergy() const {
     return !m_Client->InShip() || (m_Client->GetEnergy() >= GetMaxEnergy() && m_Client->GetEnergy() != 0);
 }
 
+void Bot::Follow(const std::string& name) {
+    static bool centerOnly = GetConfig().CenterOnly;
+
+    if (name.length() == 0) {
+        std::cout << "No longer following" << std::endl;
+        SetState(std::make_shared<PatrolState>(this));
+    } else {
+        SetState(std::make_shared<FollowState>(this, name));
+        std::cout << "Following: " << name << std::endl;
+    }
+
+    centerOnly = !centerOnly;
+
+    m_Config.CenterOnly = centerOnly;
+}
+
 void Bot::SetShip(Ship ship) {
+    Ship current = m_MemorySensor.GetBotPlayer()->GetShip();
+    if (ship == current) return;
+
     if (ship != Ship::Spectator)
         m_ShipNum = (int)ship + 1;
 
     if (m_Client->InShip()) {
         m_Client->ReleaseKeys();
         m_Client->SetXRadar(false);
-        while (!FullEnergy()) {
+
+        int timeout = 5000;
+        while (!FullEnergy() && timeout > 0) {
             m_Client->Update(100);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            timeout -= 100;
         }
     }
 
-    if (ship != Ship::Spectator)
+    if (ship != Ship::Spectator) {
         m_Client->EnterShip(m_ShipNum);
-    else
-        m_Client->Spec();
 
-    m_Config.LoadShip(GetShip());
+        m_Config.LoadShip(GetShip());
+    } else {
+        m_Client->Spec();
+    }
 }
 
 void Bot::SetSpeed(double target) {
@@ -107,6 +152,19 @@ void Bot::SetSpeed(double target) {
             m_Client->Up(false);
             m_Client->Down(true);
         }
+    }
+}
+
+void Bot::SendMessage(const std::string& str) {
+    while (true) {
+        {
+            std::lock_guard<std::mutex> lock(m_SendMutex);
+            if (m_SendBuffer.length() == 0) {
+                m_SendBuffer = str;
+                break;
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 }
 
@@ -228,6 +286,14 @@ void Bot::HandleMessage(ChatMessage* mesg) {
 void Bot::Update(DWORD dt) {
     m_LogReader->Update(dt);
 
+    {
+        std::lock_guard<std::mutex> lock(m_SendMutex);
+        if (m_SendBuffer.length() > 0) {
+            m_Client->SendString(m_SendBuffer);
+            m_SendBuffer.clear();
+        }
+    }
+
     if (m_Paused) {
         MQueue.Dispatch();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -239,6 +305,10 @@ void Bot::Update(DWORD dt) {
     bool in_ship = m_Client->InShip();
 
     if (!in_ship) {
+        m_Client->ReleaseKeys();
+
+        m_MaxEnergy = 0;
+
         m_Client->EnterShip(m_ShipNum);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(30));
@@ -254,17 +324,23 @@ void Bot::Update(DWORD dt) {
                 }
                 m_Client->SendString("?lancs");
 
-                this->SetState(std::make_shared<AttachState>(*this));
+                this->SetState(std::make_shared<AttachState>(this));
             } else {
-                this->SetState(std::make_shared<PatrolState>(*this));
+                this->SetState(std::make_shared<PatrolState>(this));
             }
         } else {
             std::this_thread::sleep_for(std::chrono::milliseconds(3500));
         }
     }
 
-    if (!in_ship) return;
+    if (!in_ship) {
+        MQueue.Dispatch();
+        return;
+    }
     
+    m_Client->EnableMulti(m_Config.MultiFire);
+
+    m_LastEnergy = m_Energy;
     m_Energy = m_Client->GetEnergy();
 
     // Reset maximum energy on every death
@@ -276,7 +352,7 @@ void Bot::Update(DWORD dt) {
 
     bool reset_target = false;
 
-    if (!InCenter() && m_Config.CenterOnly && !m_Config.Attach && in_ship) {
+    if (!IsInCenter() && m_Config.CenterOnly && !m_Config.Attach && in_ship) {
         m_Client->ReleaseKeys();
 
         if (GetEnergyPercent() == 100)
@@ -295,9 +371,24 @@ void Bot::Update(DWORD dt) {
     Vec2 pos = GetPos();
 
     // Attach to ticked player when in center safe
-    if (m_Config.Attach && !m_Client->OnSoloFreq() && this->GetStateType() != StateType::AttachState) {
-        if (InCenter())
-            SetState(std::make_shared<AttachState>(*this));
+    if (m_Config.Attach && !m_Client->OnSoloFreq() && this->GetStateType() != api::StateType::AttachState) {
+        if (IsInCenter()) {
+            unsigned int freq = m_MemorySensor.GetBotPlayer()->GetFreq();
+            PlayerList players = m_MemorySensor.GetPlayers();
+            bool should_attach = false;
+            Vec2 spawn(GetConfig().SpawnX, GetConfig().SpawnY);
+            
+            for (PlayerPtr &player : players){
+                if (player->GetFreq() == freq) {
+                    if ((player->GetPosition() / 16 - spawn).Length() > GetConfig().CenterRadius) {
+                        should_attach = true;
+                        break;
+                    }
+                }
+            }
+            if (should_attach)
+                SetState(std::make_shared<AttachState>(this));
+        }
     }
 
     
@@ -316,13 +407,16 @@ void Bot::Update(DWORD dt) {
         if (m_Config.CenterOnly) {
             Vec2 enemy_pos = m_EnemyTarget->GetPosition() / 16;
 
-            if (enemy_pos.x < 320 || enemy_pos.x >= 703 || enemy_pos.y < 320 || enemy_pos.x >= 703)
+            if (enemy_pos.x < 320 || enemy_pos.x >= 703 || enemy_pos.y < 320 || enemy_pos.y >= 703)
                 reset_target = true;
         }
 
         m_RepelTimer += dt;
         int epct = GetEnergyPercent();
-        if (m_RepelTimer >= 1200 && epct > 0 && epct < m_Config.RepelPercent) {
+
+        bool delay_over = m_RepelTimer > (unsigned int)m_MemorySensor.GetShipSettings(GetShip()).BombFireDelay * 10;
+        bool lost_energy = GetLastEnergy() > GetEnergy() && GetLastEnergy() - GetEnergy() < 300;
+        if (delay_over && epct > 0 && lost_energy && epct < m_Config.RepelPercent) {
             m_Client->Repel();
             m_RepelTimer = 0;
         }
@@ -336,7 +430,6 @@ void Bot::Update(DWORD dt) {
     }
 
     static DWORD target_timer = 0;
-    static DWORD alive_timer = 0;
     target_timer += dt;
 
     if (m_Config.Commander && m_Config.Survivor)
@@ -348,7 +441,31 @@ void Bot::Update(DWORD dt) {
         target_timer = 0;
     }
 
-    m_MemorySensor.Update(dt);
+    for (auto kv : m_Updaters) {
+        if (!kv.second(this, dt)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            MQueue.Dispatch();
+            return;
+        }
+    }
+
+    static DWORD ship_timer;
+
+    ship_timer += dt;
+
+    // This needs to happen after memory sensor is updated or the bot will try
+    // to switch ships twice when revenge rage mode is finished.
+    if (ship_timer >= 5000) {
+        PlayerPtr bot = m_MemorySensor.GetBotPlayer();
+
+        if (bot) {
+            Ship ship = bot->GetShip();
+            if (ship != GetShip())
+                this->SetShip(GetShip());
+        }
+        ship_timer = 0;
+    }
+
     m_State->Update(dt);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -382,11 +499,14 @@ int Bot::Run() {
 
     tcout << m_Config;
 
-    m_LogReader = std::make_shared<LogReader>(m_Config.LogFile, 3000);
+    m_LogReader = std::make_shared<LogReader>(m_Config.LogFile, 500);
     m_LogReader->Clear();
 
     if (!m_Level.Load(m_Config.Level)) {
         tcerr << "Could not load level " << m_Config.Level << "\n";
+
+        std::cin.get();
+        std::exit(1);
     } else {
         tcout << "Creating grid for the level." << std::endl;
         for (int y = 0; y < 1024; ++y) {
@@ -405,7 +525,6 @@ int Bot::Run() {
         std::exit(1);
     }
 
-    m_MemorySensor.Update(0);
     m_Taunter.SetEnabled(m_Config.Taunt);
 
     try {
@@ -416,19 +535,26 @@ int Bot::Run() {
         std::exit(1);
     }
 
-    this->SetState(std::make_shared<PatrolState>(*this));
+    this->SetState(std::make_shared<PatrolState>(this));
 
     tcout << "Bot name: " << GetName() << std::endl;
     tcout << "Bot started." << std::endl;
 
-    auto players = m_MemorySensor.GetPlayers();
+    const int MaxDeaths = 4;
+    m_Revenge = std::make_shared<Revenge>(*this, GetShip(), Ship::Shark, MaxDeaths);
+    m_Revenge->SetEnabled(m_Config.Revenge);
 
-    std::cout << "Count: " << players.size() << std::endl;
-    for (auto p : players) {
-        std::cout << p->GetName() << ": Pos: " << p->GetPosition() << " Vel: " << p->GetVelocity();
-        std::cout << " Rot: " << p->GetRotation() << " Freq: " << p->GetFreq() << " pid: " << p->GetPid() << std::endl;
+    int plugins = m_PluginManager.LoadPlugins(this, "plugins");
+
+    PluginManager::const_iterator iter = m_PluginManager.begin();
+    while (iter != m_PluginManager.end()) {
+        std::cout << (*iter)->GetName() << " loaded" << std::endl;
+        
+        ++iter;
     }
-    
+
+    tcout << plugins << " plugin" << (plugins == 1 ? "" : "s") << " loaded." << std::endl;
+
     DWORD last_update = timeGetTime();
 
     while (true) {

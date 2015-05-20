@@ -10,6 +10,8 @@
 #include <map>
 #include <iosfwd>
 
+class Bot;
+
 namespace Memory {
 
 enum class SensorError {
@@ -32,6 +34,8 @@ private:
     DWORD m_SettingsTimer;
     int m_SelectedIndex;
 
+    unsigned int m_UpdateID;
+
     std::map<PlayerID, PlayerPtr> m_Players;
     Vec2 m_Position;
     Vec2 m_Velocity;
@@ -39,6 +43,7 @@ private:
     std::string m_Name;
 
     ShipSettings m_ShipSettings[8];
+    PlayerPtr m_BotPlayer;
 
     void DetectSelected();
     void DetectSettings();
@@ -47,18 +52,17 @@ private:
     void DetectFreq();
     void DetectPlayers();
 
+    bool OnUpdate(Bot* bot, unsigned long dt);
 public:
-    MemorySensor();
+    MemorySensor(Bot* bot);
     SensorError Initialize(HWND window);
-
-    void Update(unsigned long dt);
 
     Vec2 GetPosition() const { return m_Position; }
     Vec2 GetVelocity() const { return m_Velocity; }
     unsigned int GetFrequency() const { return m_Freq; }
     const std::string& GetName() const { return m_Name; }
     PlayerList GetPlayers();
-
+    PlayerPtr GetBotPlayer() { return m_BotPlayer; }
     const ShipSettings& GetShipSettings(Ship ship) const { return m_ShipSettings[(int)ship]; }
 };
 

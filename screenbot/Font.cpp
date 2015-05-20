@@ -104,7 +104,7 @@ char Font::GetCharacter(Character c) {
     return m_Characters[c];
 }
 
-bool Font::GetCharacter(ScreenAreaPtr area, std::vector<Pixel> ignore, char* out) {
+bool Font::GetCharacter(ScreenAreaPtr area, const std::vector<Pixel>& ignore, char* out) {
     Character check_char(m_CharWidth, m_CharHeight);
 
     std::unique_ptr<int[]> col_count(new int[m_CharWidth]);
@@ -118,7 +118,7 @@ bool Font::GetCharacter(ScreenAreaPtr area, std::vector<Pixel> ignore, char* out
             Pixel pix = area->GetPixel(x, y);
 
             bool add = true;
-            for (auto& ignpix : ignore) {
+            for (const Pixel& ignpix : ignore) {
                 if (pix == ignpix) {
                     add = false;
                     break;

@@ -9,6 +9,11 @@
 class Level;
 
 namespace Util {
+
+    enum class Indicator {
+        Gun, Bomb, Cloak, Stealth, XRadar, Antiwarp
+    };
+
     float GetRadarPerPixel(const ScreenAreaPtr& radar, int mapzoom);
     Vec2 GetBotRadarPos(Vec2 real_pos, const ScreenAreaPtr& radar, int mapzoom);
     int GetEnergy(ScreenAreaPtr* energyarea);
@@ -29,6 +34,15 @@ namespace Util {
     void str_replace(std::string& str, const std::string& from, const std::string& to);
 
     bool NearWall(Vec2 pos, Pathing::Grid<short>& grid);
+
+    inline std::string strtolower(std::string str) {
+        std::transform(str.begin(), str.end(), str.begin(), tolower);
+        return str;
+    }
+
+    int GetIndicatorTop(Indicator indicator, int screen_height);
+
+    bool strtobool(const std::string& str);
 }
 
 #endif

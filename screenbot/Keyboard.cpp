@@ -14,6 +14,8 @@ bool IsExtended(int keycode) {
     return false;
 }
 
+Keyboard::Keyboard() : m_Toggled(false) { }
+
 INPUT Keyboard::GetInput(int keycode) {
     INPUT input;
 

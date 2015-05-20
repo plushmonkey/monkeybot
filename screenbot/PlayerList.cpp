@@ -111,7 +111,7 @@ PlayerPtr PlayerWindow::Find(const std::string& name) {
             return player;
     }
 
-    return std::shared_ptr<Player>();
+    return shared_ptr<Player>();
 }
 
 int PlayerWindow::GetPlayerIndex(PlayerPtr player) {

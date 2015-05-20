@@ -1,11 +1,13 @@
 #include "MemorySensor.h"
 
+#include "Bot.h"
 #include "Memory.h"
-
 #include "Common.h"
 
 #include <iostream>
 #include <algorithm>
+
+#pragma warning(disable : 4351)
 
 namespace Memory {
 
@@ -21,7 +23,7 @@ void MapToVector(const Map& m, Vec& v) {
         v.push_back(it->second);
 }
 
-MemorySensor::MemorySensor()
+MemorySensor::MemorySensor(Bot* bot)
     : m_ProcessHandle(nullptr),
       m_ContBaseAddr(0),
       m_MenuBaseAddr(0),
@@ -33,9 +35,10 @@ MemorySensor::MemorySensor()
       m_Freq(9999),
       m_Name(""),
       m_SettingsTimer(0),
-      m_SelectedIndex(-1)
+      m_SelectedIndex(-1),
+      m_ShipSettings()
 {
-
+    m_UpdateID = RegisterBotUpdater(bot, MemorySensor::OnUpdate);
 }
 
 SensorError MemorySensor::Initialize(HWND window) {
@@ -58,6 +61,8 @@ SensorError MemorySensor::Initialize(HWND window) {
     DetectPosition();
 
     m_Initialized = true;
+
+    OnUpdate(nullptr, 0);
 
     return SensorError::None;
 }
@@ -200,6 +205,9 @@ void MemorySensor::DetectPlayers() {
         player->SetVelocity(Vec2(xspeed, yspeed));
         player->SetPid(pid);
         player->SetShip(static_cast<Ship>(ship));
+
+        if (name.compare(m_Name) == 0)
+            m_BotPlayer = player;
     }
 
     for (auto iter = m_Players.begin(); iter != m_Players.end(); ) {
@@ -210,8 +218,8 @@ void MemorySensor::DetectPlayers() {
     }
 }
 
-void MemorySensor::Update(unsigned long dt) {
-    if (!m_Initialized) return;
+bool MemorySensor::OnUpdate(Bot *bot, unsigned long dt) {
+    if (!m_Initialized) return true;
 
     if (m_PositionAddr != 0) {
         m_Position.x = std::max(std::min((int)Memory::GetU32(m_ProcessHandle, m_PositionAddr), 1023 * 16), 0);
@@ -231,6 +239,7 @@ void MemorySensor::Update(unsigned long dt) {
     DetectFreq();
     DetectPlayers();
     DetectSelected();
+    return true;
 }
 
 } // ns Memory

@@ -11,4 +11,6 @@ namespace Colors {
     const Pixel EnergyColor[2] = { Pixel(181, 181, 255, 0), Pixel(99, 99, 206, 0) };
     const Pixel XRadarOn(41, 107, 41, 0);
     const Pixel XRadarOff(24, 82, 24, 0);
+    const Pixel MultiNone(33, 49, 33, 0);
+    const Pixel MultiOff(74, 74, 66, 0);
 }

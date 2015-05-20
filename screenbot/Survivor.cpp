@@ -2,6 +2,7 @@
 
 #include "Bot.h"
 #include "Client.h"
+#include "MemorySensor.h"
 
 #include <string>
 #include <sstream>

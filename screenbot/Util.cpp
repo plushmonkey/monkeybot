@@ -7,6 +7,7 @@
 #include <limits>
 #include <iostream>
 #include <map>
+#include <algorithm>
 
 static const int ShipRadius[8] = { 15, 15, 30, 30, 21, 21, 39 ,11 };
 
@@ -17,13 +18,17 @@ static const std::vector<Vec2> directions = {
         { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
 };
 
-
 void str_replace(std::string& str, const std::string& from, const std::string& to) {
     size_t pos = 0;
     while ((pos = str.find(from, pos)) != std::string::npos) {
         str.replace(pos, from.length(), to);
         pos += to.length();
     }
+}
+
+bool strtobool(const std::string& str) {
+    std::string lower = Util::strtolower(str);
+    return lower.compare("true") == 0;
 }
 
 bool NearWall(Vec2 pos, Pathing::Grid<short>& grid) {
@@ -38,6 +43,16 @@ bool NearWall(Vec2 pos, Pathing::Grid<short>& grid) {
     }
 
     return false;
+}
+
+int GetIndicatorTop(Indicator indicator, int screen_height) {
+    float base = screen_height * 0.4f;
+    float growth = (screen_height - 480) / 10.0f;
+    const int IndicatorHeight = 24;
+    
+    return static_cast<int>(base + growth) + 
+           static_cast<int>(indicator) * IndicatorHeight +
+           static_cast<int>(indicator);
 }
 
 float GetRadarPerPixel(const ScreenAreaPtr& radar, int mapzoom) {
@@ -92,8 +107,6 @@ Vec2 GetBotRadarPos(Vec2 real_pos, const ScreenAreaPtr& radar, int mapzoom) {
 
 Vec2 FindTargetPos(Vec2 bot_pos, Vec2 radar_coord, const ScreenGrabberPtr& screen, const ScreenAreaPtr& radar, const Level& level, int mapzoom) {
     float per_pix = GetRadarPerPixel(radar, mapzoom);
-    int rwidth = radar->GetWidth();
-
     Vec2 rpos = GetBotRadarPos(bot_pos, radar, mapzoom);
 
     double rdx = -(rpos.x - radar_coord.x);
@@ -114,8 +127,9 @@ Vec2 FindTargetPos(Vec2 bot_pos, Vec2 radar_coord, const ScreenGrabberPtr& scree
 }
 
 bool XRadarOn(const ScreenGrabberPtr& grabber) {
+    int indicator_y = GetIndicatorTop(Indicator::XRadar, grabber->GetHeight());
     int x = grabber->GetWidth() - 8;
-    int y = grabber->GetHeight() == 600 ? 363 : 303;
+    int y = indicator_y + 11;
     
     Pixel pixel = grabber->GetPixel(x, y);
 

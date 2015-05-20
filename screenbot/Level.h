@@ -21,6 +21,8 @@ private:
 
 public:
     Level();
+    ~Level();
+
     bool Load(const tstring& filename);
 
     static bool IsSolid(int id);

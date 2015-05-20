@@ -33,7 +33,6 @@ RotationStore::RotationStore(Config& config) {
 }
 
 int RotationStore::GetRotation(u64 pixval) {
-    int closest_ship = 0;
     int closest_rot = 0;
     long long closest_diff = 999999999;
 
@@ -43,7 +42,6 @@ int RotationStore::GetRotation(u64 pixval) {
             long long diff = std::abs((signed long long)(m_Rotations[i][j] - pixval));
 
             if (diff < closest_diff) {
-                closest_ship = i;
                 closest_rot = j;
                 closest_diff = diff;
             }

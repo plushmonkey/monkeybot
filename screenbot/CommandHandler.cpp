@@ -3,13 +3,15 @@
 #include "Bot.h"
 #include "Random.h"
 #include "Client.h"
+#include "Util.h"
 
 #include <thread>
 #include <regex>
+#include <sstream>
 
-#define RegisterCommand(cmd, func) m_Commands[cmd] = std::bind(&CommandHandler::func, this, std::placeholders::_1);
+#define RegisterCommand(cmd, func) m_Commands[cmd] = std::bind(&CommandHandler::func, this, std::placeholders::_1, std::placeholders::_2);
 
-void CommandHandler::CommandShip(const std::string& args) {
+void CommandHandler::CommandShip(const std::string& sender, const std::string& args) {
     if (args.length() == 0) return;
 
     int ship = atoi(args.c_str());
@@ -21,13 +23,13 @@ void CommandHandler::CommandShip(const std::string& args) {
     std::cout << "Ship: " << ship << std::endl;
 }
 
-void CommandHandler::CommandTarget(const std::string& args) {
+void CommandHandler::CommandTarget(const std::string& sender, const std::string& args) {
     m_Bot->GetClient()->SetTarget(args);
 
     std::cout << "Target: " << (args.length() > 0 ? args : "None") << std::endl;
 }
 
-void CommandHandler::CommandPriority(const std::string& args) {
+void CommandHandler::CommandPriority(const std::string& sender, const std::string& args) {
     m_Bot->GetClient()->SetPriorityTarget(args);
 
     std::cout << "Priority Target: " << (args.length() > 0 ? args : "None") << std::endl;
@@ -35,7 +37,7 @@ void CommandHandler::CommandPriority(const std::string& args) {
     m_Bot->GetSurvivorGame()->SetTarget(args);
 }
 
-void CommandHandler::CommandTaunt(const std::string& args) {
+void CommandHandler::CommandTaunt(const std::string& sender, const std::string& args) {
     bool taunt = !m_Bot->GetConfig().Taunt;
 
     m_Bot->SetTaunt(taunt);
@@ -43,7 +45,11 @@ void CommandHandler::CommandTaunt(const std::string& args) {
     std::cout << "Taunt: " << std::boolalpha << taunt << std::endl;
 }
 
-void CommandHandler::CommandFreq(const std::string& args) {
+void CommandHandler::CommandSay(const std::string& sender, const std::string& args) {
+    m_Bot->GetClient()->SendString(args);
+}
+
+void CommandHandler::CommandFreq(const std::string& sender, const std::string& args) {
     ClientPtr client = m_Bot->GetClient();
     int freq = 0;
     
@@ -61,7 +67,7 @@ void CommandHandler::CommandFreq(const std::string& args) {
     client->SendString("=" + std::to_string(freq));
 }
 
-void CommandHandler::CommandFlag(const std::string& args) {
+void CommandHandler::CommandFlag(const std::string& sender, const std::string& args) {
     bool flagging = m_Bot->GetFlagging();
     Config& cfg = m_Bot->GetConfig();
     ClientPtr client = m_Bot->GetClient();
@@ -94,8 +100,6 @@ void CommandHandler::CommandFlag(const std::string& args) {
 
         cfg.CenterRadius = 200;
 
-        int current_freq = client->GetFreq();
-
         client->ReleaseKeys();
         client->SetXRadar(false);
         while (!m_Bot->FullEnergy()) {
@@ -108,7 +112,12 @@ void CommandHandler::CommandFlag(const std::string& args) {
     m_Bot->SetFlagging(flagging);
 }
 
-void CommandHandler::CommandPause(const std::string& args) {
+void CommandHandler::CommandSpec(const std::string& sender, const std::string& args) {
+    m_Bot->SetPaused(true);
+    m_Bot->SetShip(Ship::Spectator);
+}
+
+void CommandHandler::CommandPause(const std::string& sender, const std::string& args) {
     bool paused = !m_Bot->GetPaused();
 
     m_Bot->SetPaused(paused);
@@ -120,14 +129,73 @@ void CommandHandler::CommandPause(const std::string& args) {
     }
 }
 
-void CommandHandler::CommandCommander(const std::string& args) {
+void CommandHandler::CommandCommander(const std::string& sender, const std::string& args) {
     m_Bot->GetConfig().Commander = !m_Bot->GetConfig().Commander;
 
     std::cout << "Commander: " << std::boolalpha << m_Bot->GetConfig().Commander << std::endl;
 }
 
+void CommandHandler::CommandWarp(const std::string& sender, const std::string& args) {
+    m_Bot->GetClient()->Warp();
+}
+
+void CommandHandler::CommandRevenge(const std::string& sender, const std::string& args) {
+    bool enabled = false;
+
+    if (args.length() == 0)
+        enabled = !m_Bot->GetRevenge()->IsEnabled();
+    else
+        enabled = Util::strtobool(args);
+
+    m_Bot->GetRevenge()->SetEnabled(enabled);
+
+    std::cout << "Revenge: " << enabled << std::endl;
+}
+
+void CommandHandler::CommandLoad(const std::string& sender, const std::string& args) {
+    if (args.length() == 0) return;
+
+    PluginManager& pm = m_Bot->GetPluginManager();
+
+    pm.LoadPlugin(m_Bot, args);
+}
+
+void CommandHandler::CommandUnload(const std::string& sender, const std::string& args) {
+    if (args.length() == 0) return;
+
+    PluginManager& pm = m_Bot->GetPluginManager();
+
+    pm.UnloadPlugin(args);
+}
+
+void CommandHandler::CommandCommands(const std::string& sender, const std::string& args) {
+    std::stringstream ss;
+    std::size_t size = 0;
+    ClientPtr client = m_Bot->GetClient();
+
+    std::size_t num_commands = m_Commands.size();
+    std::size_t i = 0;
+    for (auto& kv : m_Commands) {
+        std::string command = kv.first;
+
+        if (size + command.length() > 140) {
+            client->SendPM(sender, ss.str());
+            ss.str("");
+            size = 0;
+        }
+
+        ss << command;
+
+        if (++i != num_commands)
+            ss << ", ";
+    }
+
+    if (ss.str().length())
+        client->SendPM(sender, ss.str());
+}
+
 void CommandHandler::HandleMessage(ChatMessage* mesg) {
-    if (mesg->GetType() != ChatMessage::Type::Private && mesg->GetType() != ChatMessage::Type::Channel) return;
+    if (mesg->GetType() != ChatMessage::Type::Private && mesg->GetType() != ChatMessage::Type::Channel && mesg->GetType() != ChatMessage::Type::Public) return;
 
     std::string player_name = mesg->GetPlayer();
     std::string command_line = mesg->GetMessage();
@@ -171,20 +239,28 @@ void CommandHandler::HandleMessage(ChatMessage* mesg) {
     auto cmd = m_Commands.find(command);
 
     if (cmd != m_Commands.end())
-        cmd->second(args);
+        cmd->second(mesg->GetPlayer(), args);
     else
         std::cout << "Command " << command << " not recognized." << std::endl;
 }
 
 CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
+    RegisterCommand("help", CommandCommands);
+    RegisterCommand("commands", CommandCommands);
     RegisterCommand("ship", CommandShip);
     RegisterCommand("flag", CommandFlag);
     RegisterCommand("freq", CommandFreq);
     RegisterCommand("taunt", CommandTaunt);
     RegisterCommand("target", CommandTarget);
     RegisterCommand("priority", CommandPriority);
+    RegisterCommand("spec", CommandSpec);
     RegisterCommand("pause", CommandPause);
+    RegisterCommand("say", CommandSay);
     RegisterCommand("commander", CommandCommander);
+    RegisterCommand("revenge", CommandRevenge);
+    RegisterCommand("warp", CommandWarp);
+    RegisterCommand("load", CommandLoad);
+    RegisterCommand("unload", CommandUnload);
 }
 
 CommandHandler::~CommandHandler() {

@@ -54,6 +54,8 @@ public:
     std::vector<std::string> Staff;
     bool Survivor;
     std::string Zone;
+    bool MultiFire;
+    bool Revenge;
     RotationValues ShipRotations[8];
 
     Config();

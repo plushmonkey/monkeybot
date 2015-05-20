@@ -1,6 +1,8 @@
 #ifndef COMMON_H_
 #define COMMON_H_
 
+#include "api/Api.h"
+
 #include <cstdint>
 #include <memory>
 #include <ostream>
@@ -48,11 +50,15 @@ typedef uint64_t u64;
 
 class ScreenArea;
 class ScreenGrabber;
-class Client;
 
-typedef std::shared_ptr<ScreenGrabber> ScreenGrabberPtr;
-typedef std::shared_ptr<ScreenArea> ScreenAreaPtr;
-typedef std::shared_ptr<Client> ClientPtr;
+using std::shared_ptr;
+using std::weak_ptr;
+
+typedef shared_ptr<ScreenGrabber> ScreenGrabberPtr;
+typedef shared_ptr<ScreenArea> ScreenAreaPtr;
+
+//namespace api { class Client; }
+//typedef shared_ptr<api::Client> ClientPtr;
 
 enum class Direction {
     Up, Down, Left, Right, None
@@ -101,6 +107,8 @@ namespace Colors {
     extern const Pixel EnergyColor[2];
     extern const Pixel XRadarOn;
     extern const Pixel XRadarOff;
+    extern const Pixel MultiNone;
+    extern const Pixel MultiOff;
 }
 
 class Font;

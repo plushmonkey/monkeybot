@@ -20,9 +20,23 @@ private:
     bool m_InArena;
 
 public:
-    Player() : m_InArena(true) { }
-    Player(const std::string& name) : m_Name(name), m_InArena(true) { }
-    Player(const std::string& name, unsigned short freq) : m_Name(name), m_Freq(freq), m_InArena(true) { }
+    Player() 
+        : m_InArena(true), m_Freq(9999), 
+          m_Rotation(0), m_Pid(0), 
+          m_Ship(Ship::Spectator)
+    { }
+
+    Player(const std::string& name) 
+        : m_Name(name), m_InArena(true), 
+          m_Freq(9999), m_Rotation(0), 
+          m_Pid(0), m_Ship(Ship::Spectator)
+    { }
+
+    Player(const std::string& name, unsigned short freq) 
+        : m_Name(name), m_Freq(freq), 
+          m_InArena(true), m_Rotation(0), 
+          m_Pid(0), m_Ship(Ship::Spectator) 
+    { }
 
     const std::string& GetName() const { return m_Name; }
     unsigned int GetFreq() const { return m_Freq; }
@@ -52,7 +66,7 @@ public:
 
 };
 
-typedef std::shared_ptr<Player> PlayerPtr;
+typedef shared_ptr<Player> PlayerPtr;
 typedef std::vector<PlayerPtr> PlayerList;
 
 #endif

@@ -45,6 +45,8 @@ Config::Config()
       Hyperspace(true),
       Commander(false),
       Survivor(false),
+      MultiFire(true),
+      Revenge(false),
       Zone("Hyperspace")
 {
 
@@ -80,6 +82,8 @@ void Config::LoadFromNode(const Json::Value& node) {
     NODELOAD(Hyperspace).asBool();
     NODELOAD(Commander).asBool();
     NODELOAD(Survivor).asBool();
+    NODELOAD(MultiFire).asBool();
+    NODELOAD(Revenge).asBool();
     
     if (node.isMember("Level"))
         Level   = node.get("Level", Level).asString();
@@ -223,6 +227,8 @@ std::ostream& operator<<(std::ostream& os, const Config& c) {
     OUTPUT(Hyperspace);
     OUTPUT(Commander);
     OUTPUT(Survivor);
+    OUTPUT(MultiFire);
+    OUTPUT(Revenge);
     OUTPUT(Zone);
 
     os << "Waypoints: ";

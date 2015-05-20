@@ -41,7 +41,6 @@ std::vector<WritableArea> GetWritableAreas(HANDLE handle) {
 }
 
 std::vector<unsigned int> FindU32(HANDLE handle, const unsigned int value) {
-    const unsigned int upper = 0x7FFFFFFF;
     std::vector<unsigned int> found;
 
     std::vector<WritableArea> areas = GetWritableAreas(handle);
@@ -68,7 +67,6 @@ std::vector<unsigned int> FindU32(HANDLE handle, const unsigned int value) {
 }
 
 std::vector<unsigned int> FindRange(HANDLE handle, const unsigned int start, const unsigned int end) {
-    const unsigned int upper = 0x7FFFFFFF;
     std::vector<unsigned int> found;
 
     std::vector<WritableArea> areas = GetWritableAreas(handle);

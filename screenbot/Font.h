@@ -23,7 +23,8 @@ public:
           m_Height(height), 
           m_Char(' ')
     { 
-
+        memset(m_RowValues, 0, sizeof(int)*MAX_ROWS);
+        memset(m_ColValues, 0, sizeof(int)*MAX_COLS);
     }
 
     ~Character() { }
@@ -63,7 +64,7 @@ public:
         return true;
     }
 
-    bool operator<(const Character other) const {
+    bool operator<(const Character& other) const {
         return m_Char < other.m_Char;
     }
 };
@@ -81,7 +82,7 @@ public:
 
     Character GetCharacter(char c);
     char GetCharacter(Character c);
-    bool GetCharacter(ScreenAreaPtr area, std::vector<Pixel> ignore, char* out);
+    bool GetCharacter(ScreenAreaPtr area, const std::vector<Pixel>& ignore, char* out);
 
     int GetWidth() const { return m_CharWidth; }
     int GetHeight() const { return m_CharHeight; }

@@ -1,6 +1,7 @@
 #ifndef BOT_H_
 #define BOT_H_
 
+#include "api/Api.h"
 #include "WindowFinder.h"
 #include "Keyboard.h"
 #include "State.h"
@@ -11,10 +12,16 @@
 #include "Taunter.h"
 #include "MemorySensor.h"
 #include "Survivor.h"
+#include "Revenge.h"
+#include "plugin/PluginManager.h"
+#include "Version.h"
 
 #include <memory>
+#include <mutex>
 #include <vector>
 #include <Windows.h>
+
+#include <WinUser.h>
 
 class FileStream;
 
@@ -26,17 +33,22 @@ struct TargetInfo {
     TargetInfo(int dx, int dy, double dist) : dx(dx), dy(dy), dist(dist) { }
 };
 
-class Bot : public MessageHandler<ChatMessage> {
+class Bot : public api::Bot, public MessageHandler<ChatMessage> {
+public:
+    typedef std::function<bool(Bot*, DWORD)> UpdateFunction;
+    typedef unsigned int UpdateID;
+
 private:
     WindowFinder m_Finder;
     HWND m_Window;
-    StatePtr m_State;
+    api::StatePtr m_State;
     int m_ShipNum;
     PlayerPtr m_EnemyTarget;
     TargetInfo m_EnemyTargetInfo;
     PlayerPtr m_LastTarget;
     int m_MaxEnergy;
     int m_Energy;
+    int m_LastEnergy;
     Level m_Level;
     Pathing::Grid<short> m_Grid;
     DWORD m_LastEnemy;
@@ -44,14 +56,24 @@ private:
     DWORD m_LancTimer;
     bool m_Paused;
     bool m_Flagging;
+    PluginManager m_PluginManager;
 
+
+    std::mutex m_SendMutex;
+    std::string m_SendBuffer;
+    
+    shared_ptr<Revenge> m_Revenge;
+    
+    std::map<UpdateID, UpdateFunction> m_Updaters;
+    
     Config m_Config;
     ClientPtr m_Client;
     SurvivorGame m_Survivor;
     Memory::MemorySensor m_MemorySensor;
     Taunter m_Taunter;
-    std::shared_ptr<LogReader> m_LogReader;
+    shared_ptr<LogReader> m_LogReader;
     CommandHandler m_CommandHandler;
+    Version m_Version;
 
     std::string m_AttachTarget;
 
@@ -62,8 +84,11 @@ private:
 public:
     Bot(int ship);
 
+    api::Version& GetVersion() { return m_Version; }
+
     ClientPtr GetClient();
     Config& GetConfig() { return m_Config; }
+    PluginManager& GetPluginManager() { return m_PluginManager; }
 
     Pathing::Grid<short>& GetGrid() { return m_Grid; }
     const Level& GetLevel() const { return m_Level; }
@@ -72,6 +97,7 @@ public:
     TargetInfo GetEnemyTargetInfo() const { return m_EnemyTargetInfo; }
 
     int GetEnergy() const { return m_Energy; }
+    int GetLastEnergy() const { return m_LastEnergy; }
     int GetMaxEnergy() const { return m_MaxEnergy; }
     int GetEnergyPercent() const { 
         if (m_MaxEnergy == 0) return 0;
@@ -100,15 +126,19 @@ public:
     bool GetPaused() const { return m_Paused; }
     void SetPaused(bool b) { m_Paused = b; }
 
-    bool InCenter() const {
+    void SendMessage(const std::string& str);
+
+    bool IsInCenter() const {
         Vec2 pos = GetPos();
         Vec2 spawn((float)m_Config.SpawnX, (float)m_Config.SpawnY);
 
         return (pos - spawn).Length() < m_Config.CenterRadius;
     }
 
-    void SetState(StatePtr state) { m_State = state; }
-    StateType GetStateType() const {
+    void SetState(api::StatePtr state) { m_State = state; }
+    void SetState(api::StateType type);
+
+    api::StateType GetStateType() const {
         return m_State->GetType();
     }
 
@@ -117,14 +147,31 @@ public:
 
     void CheckLancs(const std::string& line);
 
+    void Follow(const std::string& name);
+
     int Run();
     void Update(DWORD dt);
 
     void SetShip(Ship ship);
 
+    shared_ptr<Revenge> GetRevenge() { return m_Revenge; }
+
     Ship GetShip() const { return (Ship)(m_ShipNum - 1); }
 
-    Memory::MemorySensor GetMemorySensor() {
+    UpdateID RegisterUpdater(UpdateFunction func) {
+        static UpdateID id;
+
+        m_Updaters[id] = func;
+
+        return id++;
+    }
+
+    void UnregisterUpdater(UpdateID id) {
+        if (m_Updaters.find(id) != m_Updaters.end())
+            m_Updaters.erase(id);
+    }
+
+    Memory::MemorySensor& GetMemorySensor() {
         return m_MemorySensor;
     }
 
@@ -132,5 +179,7 @@ public:
 
     void ForceLogRead();
 };
+
+#define RegisterBotUpdater(bot, function) (bot)->RegisterUpdater(std::bind(&function, this, std::placeholders::_1, std::placeholders::_2)); 
 
 #endif

@@ -14,7 +14,7 @@ private:
     int m_Height;
     int m_BPP;
     HDC m_ScreenDC;
-    std::shared_ptr<ScreenArea> m_Area;
+    shared_ptr<ScreenArea> m_Area;
 
     void GetInfo(int* width, int* height, int* bpp);
 
@@ -27,7 +27,7 @@ public:
     const Pixel* GetPixels();
     Pixel GetPixel(int x, int y);
     void Update();
-    std::shared_ptr<ScreenArea> GetArea(int x, int y, int width, int height);
+    shared_ptr<ScreenArea> GetArea(int x, int y, int width, int height);
 
     bool Save(const tstring& filename);
 };
