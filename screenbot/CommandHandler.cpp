@@ -4,198 +4,66 @@
 #include "Random.h"
 #include "Client.h"
 #include "Util.h"
+#include "Commands/Commands.h"
+#include "Tokenizer.h"
 
 #include <thread>
 #include <regex>
 #include <sstream>
 
-#define RegisterCommand(cmd, func) m_Commands[cmd] = std::bind(&CommandHandler::func, this, std::placeholders::_1, std::placeholders::_2);
+void CommandHandler::AddPermission(const std::string& player, const std::string& permission) {
+    std::string player_lower = Util::strtolower(player);
+    std::string perm_lower = Util::strtolower(permission);
 
-void CommandHandler::CommandShip(const std::string& sender, const std::string& args) {
-    if (args.length() == 0) return;
-
-    int ship = atoi(args.c_str());
-    if (ship < 1 || ship > 8) return;
-
-    ClientPtr client = m_Bot->GetClient();
-    m_Bot->SetShip((Ship)(ship - 1));
-
-    std::cout << "Ship: " << ship << std::endl;
+    m_Permissions[player_lower].push_back(perm_lower);
 }
 
-void CommandHandler::CommandTarget(const std::string& sender, const std::string& args) {
-    m_Bot->GetClient()->SetTarget(args);
+bool CommandHandler::ComparePermissions(const std::string& has, const std::string& required) {
+    using namespace Util;
+    using namespace std;
 
-    std::cout << "Target: " << (args.length() > 0 ? args : "None") << std::endl;
-}
+    Tokenizer required_tokens(required);
+    Tokenizer has_tokens(has);
 
-void CommandHandler::CommandPriority(const std::string& sender, const std::string& args) {
-    m_Bot->GetClient()->SetPriorityTarget(args);
+    required_tokens('.');
+    has_tokens('.');
 
-    std::cout << "Priority Target: " << (args.length() > 0 ? args : "None") << std::endl;
+    size_t has_count = has_tokens.size();
+    size_t required_count = required_tokens.size();
 
-    m_Bot->GetSurvivorGame()->SetTarget(args);
-}
-
-void CommandHandler::CommandTaunt(const std::string& sender, const std::string& args) {
-    bool taunt = !m_Bot->GetConfig().Taunt;
-
-    m_Bot->SetTaunt(taunt);
-
-    std::cout << "Taunt: " << std::boolalpha << taunt << std::endl;
-}
-
-void CommandHandler::CommandSay(const std::string& sender, const std::string& args) {
-    m_Bot->GetClient()->SendString(args);
-}
-
-void CommandHandler::CommandFreq(const std::string& sender, const std::string& args) {
-    ClientPtr client = m_Bot->GetClient();
-    int freq = 0;
-    
-    if (args.length() > 0)
-        freq = atoi(args.c_str());
-    else
-        freq = Random::GetU32(10, 80);
-
-    client->ReleaseKeys();
-    client->SetXRadar(false);
-    while (!m_Bot->FullEnergy()) {
-        client->Update(100);
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-    client->SendString("=" + std::to_string(freq));
-}
-
-void CommandHandler::CommandFlag(const std::string& sender, const std::string& args) {
-    bool flagging = m_Bot->GetFlagging();
-    Config& cfg = m_Bot->GetConfig();
-    ClientPtr client = m_Bot->GetClient();
-
-    if (!cfg.Hyperspace) return;
-
-    std::cout << "Flagging: " << std::boolalpha << !flagging << std::endl;
-
-    if (flagging) {
-        cfg.Attach = false;
-        cfg.CenterOnly = true;
-
-        flagging = false;
-
-        cfg.CenterRadius = 250;
-
-        int freq = Random::GetU32(10, 80);
-        client->ReleaseKeys();
-        client->SetXRadar(false);
-        while (!m_Bot->FullEnergy()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            client->Update(100);
-        }
-        client->SendString("=" + std::to_string(freq));
-    } else {
-        cfg.Attach = true;
-        cfg.CenterOnly = false;
-
-        flagging = true;
-
-        cfg.CenterRadius = 200;
-
-        client->ReleaseKeys();
-        client->SetXRadar(false);
-        while (!m_Bot->FullEnergy()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            client->Update(100);
-        }
-        client->SendString("?flag");
+    for (size_t i = 0; i < has_count && i < required_count; ++i) {
+        if (has_tokens[i].compare("*") == 0) return true;
+        if (has_tokens[i].compare(required_tokens[i]) != 0) return false;
     }
 
-    m_Bot->SetFlagging(flagging);
+    return has_count == required_count;
 }
 
-void CommandHandler::CommandSpec(const std::string& sender, const std::string& args) {
-    m_Bot->SetPaused(true);
-    m_Bot->SetShip(Ship::Spectator);
-}
+bool CommandHandler::HasPermission(const std::string& player, api::CommandPtr command) {
+    std::string cmd_perm = Util::strtolower(command->GetPermission());
+    std::string player_lower = Util::strtolower(player);
 
-void CommandHandler::CommandPause(const std::string& sender, const std::string& args) {
-    bool paused = !m_Bot->GetPaused();
+    if (cmd_perm.size() == 0) return true;
 
-    m_Bot->SetPaused(paused);
-    tcout << "Paused: " << std::boolalpha << paused << std::endl;
+    auto permkv = m_Permissions.find(player_lower);
 
-    if (paused) {
-        m_Bot->GetClient()->ReleaseKeys();
-        m_Bot->SetShip(Ship::Spectator);
+    // Use wildstar if the player doesn't have any permissions
+    if (permkv == m_Permissions.end())
+        permkv = m_Permissions.find("*");
+
+    // Player doesn't have any permissions and the command requires permission
+    if (permkv == m_Permissions.end()) return false;
+
+    Permissions::const_iterator iter = permkv->second.begin();
+    while (iter != permkv->second.end()) {
+        if (ComparePermissions(*iter, cmd_perm)) return true;
+        ++iter;
     }
-}
-
-void CommandHandler::CommandCommander(const std::string& sender, const std::string& args) {
-    m_Bot->GetConfig().Commander = !m_Bot->GetConfig().Commander;
-
-    std::cout << "Commander: " << std::boolalpha << m_Bot->GetConfig().Commander << std::endl;
-}
-
-void CommandHandler::CommandWarp(const std::string& sender, const std::string& args) {
-    m_Bot->GetClient()->Warp();
-}
-
-void CommandHandler::CommandRevenge(const std::string& sender, const std::string& args) {
-    bool enabled = false;
-
-    if (args.length() == 0)
-        enabled = !m_Bot->GetRevenge()->IsEnabled();
-    else
-        enabled = Util::strtobool(args);
-
-    m_Bot->GetRevenge()->SetEnabled(enabled);
-
-    std::cout << "Revenge: " << enabled << std::endl;
-}
-
-void CommandHandler::CommandLoad(const std::string& sender, const std::string& args) {
-    if (args.length() == 0) return;
-
-    PluginManager& pm = m_Bot->GetPluginManager();
-
-    pm.LoadPlugin(m_Bot, args);
-}
-
-void CommandHandler::CommandUnload(const std::string& sender, const std::string& args) {
-    if (args.length() == 0) return;
-
-    PluginManager& pm = m_Bot->GetPluginManager();
-
-    pm.UnloadPlugin(args);
-}
-
-void CommandHandler::CommandCommands(const std::string& sender, const std::string& args) {
-    std::stringstream ss;
-    std::size_t size = 0;
-    ClientPtr client = m_Bot->GetClient();
-
-    std::size_t num_commands = m_Commands.size();
-    std::size_t i = 0;
-    for (auto& kv : m_Commands) {
-        std::string command = kv.first;
-
-        if (size + command.length() > 140) {
-            client->SendPM(sender, ss.str());
-            ss.str("");
-            size = 0;
-        }
-
-        ss << command;
-
-        if (++i != num_commands)
-            ss << ", ";
-    }
-
-    if (ss.str().length())
-        client->SendPM(sender, ss.str());
+    return false;
 }
 
 void CommandHandler::HandleMessage(ChatMessage* mesg) {
-    if (mesg->GetType() != ChatMessage::Type::Private && mesg->GetType() != ChatMessage::Type::Channel && mesg->GetType() != ChatMessage::Type::Public) return;
+    if (mesg->GetType() == ChatMessage::Type::Other) return;
 
     std::string player_name = mesg->GetPlayer();
     std::string command_line = mesg->GetMessage();
@@ -214,53 +82,88 @@ void CommandHandler::HandleMessage(ChatMessage* mesg) {
         args = command_line.substr(pos + 1);
     }
 
-    std::vector<std::string> staff = { "monkey", "ceiu", "bzap", "baked cake", "cdb-man", "nn", "pity.", "noldec" };
+    std::transform(command.begin(), command.end(), command.begin(), tolower);
 
-    /* Append config staff list to hardcoded staff list */
-    staff.insert(staff.end(), m_Bot->GetConfig().Staff.begin(), m_Bot->GetConfig().Staff.end());
-
-    std::transform(player_name.begin(), player_name.end(), player_name.begin(), tolower);
-    bool allowed = false;
-    for (auto s : staff) {
-        if (player_name.compare(s) == 0) {
-            allowed = true;
-            break;
-        }
-    }
-
-    if (!allowed) {
-        std::cout << player_name << " tried to use command " << command_line << " but doesn't have permission" << std::endl;
-        return;
-    }
+    /* Don't allow help in pub chat since it's used for a bunch of bots */
+    if (command.compare("help") == 0 && mesg->GetType() != ChatMessage::Type::Private) return;
 
     std::cout << "Command from " << player_name << " : " << command_line << std::endl;
 
-    std::transform(command.begin(), command.end(), command.begin(), tolower);
     auto cmd = m_Commands.find(command);
 
-    if (cmd != m_Commands.end())
-        cmd->second(mesg->GetPlayer(), args);
-    else
+    if (cmd != m_Commands.end()) {
+        if (HasPermission(player_name, cmd->second))
+            cmd->second->Invoke(m_Bot, mesg->GetPlayer(), args);
+        else
+            std::cout << mesg->GetPlayer() << " tried to use command " << command_line << " but doesn't have permission" << std::endl;
+    } else {
         std::cout << "Command " << command << " not recognized." << std::endl;
+    }
+}
+
+bool CommandHandler::RegisterCommand(const std::string& name, api::CommandPtr command) {
+    std::string name_lower = Util::strtolower(name);
+
+    auto iter = m_Commands.find(name_lower);
+    if (iter != m_Commands.end()) return false;
+
+    m_Commands[name_lower] = command;
+
+    return true;
+}
+
+void CommandHandler::UnregisterCommand(const std::string& name) {
+    std::string name_lower = Util::strtolower(name);
+
+    auto iter = m_Commands.find(name_lower);
+    if (iter == m_Commands.end()) return;
+
+    m_Commands.erase(name_lower);
+}
+
+CommandHandler::const_iterator CommandHandler::begin() const {
+    return m_Commands.begin();
+}
+
+CommandHandler::const_iterator CommandHandler::end() const {
+    return m_Commands.end();
+}
+
+std::size_t CommandHandler::GetSize() const {
+    return m_Commands.size();
+}
+
+void CommandHandler::InitPermissions() {
+    PermissionMap perms = m_Bot->GetConfig().Permissions;
+
+    // Use AddPermission to make sure everything is lowercase
+    for (auto kv : perms) {
+        for (auto perm : kv.second)
+            AddPermission(kv.first, perm);
+    }
 }
 
 CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
-    RegisterCommand("help", CommandCommands);
-    RegisterCommand("commands", CommandCommands);
-    RegisterCommand("ship", CommandShip);
-    RegisterCommand("flag", CommandFlag);
-    RegisterCommand("freq", CommandFreq);
-    RegisterCommand("taunt", CommandTaunt);
-    RegisterCommand("target", CommandTarget);
-    RegisterCommand("priority", CommandPriority);
-    RegisterCommand("spec", CommandSpec);
-    RegisterCommand("pause", CommandPause);
-    RegisterCommand("say", CommandSay);
-    RegisterCommand("commander", CommandCommander);
-    RegisterCommand("revenge", CommandRevenge);
-    RegisterCommand("warp", CommandWarp);
-    RegisterCommand("load", CommandLoad);
-    RegisterCommand("unload", CommandUnload);
+    RegisterCommand("help", std::make_shared<CommandsCommand>());
+    RegisterCommand("commands", std::make_shared<CommandsCommand>());
+
+    RegisterCommand("pause", std::make_shared<PauseCommand>());
+    
+    RegisterCommand("load", std::make_shared<LoadCommand>());
+    RegisterCommand("unload", std::make_shared<UnloadCommand>());
+
+    RegisterCommand("ship", std::make_shared<ShipCommand>());
+    RegisterCommand("flag", std::make_shared<FlagCommand>());
+    RegisterCommand("freq", std::make_shared<FreqCommand>());
+    RegisterCommand("target", std::make_shared<TargetCommand>());
+
+    /* Probably should change the name of this and make it part of survivor plugin. */
+    RegisterCommand("priority", std::make_shared<PriorityCommand>());
+
+    /* TODO: Pull into own plugins */
+    RegisterCommand("commander", std::make_shared<CommanderCommand>());
+    RegisterCommand("revenge", std::make_shared<RevengeCommand>());
+    RegisterCommand("taunt", std::make_shared<TauntCommand>());
 }
 
 CommandHandler::~CommandHandler() {

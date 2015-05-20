@@ -5,6 +5,7 @@
 #include "Bot.h"
 #include "Client.h"
 #include "State.h"
+#include "Command.h"
 
 #ifdef GetMessage
 #undef GetMessage

@@ -7,6 +7,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include <iosfwd>
 #include <json/json.h>
 
@@ -57,10 +58,11 @@ public:
     bool MultiFire;
     bool Revenge;
     RotationValues ShipRotations[8];
+    std::map<std::string, std::vector<std::string>> Permissions;
 
     Config();
     bool Load(const std::string& jsonfile);
-    void LoadShip(Ship ship);
+    void LoadShip(api::Ship ship);
 };
 
 std::ostream& operator<<(std::ostream& os, const Config& config);

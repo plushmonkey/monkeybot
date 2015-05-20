@@ -38,7 +38,7 @@ std::string PluginManager::GetPluginPath(const std::string& name) {
     return filename;
 }
 
-void PluginManager::LoadPlugin(Bot* bot, const std::string& name) {
+void PluginManager::LoadPlugin(api::Bot* bot, const std::string& name) {
     if (name.length() == 0) return;
 
     if (m_UpdateID == -1)
@@ -156,7 +156,7 @@ PluginManager::const_reference PluginManager::operator[](Plugins::size_type inde
     return m_Plugins[index];
 }
 
-bool PluginManager::OnUpdate(Bot* bot, unsigned long dt) {
+bool PluginManager::OnUpdate(api::Bot* bot, unsigned long dt) {
     auto iter = begin();
 
     while (iter != end()) {

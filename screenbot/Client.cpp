@@ -332,7 +332,7 @@ std::vector<PlayerPtr> ScreenClient::GetEnemies(Vec2 real_pos, const Level& leve
     PlayerList players = m_MemorySensor.GetPlayers();
     for (auto p : players) {
         if (p->GetFreq() != GetFreq() &&
-            p->GetShip() != Ship::Spectator &&
+            p->GetShip() != api::Ship::Spectator &&
             p->GetName().at(0) != '<') 
         {
             Vec2 pos = p->GetPosition() / 16;

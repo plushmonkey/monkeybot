@@ -34,10 +34,6 @@ struct TargetInfo {
 };
 
 class Bot : public api::Bot, public MessageHandler<ChatMessage> {
-public:
-    typedef std::function<bool(Bot*, DWORD)> UpdateFunction;
-    typedef unsigned int UpdateID;
-
 private:
     WindowFinder m_Finder;
     HWND m_Window;
@@ -89,6 +85,7 @@ public:
     ClientPtr GetClient();
     Config& GetConfig() { return m_Config; }
     PluginManager& GetPluginManager() { return m_PluginManager; }
+    api::CommandHandler& GetCommandHandler() { return m_CommandHandler; }
 
     Pathing::Grid<short>& GetGrid() { return m_Grid; }
     const Level& GetLevel() const { return m_Level; }
@@ -124,7 +121,7 @@ public:
     }
 
     bool GetPaused() const { return m_Paused; }
-    void SetPaused(bool b) { m_Paused = b; }
+    void SetPaused(bool paused) { m_Paused = paused; }
 
     void SendMessage(const std::string& str);
 
@@ -152,11 +149,11 @@ public:
     int Run();
     void Update(DWORD dt);
 
-    void SetShip(Ship ship);
+    void SetShip(api::Ship ship);
 
     shared_ptr<Revenge> GetRevenge() { return m_Revenge; }
 
-    Ship GetShip() const { return (Ship)(m_ShipNum - 1); }
+    api::Ship GetShip() const { return (api::Ship)(m_ShipNum - 1); }
 
     UpdateID RegisterUpdater(UpdateFunction func) {
         static UpdateID id;

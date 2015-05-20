@@ -512,7 +512,8 @@ void PatrolState::Update(DWORD dt) {
         return;
     }
 
-    client->SetXRadar(true);
+    int energypct = m_Bot->GetEnergyPercent();
+    client->SetXRadar(energypct > m_Bot->GetConfig().XPercent);
 
     if (m_Waypoints.size() == 0) {
         ResetWaypoints();

@@ -102,11 +102,11 @@ void Bot::Follow(const std::string& name) {
     m_Config.CenterOnly = centerOnly;
 }
 
-void Bot::SetShip(Ship ship) {
-    Ship current = m_MemorySensor.GetBotPlayer()->GetShip();
+void Bot::SetShip(api::Ship ship) {
+    api::Ship current = m_MemorySensor.GetBotPlayer()->GetShip();
     if (ship == current) return;
 
-    if (ship != Ship::Spectator)
+    if (ship != api::Ship::Spectator)
         m_ShipNum = (int)ship + 1;
 
     if (m_Client->InShip()) {
@@ -121,7 +121,7 @@ void Bot::SetShip(Ship ship) {
         }
     }
 
-    if (ship != Ship::Spectator) {
+    if (ship != api::Ship::Spectator) {
         m_Client->EnterShip(m_ShipNum);
 
         m_Config.LoadShip(GetShip());
@@ -459,7 +459,7 @@ void Bot::Update(DWORD dt) {
         PlayerPtr bot = m_MemorySensor.GetBotPlayer();
 
         if (bot) {
-            Ship ship = bot->GetShip();
+            api::Ship ship = bot->GetShip();
             if (ship != GetShip())
                 this->SetShip(GetShip());
         }
@@ -496,8 +496,10 @@ int Bot::Run() {
         tcout << "Could not load config.json. Using default values." << std::endl;
 
     m_Config.LoadShip(GetShip());
-
+    
     tcout << m_Config;
+
+    m_CommandHandler.InitPermissions();
 
     m_LogReader = std::make_shared<LogReader>(m_Config.LogFile, 500);
     m_LogReader->Clear();
@@ -526,7 +528,7 @@ int Bot::Run() {
     }
 
     m_Taunter.SetEnabled(m_Config.Taunt);
-
+    
     try {
         m_Client = std::make_shared<ScreenClient>(m_Window, m_Config, m_MemorySensor);
     } catch (const std::exception& e) {
@@ -541,7 +543,7 @@ int Bot::Run() {
     tcout << "Bot started." << std::endl;
 
     const int MaxDeaths = 4;
-    m_Revenge = std::make_shared<Revenge>(*this, GetShip(), Ship::Shark, MaxDeaths);
+    m_Revenge = std::make_shared<Revenge>(*this, GetShip(), api::Ship::Shark, MaxDeaths);
     m_Revenge->SetEnabled(m_Config.Revenge);
 
     int plugins = m_PluginManager.LoadPlugins(this, "plugins");
@@ -556,7 +558,7 @@ int Bot::Run() {
     tcout << plugins << " plugin" << (plugins == 1 ? "" : "s") << " loaded." << std::endl;
 
     DWORD last_update = timeGetTime();
-
+    
     while (true) {
         DWORD dt = timeGetTime() - last_update;
         //std::cout << dt << " ";

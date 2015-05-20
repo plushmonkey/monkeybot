@@ -25,6 +25,12 @@
     <Filter Include="Source Files\plugin">
       <UniqueIdentifier>{c9381a21-19e4-410f-b96b-c727f7fd6818}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Commands">
+      <UniqueIdentifier>{b69f08d2-4251-4ce2-9a16-254403ca18c7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Commands">
+      <UniqueIdentifier>{a2dc776d-643a-4a55-8741-e6a1e7d6f994}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -113,6 +119,18 @@
     </ClCompile>
     <ClCompile Include="plugin\PluginInstance.cpp">
       <Filter>Source Files\plugin</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands\PauseCommand.cpp">
+      <Filter>Source Files\Commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands\CommandsCommand.cpp">
+      <Filter>Source Files\Commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands\PluginCommands.cpp">
+      <Filter>Source Files\Commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands\Commands.cpp">
+      <Filter>Source Files\Commands</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -238,6 +256,21 @@
     </ClInclude>
     <ClInclude Include="api\State.h">
       <Filter>Header Files\api</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands\PauseCommand.h">
+      <Filter>Header Files\Commands</Filter>
+    </ClInclude>
+    <ClInclude Include="api\Command.h">
+      <Filter>Header Files\api</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands\Commands.h">
+      <Filter>Header Files\Commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands\CommandsCommand.h">
+      <Filter>Header Files\Commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands\PluginCommands.h">
+      <Filter>Header Files\Commands</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

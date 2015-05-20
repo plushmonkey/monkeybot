@@ -204,7 +204,7 @@ void MemorySensor::DetectPlayers() {
         player->SetPosition(Vec2(x, y));
         player->SetVelocity(Vec2(xspeed, yspeed));
         player->SetPid(pid);
-        player->SetShip(static_cast<Ship>(ship));
+        player->SetShip(static_cast<api::Ship>(ship));
 
         if (name.compare(m_Name) == 0)
             m_BotPlayer = player;
@@ -218,7 +218,7 @@ void MemorySensor::DetectPlayers() {
     }
 }
 
-bool MemorySensor::OnUpdate(Bot *bot, unsigned long dt) {
+bool MemorySensor::OnUpdate(api::Bot *bot, unsigned long dt) {
     if (!m_Initialized) return true;
 
     if (m_PositionAddr != 0) {

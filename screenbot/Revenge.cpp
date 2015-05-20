@@ -14,7 +14,7 @@ const unsigned int Timeout = 2 * 60 * 1000;
 
 }
 
-Revenge::Revenge(Bot& bot, Ship current_ship, Ship strong_ship, int max_deaths)
+Revenge::Revenge(Bot& bot, api::Ship current_ship, api::Ship strong_ship, int max_deaths)
     : m_Bot(bot), m_DeathCounter(0), m_Enabled(false),
     m_NormalShip(current_ship), m_StrongShip(strong_ship),
     m_MaxDeaths(max_deaths), m_LastDeath(0)
@@ -28,7 +28,7 @@ Revenge::~Revenge() {
     m_Bot.UnregisterUpdater(m_UpdateID);
 }
 
-bool Revenge::OnUpdate(Bot *bot, unsigned long dt) {
+bool Revenge::OnUpdate(api::Bot *bot, unsigned long dt) {
     if (!m_Enabled) return true;
 
     DWORD current_time = timeGetTime();
@@ -72,7 +72,7 @@ bool Revenge::IsWhitelisted(const std::string& name) {
 }
 
 void Revenge::OnKill(KillMessage *mesg) {
-    Ship ship = m_Bot.GetShip();
+    api::Ship ship = m_Bot.GetShip();
 
     m_DeathCounter = std::max(m_DeathCounter - 1, 0);
 
@@ -99,7 +99,7 @@ void Revenge::OnDeath(KillMessage *mesg) {
 
     m_LastDeath = timeGetTime();
 
-    Ship ship = m_Bot.GetShip();
+    api::Ship ship = m_Bot.GetShip();
 
     m_DeathCounter = std::min(m_MaxDeaths, m_DeathCounter + 1);
 

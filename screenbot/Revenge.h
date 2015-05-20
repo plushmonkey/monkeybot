@@ -14,19 +14,19 @@ class Revenge : public MessageHandler<KillMessage> {
 private:
     
     const int m_MaxDeaths;
-    const Ship m_StrongShip;
+    const api::Ship m_StrongShip;
     Bot& m_Bot;
     unsigned int m_UpdateID;
 
     std::string m_PrevTarget;
-    Ship m_NormalShip;
+    api::Ship m_NormalShip;
     int m_DeathCounter;
     bool m_Enabled;
     DWORD m_LastDeath;
 
     bool IsWhitelisted(const std::string& name);
 
-    bool OnUpdate(Bot* bot, unsigned long dt);
+    bool OnUpdate(api::Bot* bot, unsigned long dt);
     void OnDeath(KillMessage *mesg);
     void OnKill(KillMessage *mesg);
     void HandleMessage(KillMessage* mesg);
@@ -37,7 +37,7 @@ public:
     void SetEnabled(bool enabled);
     bool IsEnabled() const { return m_Enabled; }
 
-    Revenge(Bot& bot, Ship current_ship, Ship strong_ship, int max_deaths);
+    Revenge(Bot& bot, api::Ship current_ship, api::Ship strong_ship, int max_deaths);
     ~Revenge();
 
 };

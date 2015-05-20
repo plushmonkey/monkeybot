@@ -9,34 +9,33 @@
 
 class Bot;
 
-typedef std::function<void(const std::string&, const std::string&)> CommandFunction;
-
-class CommandHandler : public MessageHandler<ChatMessage> {
+class CommandHandler : public api::CommandHandler, public MessageHandler<ChatMessage> {
 private:
-    std::map<std::string, CommandFunction> m_Commands;
+    typedef std::vector<std::string> Permissions;
+    typedef std::map<std::string, Permissions> PermissionMap;
+
+    PermissionMap m_Permissions;
+    Commands m_Commands;
     Bot* m_Bot;
 
+    // Determine if first falls under second
+    bool ComparePermissions(const std::string& has, const std::string& required);
     void HandleMessage(ChatMessage* mesg);
-
-    void CommandShip(const std::string& sender, const std::string& args);
-    void CommandSpec(const std::string& sender, const std::string& args);
-    void CommandPause(const std::string& sender, const std::string& args);
-    void CommandTarget(const std::string& sender, const std::string& args);
-    void CommandPriority(const std::string& sender, const std::string& args);
-    void CommandFreq(const std::string& sender, const std::string& args);
-    void CommandFlag(const std::string& sender, const std::string& args);
-    void CommandTaunt(const std::string& sender, const std::string& args);
-    void CommandCommander(const std::string& sender, const std::string& args);
-    void CommandSay(const std::string& sender, const std::string& args);
-    void CommandRevenge(const std::string& sender, const std::string& args);
-    void CommandWarp(const std::string& sender, const std::string& args);
-    void CommandCommands(const std::string& sender, const std::string& args);
-    void CommandLoad(const std::string& sender, const std::string& args);
-    void CommandUnload(const std::string& sender, const std::string& args);
-
 public:
     CommandHandler(Bot* bot);
     ~CommandHandler();
+
+    void AddPermission(const std::string& player, const std::string& permission);
+    bool HasPermission(const std::string& player, api::CommandPtr command);
+
+    bool RegisterCommand(const std::string& name, api::CommandPtr command);
+    void UnregisterCommand(const std::string& name);
+
+    void InitPermissions();
+
+    const_iterator begin() const;
+    const_iterator end() const;
+    std::size_t GetSize() const;
 };
 
 #endif

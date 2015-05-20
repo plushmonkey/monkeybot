@@ -52,7 +52,7 @@ private:
     void DetectFreq();
     void DetectPlayers();
 
-    bool OnUpdate(Bot* bot, unsigned long dt);
+    bool OnUpdate(api::Bot* bot, unsigned long dt);
 public:
     MemorySensor(Bot* bot);
     SensorError Initialize(HWND window);
@@ -63,7 +63,7 @@ public:
     const std::string& GetName() const { return m_Name; }
     PlayerList GetPlayers();
     PlayerPtr GetBotPlayer() { return m_BotPlayer; }
-    const ShipSettings& GetShipSettings(Ship ship) const { return m_ShipSettings[(int)ship]; }
+    const ShipSettings& GetShipSettings(api::Ship ship) const { return m_ShipSettings[(int)ship]; }
 };
 
 } // ns Memory

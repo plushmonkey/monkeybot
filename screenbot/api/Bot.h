@@ -3,23 +3,30 @@
 
 #include "Client.h"
 #include "State.h"
+#include "Command.h"
 #include "Version.h"
 #include "../Pathing.h"
 
 #include <memory>
+#include <functional>
 
 #undef SendMessage
 
-enum class Ship;
 struct TargetInfo;
 class Config;
+class PluginManager;
 
 namespace Memory { class MemorySensor; }
 
 namespace api {
 
+enum class Ship { Warbird, Javelin, Spider, Leviathan, Terrier, Weasel, Lancaster, Shark, Spectator };
+
 class Bot {
 public:
+    typedef std::function<bool(Bot*, unsigned long)> UpdateFunction;
+    typedef unsigned int UpdateID;
+
     /**
      * \brief Gets the Client class for interacting with the actual game window and keyboard.
      */
@@ -28,6 +35,13 @@ public:
     virtual Config& GetConfig() = 0;
 
     virtual Version& GetVersion() = 0;
+
+    virtual CommandHandler& GetCommandHandler() = 0;
+    virtual PluginManager& GetPluginManager() = 0;
+
+
+    virtual UpdateID RegisterUpdater(UpdateFunction func) = 0;
+
     /**
      * \brief Gets the bot's player name.
      */
@@ -44,6 +58,9 @@ public:
      * \brief Sets the current state of the bot using StateType.
      */
     virtual void SetState(StateType type) = 0;
+
+    virtual bool GetPaused() const = 0;
+    virtual void SetPaused(bool paused) = 0;
 
     /**
      * \brief Sets the bot's ship. It might have to pause and wait for energy before switching.

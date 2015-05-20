@@ -133,16 +133,21 @@ void Config::LoadFromNode(const Json::Value& node) {
         }
     }
 
-    const Json::Value staff = node["Staff"];
+    const Json::Value permissions = node["Permissions"];
+    if (!permissions.isNull()) {
+        Permissions.clear();
 
-    if (!staff.isNull()) {
-        Staff.clear();
+        Json::Value::Members members = permissions.getMemberNames();
 
-        for (size_t i = 0; i < staff.size(); ++i) {
-            std::string name = staff[i].asString();
+        Json::Value::Members::const_iterator player_iter = members.begin();
+        while (player_iter != members.end()) {
+            std::string player = *player_iter;
+            Json::Value player_perms = permissions[player];
 
-            std::transform(name.begin(), name.end(), name.begin(), tolower);
-            Staff.push_back(name);
+            for (std::size_t i = 0; i < player_perms.size(); ++i)
+                Permissions[player].push_back(player_perms[i].asString());
+
+            ++player_iter;
         }
     }
 
@@ -160,7 +165,7 @@ void Config::LoadFromNode(const Json::Value& node) {
     }
 }
 
-void Config::LoadShip(Ship ship) {
+void Config::LoadShip(api::Ship ship) {
     std::string name = ShipNames[(int)ship];
     Json::Value zone_node = m_Root[Zone];
     Json::Value ship_node = zone_node[name];
