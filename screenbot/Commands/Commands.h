@@ -6,6 +6,13 @@
 #include "PluginCommands.h"
 
 
+class ReloadConfCommand : public api::Command {
+public:
+    std::string GetPermission();
+    void Invoke(api::Bot* bot, const std::string& sender, const std::string& args);
+};
+
+
 class ShipCommand : public api::Command {
 public:
     std::string GetPermission();

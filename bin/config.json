@@ -25,6 +25,7 @@
 
     "FireBombs": true,
     "FireGuns": true,
+    "MultiFire": true,
 
     /** Ticks between each bullet fired. */
     "BulletDelay": 20,
@@ -197,6 +198,7 @@
 
     "FireBombs": false,
     "FireGuns": true,
+    "MultiFire": false,
 
     /** Ticks between each bullet fired. */
     "BulletDelay": 0,
@@ -223,7 +225,7 @@
     "SpawnY": 512,
 
     /** Creates a waypoint to the nearest safe if no players are nearby. */
-    "Baseduel": true,
+    "Baseduel": false,
 
     /** Warps back to center if the bot leaves this radius and OnlyCenter is true. */
     "CenterRadius": 65,
@@ -267,10 +269,10 @@
       "(455, 465)", "(460, 565)", "(565, 560)", "(565, 455)"
     ],
 
-    /** The staff list. */
-    "Staff": [
-      "monkey", "taz"
-    ],
+    "Permissions": {
+        "monkey": [ "*" ],
+        "taz": [ "default.*" ]
+    },
 
     /** Sends one of these randomly when the bot kills a player that isn't in the whitelist.
      * {name} will be replaced with the dead player's name.

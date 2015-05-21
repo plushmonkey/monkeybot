@@ -3,6 +3,12 @@
 
 #include "../api/Command.h"
 
+class PluginsCommand : public api::Command {
+public:
+    std::string GetPermission();
+    void Invoke(api::Bot* bot, const std::string& sender, const std::string& args);
+};
+
 class LoadCommand : public api::Command {
 public:
     std::string GetPermission();

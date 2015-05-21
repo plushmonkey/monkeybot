@@ -283,6 +283,42 @@ void Bot::HandleMessage(ChatMessage* mesg) {
         CheckLancs(line);
 }
 
+bool Bot::EnforceShip() {
+    bool in_ship = m_Client->InShip();
+
+    if (!in_ship) {
+        m_Client->ReleaseKeys();
+
+        m_MaxEnergy = 0;
+
+        m_Client->EnterShip(m_ShipNum);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+        m_Client->Update(30);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+        if (m_Client->InShip()) {
+            in_ship = true;
+            if (m_Config.Attach && m_Config.Hyperspace) {
+                if (m_Flagging) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    m_Client->SendString("?flag");
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
+                m_Client->SendString("?lancs");
+
+                this->SetState(std::make_shared<AttachState>(this));
+            } else {
+                this->SetState(std::make_shared<PatrolState>(this));
+            }
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(3500));
+        }
+    }
+
+    return in_ship;
+}
+
 void Bot::Update(DWORD dt) {
     m_LogReader->Update(dt);
 
@@ -302,37 +338,7 @@ void Bot::Update(DWORD dt) {
 
     m_Client->Update(dt);
 
-    bool in_ship = m_Client->InShip();
-
-    if (!in_ship) {
-        m_Client->ReleaseKeys();
-
-        m_MaxEnergy = 0;
-
-        m_Client->EnterShip(m_ShipNum);
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));
-        m_Client->Update(30);
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-        if (m_Client->InShip()) {
-            if (m_Config.Attach && m_Config.Hyperspace) {
-                if (m_Flagging) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    m_Client->SendString("?flag");
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                }
-                m_Client->SendString("?lancs");
-
-                this->SetState(std::make_shared<AttachState>(this));
-            } else {
-                this->SetState(std::make_shared<PatrolState>(this));
-            }
-        } else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(3500));
-        }
-    }
-
+    bool in_ship = EnforceShip();
     if (!in_ship) {
         MQueue.Dispatch();
         return;
@@ -493,7 +499,7 @@ int Bot::Run() {
     tcout << "Loading config file config.json" << std::endl;
 
     if (!m_Config.Load("config.json"))
-        tcout << "Could not load config.json. Using default values." << std::endl;
+        Util::ExitWithError("Could not load config.json");
 
     m_Config.LoadShip(GetShip());
     
@@ -505,10 +511,7 @@ int Bot::Run() {
     m_LogReader->Clear();
 
     if (!m_Level.Load(m_Config.Level)) {
-        tcerr << "Could not load level " << m_Config.Level << "\n";
-
-        std::cin.get();
-        std::exit(1);
+        Util::ExitWithError("Could not load level " + m_Config.Level);
     } else {
         tcout << "Creating grid for the level." << std::endl;
         for (int y = 0; y < 1024; ++y) {
@@ -522,9 +525,10 @@ int Bot::Run() {
     Memory::SensorError result = m_MemorySensor.Initialize(m_Window);
 
     if (result != Memory::SensorError::None) {
-        tcerr << "Memory::SensorError::" << result << std::endl;
-        std::cin.get();
-        std::exit(1);
+        std::stringstream ss;
+
+        ss << "Memory::SensorError::" << result;
+        Util::ExitWithError(ss.str());
     }
 
     m_Taunter.SetEnabled(m_Config.Taunt);
@@ -532,9 +536,7 @@ int Bot::Run() {
     try {
         m_Client = std::make_shared<ScreenClient>(m_Window, m_Config, m_MemorySensor);
     } catch (const std::exception& e) {
-        tcerr << e.what() << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-        std::exit(1);
+        Util::ExitWithError(e.what());
     }
 
     this->SetState(std::make_shared<PatrolState>(this));

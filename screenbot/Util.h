@@ -43,6 +43,8 @@ namespace Util {
     int GetIndicatorTop(Indicator indicator, int screen_height);
 
     bool strtobool(const std::string& str);
+
+    void ExitWithError(const std::string& error, bool pause = true);
 }
 
 #endif

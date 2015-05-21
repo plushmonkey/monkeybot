@@ -136,6 +136,8 @@ std::size_t CommandHandler::GetSize() const {
 void CommandHandler::InitPermissions() {
     PermissionMap perms = m_Bot->GetConfig().Permissions;
 
+    m_Permissions.clear();
+
     // Use AddPermission to make sure everything is lowercase
     for (auto kv : perms) {
         for (auto perm : kv.second)
@@ -147,8 +149,10 @@ CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
     RegisterCommand("help", std::make_shared<CommandsCommand>());
     RegisterCommand("commands", std::make_shared<CommandsCommand>());
 
+    RegisterCommand("reloadconf", std::make_shared<ReloadConfCommand>());
     RegisterCommand("pause", std::make_shared<PauseCommand>());
     
+    RegisterCommand("plugins", std::make_shared<PluginsCommand>());
     RegisterCommand("load", std::make_shared<LoadCommand>());
     RegisterCommand("unload", std::make_shared<UnloadCommand>());
 

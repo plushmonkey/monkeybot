@@ -18,6 +18,16 @@ static const std::vector<Vec2> directions = {
         { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
 };
 
+void ExitWithError(const std::string& error, bool pause) {
+    std::cerr << error << std::endl;
+
+    if (pause) {
+        std::cin.ignore(1024, '\n');
+        std::cin.get();
+    }
+    std::exit(1);
+}
+
 void str_replace(std::string& str, const std::string& from, const std::string& to) {
     size_t pos = 0;
     while ((pos = str.find(from, pos)) != std::string::npos) {

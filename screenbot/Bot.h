@@ -75,6 +75,7 @@ private:
 
     HWND SelectWindow();
     void SelectShip();
+    bool EnforceShip();
     void HandleMessage(ChatMessage* mesg);
     
 public:

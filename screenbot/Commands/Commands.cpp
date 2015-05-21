@@ -6,6 +6,16 @@
 
 #include <thread>
 
+
+std::string ReloadConfCommand::GetPermission() {
+    return "default.reloadconf";
+}
+
+void ReloadConfCommand::Invoke(api::Bot* bot, const std::string& sender, const std::string& args) {
+    bot->GetConfig().Load("config.json");
+    ((CommandHandler&)bot->GetCommandHandler()).InitPermissions();
+}
+
 std::string ShipCommand::GetPermission() {
     return "default.ship";
 }

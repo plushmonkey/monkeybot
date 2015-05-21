@@ -589,9 +589,9 @@ void PatrolState::Update(DWORD dt) {
         } else {
             static DWORD warp_timer = 0;
             warp_timer += dt;
-            if (warp_timer >= 25000) {
-                // Warp if inactive for 25 seconds
-                if (m_Bot->GetConfig().Attach) {
+            if (warp_timer >= 60000) {
+                // Warp if inactive for 60 seconds
+                if (m_Bot->GetConfig().Attach && !m_Bot->GetClient()->OnSoloFreq()) {
                     client->SetXRadar(false);
                     std::this_thread::sleep_for(std::chrono::milliseconds(200));
                     client->Attach();

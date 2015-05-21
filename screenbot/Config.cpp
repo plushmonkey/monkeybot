@@ -243,13 +243,6 @@ std::ostream& operator<<(std::ostream& os, const Config& c) {
     }
     os << std::endl;
 
-    os << "Staff: ";
-    for (size_t i = 0; i < c.Staff.size(); ++i) {
-        if (i != 0) os << ", ";
-        os << c.Staff[i];
-    }
-    os << std::endl;
-
     os << "Taunt count: " << c.Taunts.size() << std::endl;
     os << "Taunt whitelist count: " << c.TauntWhitelist.size() << std::endl;
     return os;

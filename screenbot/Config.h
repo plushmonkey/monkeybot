@@ -52,7 +52,6 @@ public:
     std::vector<std::string> TauntWhitelist;
     bool Hyperspace;
     bool Commander;
-    std::vector<std::string> Staff;
     bool Survivor;
     std::string Zone;
     bool MultiFire;
