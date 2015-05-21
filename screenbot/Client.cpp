@@ -130,9 +130,19 @@ void ScreenClient::EnableMulti(bool enable) {
     {
         m_Keyboard.ToggleDown();
 
-        m_Keyboard.Down(VK_DELETE);
-        std::this_thread::sleep_for(std::chrono::milliseconds(2));
-        m_Keyboard.Up(VK_DELETE);
+        int count = 0;
+        bool set = false;
+        while (!set && count < 50) {
+            m_Keyboard.Down(VK_DELETE);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            m_Keyboard.Up(VK_DELETE);
+
+            m_Screen->Update();
+            m_MultiState = DetermineMultiState();
+
+            set = (enable && m_MultiState == MultiState::On) || (!enable && m_MultiState == MultiState::Off);
+            ++count;
+        }
 
         m_Keyboard.ToggleDown();
     }
