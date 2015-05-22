@@ -151,6 +151,7 @@ CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
 
     RegisterCommand("reloadconf", std::make_shared<ReloadConfCommand>());
     RegisterCommand("pause", std::make_shared<PauseCommand>());
+    RegisterCommand("say", std::make_shared<SayCommand>());
     
     RegisterCommand("plugins", std::make_shared<PluginsCommand>());
     RegisterCommand("load", std::make_shared<LoadCommand>());
