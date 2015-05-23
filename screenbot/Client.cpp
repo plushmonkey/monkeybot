@@ -13,6 +13,12 @@
 #include <algorithm>
 #include <thread>
 
+namespace {
+
+const std::size_t MaxChatLength = 200;
+
+} // ns
+
 ScreenClient::ScreenClient(HWND hwnd, Config& config, Memory::MemorySensor& memsensor)
     : m_Window(hwnd),
       m_Config(config),
@@ -521,38 +527,93 @@ bool ScreenClient::Emped() {
     return m_EmpEnd > timeGetTime();
 }
 
+bool SetClipboard(const std::string& str) {
+    if (OpenClipboard(NULL)) {
+        // memory becomes owned by system so don't clean it up
+        HGLOBAL mem = GlobalAlloc(GMEM_MOVEABLE, str.length() + 1);
+
+        if (!mem) {
+            CloseClipboard();
+            return false;
+        }
+
+        memcpy(GlobalLock(mem), str.c_str(), str.length());
+        GlobalUnlock(mem);
+
+        EmptyClipboard();
+        SetClipboardData(CF_TEXT, mem);
+
+        CloseClipboard();
+        return true;
+    }
+
+    return false;
+}
+
+// Sends a string by pasting. Limits each paste to 200. Calls itself with the remaining string to paste again.
 void ScreenClient::SendString(const std::string& str) {
-    std::lock_guard<std::mutex> lock(m_ChatMutex);
+    using namespace std;
+
+    lock_guard<mutex> lock(m_ChatMutex);
+
+    std::string to_send = str.substr(0, min(MaxChatLength, str.length()));
 
     m_Keyboard.ReleaseAll();
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
-    for (char c : str) {
-        short code = VkKeyScan(c);
-        u8 state = (code >> 8) & 0xFF;
-        bool shift = state & 1;
+    if (SetClipboard(to_send)) {
+        m_Keyboard.Down(VK_SPACE); 
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        m_Keyboard.Up(VK_SPACE);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
-        if (shift)
-            m_Keyboard.Down(VK_LSHIFT);
-        else
-            m_Keyboard.Up(VK_LSHIFT);
-
+        m_Keyboard.Down(VK_LCONTROL);
+        short code = VkKeyScan('v');
         m_Keyboard.Down(code);
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
         m_Keyboard.Up(code);
-        if (shift)
-            m_Keyboard.Up(VK_LSHIFT);
+        m_Keyboard.Up(VK_LCONTROL);
+    } else {
+        for (char c : to_send) {
+            short code = VkKeyScan(c);
+            u8 state = (code >> 8) & 0xFF;
+            bool shift = state & 1;
+
+            if (shift)
+                m_Keyboard.Down(VK_LSHIFT);
+            else
+                m_Keyboard.Up(VK_LSHIFT);
+
+            m_Keyboard.Down(code);
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            m_Keyboard.Up(code);
+            if (shift)
+                m_Keyboard.Up(VK_LSHIFT);
+        }
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
     m_Keyboard.Send(VK_RETURN);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    if (str.length() > MaxChatLength)
+        SendString(str.substr(MaxChatLength));
 }
 
 void ScreenClient::SendPM(const std::string& target, const std::string& mesg) {
-    std::string str = ":" + target + ":" + mesg;
-    SendString(str);
+    std::string priv = ":" + target + ":";
+    std::string str = priv + mesg;
+
+    while (str.length() != 0) {
+        std::size_t send_size = std::min(MaxChatLength, str.length());
+        std::string to_send = str.substr(0, send_size);
+        
+        if (str.length() > MaxChatLength)
+            str = priv + str.substr(send_size);
+        else
+            str.clear();
+
+        SendString(to_send);
+    }
 }
 
 void ScreenClient::UseMacro(short num) {
