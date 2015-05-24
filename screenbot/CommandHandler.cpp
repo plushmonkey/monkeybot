@@ -85,7 +85,7 @@ void CommandHandler::HandleMessage(ChatMessage* mesg) {
     std::transform(command.begin(), command.end(), command.begin(), tolower);
 
     /* Don't allow help in pub chat since it's used for a bunch of bots */
-    if (command.compare("help") == 0 && mesg->GetType() != ChatMessage::Type::Private) return;
+    if (command.compare("help") == 0 && mesg->GetType() == ChatMessage::Type::Public) return;
 
     std::cout << "Command from " << player_name << " : " << command_line << std::endl;
 
@@ -148,6 +148,8 @@ void CommandHandler::InitPermissions() {
 CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
     RegisterCommand("help", std::make_shared<CommandsCommand>());
     RegisterCommand("commands", std::make_shared<CommandsCommand>());
+    RegisterCommand("version", std::make_shared<VersionCommand>());
+    RegisterCommand("owner", std::make_shared<OwnerCommand>());
 
     RegisterCommand("reloadconf", std::make_shared<ReloadConfCommand>());
     RegisterCommand("pause", std::make_shared<PauseCommand>());

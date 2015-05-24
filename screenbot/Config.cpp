@@ -47,7 +47,8 @@ Config::Config()
       Survivor(false),
       MultiFire(true),
       Revenge(false),
-      Zone("Hyperspace")
+      Zone("Hyperspace"),
+      Owner("")
 {
 
 }
@@ -89,6 +90,8 @@ void Config::LoadFromNode(const Json::Value& node) {
         Level   = node.get("Level", Level).asString();
     if (node.isMember("LogFile"))
         LogFile = node.get("LogFile", LogFile).asString();
+    if (node.isMember("Owner"))
+        Owner = node.get("Owner", Owner).asString();
 
     const Json::Value waypoints = node["Waypoints"];
 
@@ -235,6 +238,7 @@ std::ostream& operator<<(std::ostream& os, const Config& c) {
     OUTPUT(MultiFire);
     OUTPUT(Revenge);
     OUTPUT(Zone);
+    OUTPUT(Owner);
 
     os << "Waypoints: ";
     for (size_t i = 0; i < c.Waypoints.size(); ++i) {

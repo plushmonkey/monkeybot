@@ -145,6 +145,31 @@ void FlagCommand::Invoke(api::Bot* bot, const std::string& sender, const std::st
     ((Bot*)bot)->SetFlagging(flagging);
 }
 
+std::string VersionCommand::GetPermission() {
+    return "";
+}
+
+void VersionCommand::Invoke(api::Bot* bot, const std::string& sender, const std::string& args) {
+    std::string version = bot->GetVersion().GetString();
+
+    std::string to_send = "monkeybot v" + version;
+
+    bot->GetClient()->SendPM(sender, to_send);
+}
+
+std::string OwnerCommand::GetPermission() {
+    return "";
+}
+
+void OwnerCommand::Invoke(api::Bot* bot, const std::string& sender, const std::string& args) {
+    Config& conf = bot->GetConfig();
+
+    std::string owner = conf.Owner;
+
+    bot->GetClient()->SendPM(sender, "Owner: " + owner);
+}
+
+
 std::string CommanderCommand::GetPermission() {
     return "default.commander";
 }

@@ -58,6 +58,7 @@ public:
     bool Revenge;
     RotationValues ShipRotations[8];
     std::map<std::string, std::vector<std::string>> Permissions;
+    std::string Owner;
 
     Config();
     bool Load(const std::string& jsonfile);

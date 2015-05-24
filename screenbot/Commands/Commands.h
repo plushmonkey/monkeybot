@@ -55,6 +55,18 @@ public:
     void Invoke(api::Bot* bot, const std::string& sender, const std::string& args);
 };
 
+class VersionCommand : public api::Command {
+public:
+    std::string GetPermission();
+    void Invoke(api::Bot* bot, const std::string& sender, const std::string& args);
+};
+
+class OwnerCommand : public api::Command {
+public:
+    std::string GetPermission();
+    void Invoke(api::Bot* bot, const std::string& sender, const std::string& args);
+};
+
 class CommanderCommand : public api::Command {
 public:
     std::string GetPermission();

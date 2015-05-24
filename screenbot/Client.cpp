@@ -559,13 +559,13 @@ void ScreenClient::SendString(const std::string& str) {
     std::string to_send = str.substr(0, min(MaxChatLength, str.length()));
 
     m_Keyboard.ReleaseAll();
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     if (SetClipboard(to_send)) {
         m_Keyboard.Down(VK_SPACE); 
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
         m_Keyboard.Up(VK_SPACE);
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));
 
         m_Keyboard.Down(VK_LCONTROL);
         short code = VkKeyScan('v');

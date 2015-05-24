@@ -698,7 +698,8 @@ AggressiveState::AggressiveState(api::Bot* bot)
     : State(bot), 
       m_LastEnemyPos(0,0),
       m_NearWall(0),
-      m_BurstTimer(100000)
+      m_BurstTimer(100000),
+      m_LastSafeTime(0)
 {
 	m_DecoyTimer = 0;
 
@@ -775,6 +776,10 @@ void AggressiveState::Update(DWORD dt) {
         tardist = m_Bot->GetConfig().RunDistance;
         client->ReleaseKeys();
     }
+
+    const int ChaseFromSafeTime = 3000;
+    if (insafe)
+        m_LastSafeTime = timeGetTime();
 
     /* Turn off x if energy low, turn back on when high */
     client->SetXRadar(energypct > m_Bot->GetConfig().XPercent);
@@ -855,6 +860,9 @@ void AggressiveState::Update(DWORD dt) {
 
         /* Scale target distance by energy */
         tardist -= (int)std::floor(tardist * ((energypct / 100.0f) * .33f));
+
+        if (timeGetTime() - m_LastSafeTime < ChaseFromSafeTime)
+            tardist = 0;
 
         if (dist > tardist && dist <= tardist * 1.5) {
             int max_speed = m_Bot->GetMemorySensor().GetShipSettings(m_Bot->GetShip()).InitialSpeed / 16 / 10;

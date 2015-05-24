@@ -21,6 +21,8 @@ typedef std::shared_ptr<Command> CommandPtr;
 
 class CommandHandler {
 public:
+    virtual ~CommandHandler() { }
+
     typedef std::map<std::string, api::CommandPtr> Commands;
     typedef Commands::const_iterator const_iterator;
 
