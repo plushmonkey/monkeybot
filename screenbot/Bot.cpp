@@ -120,7 +120,7 @@ void Bot::SetShip(api::Ship ship) {
         m_Client->SetXRadar(false);
 
         int timeout = 5000;
-        while (!FullEnergy() && timeout > 0) {
+        while (!FullEnergy() && (timeout > 0 || ship == api::Ship::Spectator)) {
             m_Client->Update(100);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             timeout -= 100;
