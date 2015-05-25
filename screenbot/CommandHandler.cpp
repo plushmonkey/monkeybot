@@ -165,7 +165,7 @@ CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
     RegisterCommand("target", std::make_shared<TargetCommand>());
 
     /* Probably should change the name of this and make it part of survivor plugin. */
-    RegisterCommand("priority", std::make_shared<PriorityCommand>());
+    //RegisterCommand("priority", std::make_shared<PriorityCommand>());
 
     /* TODO: Pull into own plugins */
     RegisterCommand("commander", std::make_shared<CommanderCommand>());

@@ -255,6 +255,7 @@
     <ClCompile Include="RotationStore.cpp" />
     <ClCompile Include="ScreenArea.cpp" />
     <ClCompile Include="ScreenGrabber.cpp" />
+    <ClCompile Include="Selector.cpp" />
     <ClCompile Include="State.cpp" />
     <ClCompile Include="Survivor.cpp" />
     <ClCompile Include="Taunter.cpp" />
@@ -295,6 +296,7 @@
     <ClInclude Include="plugin\PluginInstance.h" />
     <ClInclude Include="plugin\PluginManager.h" />
     <ClInclude Include="Revenge.h" />
+    <ClInclude Include="Selector.h" />
     <ClInclude Include="Survivor.h" />
     <ClInclude Include="Taunter.h" />
     <ClInclude Include="Pathing.h" />

@@ -44,7 +44,7 @@ public:
 
     virtual int GetEnergy() = 0;
     virtual int GetRotation() = 0;
-    virtual bool InSafe(Vec2 real_pos, const Level& level) = 0;
+    virtual bool IsInSafe(Vec2 real_pos, const Level& level) const = 0;
 
     virtual void Up(bool val) = 0;
     virtual void Down(bool val) = 0;
@@ -57,7 +57,7 @@ public:
     virtual void EnterShip(int num) = 0;
     virtual void Spec() = 0;
 
-    virtual std::vector<std::shared_ptr<Player>> GetEnemies(Vec2 real_pos, const Level& level) = 0;
+    virtual std::vector<std::shared_ptr<Player>> GetEnemies() = 0;
     virtual std::shared_ptr<Player> GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist) = 0;
 
     virtual Vec2 GetRealPosition(Vec2 bot_pos, Vec2 target, const Level& level) = 0;

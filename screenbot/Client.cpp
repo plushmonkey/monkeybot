@@ -349,7 +349,7 @@ void ScreenClient::Spec() {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
 
-std::vector<PlayerPtr> ScreenClient::GetEnemies(Vec2 real_pos, const Level& level) {
+std::vector<PlayerPtr> ScreenClient::GetEnemies() {
     std::vector<PlayerPtr> enemies;
     PlayerList players = m_MemorySensor.GetPlayers();
     for (auto p : players) {
@@ -364,13 +364,10 @@ std::vector<PlayerPtr> ScreenClient::GetEnemies(Vec2 real_pos, const Level& leve
                     continue;
             }
 
-            if (!InSafe(pos, level) && p->InArena())
-                enemies.push_back(p);
+            enemies.push_back(p);
         }
     }
 
-    if (enemies.size() == 0)
-        throw std::runtime_error("No enemies near.");
     return enemies;
 }
 
@@ -385,14 +382,17 @@ void ScreenClient::SetPriorityTarget(const std::string& name) {
 }
 
 PlayerPtr ScreenClient::GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist) {
-    std::vector<PlayerPtr> enemies = GetEnemies(real_pos, level); // Grab all of the players visible on radar. Returns position in world space
+    std::vector<PlayerPtr> enemies = GetEnemies(); // Grab all of the players visible on radar. Returns position in world space
+
+    if (enemies.size() == 0) return PlayerPtr(nullptr);
+
     *dist = std::numeric_limits<double>::max(); // Distance of closest enemy
     double closest_calc_dist = std::numeric_limits<double>::max(); // Distance of closest enemy with multiplier applied
     PlayerPtr& closest = enemies.at(0); // The closest enemy
     const double RotationMultiplier = 2.5; // Determines how much the rotation difference will increase distance by
     bool using_target = false;
 
-    bool in_safe = InSafe(real_pos, level);
+    bool in_safe = IsInSafe(real_pos, level);
     
 
     for (unsigned int i = 0; i < enemies.size(); i++) {
@@ -463,7 +463,7 @@ int ScreenClient::GetRotation() {
     return -1;
 }
 
-bool ScreenClient::InSafe(Vec2 real_pos, const Level& level) {
+bool ScreenClient::IsInSafe(Vec2 real_pos, const Level& level) const {
     return level.GetTileID(static_cast<int>(real_pos.x), static_cast<int>(real_pos.y)) == 171;
 }
 

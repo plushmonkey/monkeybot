@@ -3,6 +3,7 @@
 #include "../Bot.h"
 #include "../Random.h"
 #include "../Util.h"
+#include "../Selector.h"
 
 #include <thread>
 
@@ -37,7 +38,10 @@ std::string TargetCommand::GetPermission() {
 }
 
 void TargetCommand::Invoke(api::Bot* bot, const std::string& sender, const std::string& args) {
-    bot->GetClient()->SetTarget(args);
+    if (args.length() > 0)
+        bot->SetEnemySelector(api::SelectorPtr(new TargetEnemySelector(args)));
+    else
+        bot->SetEnemySelector(api::SelectorPtr(new ClosestEnemySelector()));
 
     std::cout << "Target: " << (args.length() > 0 ? args : "None") << std::endl;
 }

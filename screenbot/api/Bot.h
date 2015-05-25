@@ -22,6 +22,8 @@ namespace api {
 
 enum class Ship { Warbird, Javelin, Spider, Leviathan, Terrier, Weasel, Lancaster, Shark, Spectator };
 
+class Selector;
+
 class Bot {
 public:
     typedef std::function<bool(Bot*, unsigned long)> UpdateFunction;
@@ -131,6 +133,10 @@ public:
      * \brief Sends a chat message. Blocking function that waits until send buffer is cleared in update loop.
      */
     virtual void SendMessage(const std::string& str) = 0;
+
+    virtual bool IsInSafe() const = 0;
+    virtual void SetEnemySelector(std::shared_ptr<Selector> selector) = 0;
+    virtual unsigned int GetFreq() const = 0;
 };
 
 } // ns

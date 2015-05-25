@@ -12,6 +12,7 @@
 #include "Tokenizer.h"
 #include "FileStream.h"
 #include "Random.h"
+#include "Selector.h"
 
 #include <thread>
 #include <tchar.h>
@@ -42,7 +43,8 @@ Bot::Bot(int ship)
       m_CommandHandler(this),
       m_Paused(false),
       m_Survivor(this),
-      m_MemorySensor(this)
+      m_MemorySensor(this),
+      m_EnemySelector(new ClosestEnemySelector())
 { }
 
 ClientPtr Bot::GetClient() {
@@ -84,6 +86,10 @@ Vec2 Bot::GetVelocity() const {
 
 bool Bot::FullEnergy() const {
     return !m_Client->InShip() || (m_Client->GetEnergy() >= GetMaxEnergy() && m_Client->GetEnergy() != 0);
+}
+
+unsigned int Bot::GetFreq() const {
+    return m_MemorySensor.GetFrequency();
 }
 
 void Bot::Follow(const std::string& name) {
@@ -319,6 +325,10 @@ bool Bot::EnforceShip() {
     return in_ship;
 }
 
+void Bot::SetEnemySelector(api::SelectorPtr selector) {
+    m_EnemySelector = selector;
+}
+
 void Bot::Update(DWORD dt) {
     m_LogReader->Update(dt);
 
@@ -352,11 +362,6 @@ void Bot::Update(DWORD dt) {
     // Reset maximum energy on every death
     if (m_Energy == 0) m_MaxEnergy = 0;
     if (m_Energy > m_MaxEnergy) m_MaxEnergy = m_Energy;
-
-    int dx, dy;
-    double dist;
-
-    bool reset_target = false;
 
     if (!IsInCenter() && m_Config.CenterOnly && !m_Config.Attach && in_ship) {
         m_Client->ReleaseKeys();
@@ -398,11 +403,17 @@ void Bot::Update(DWORD dt) {
     }
 
     
-    try {
-        m_EnemyTarget = m_Client->GetClosestEnemy(pos, GetHeading(), m_Level, &dx, &dy, &dist);
+    int dx, dy;
+    double dist;
 
+    bool reset_target = false;
+    //m_EnemyTarget = m_Client->GetClosestEnemy(pos, GetHeading(), m_Level, &dx, &dy, &dist);
+    m_EnemyTarget = m_EnemySelector->Select(this);
+    if (m_EnemyTarget) {
         if (!m_EnemyTarget->InArena())
             reset_target = true;
+
+        Util::GetDistance(m_EnemyTarget->GetPosition() / 16, GetPos(), &dx, &dy, &dist);
 
         m_EnemyTargetInfo.dx = dx;
         m_EnemyTargetInfo.dy = dy;
@@ -413,10 +424,12 @@ void Bot::Update(DWORD dt) {
         if (m_Config.CenterOnly) {
             Vec2 enemy_pos = m_EnemyTarget->GetPosition() / 16;
 
+            ///// todo: this is hyperspace specific, fix it
             if (enemy_pos.x < 320 || enemy_pos.x >= 703 || enemy_pos.y < 320 || enemy_pos.y >= 703)
                 reset_target = true;
         }
 
+        // todo: move repel somewhere els
         m_RepelTimer += dt;
         int epct = GetEnergyPercent();
 
@@ -426,7 +439,7 @@ void Bot::Update(DWORD dt) {
             m_Client->Repel();
             m_RepelTimer = 0;
         }
-    } catch (...) { 
+    } else {
         reset_target = true;
     }
 
@@ -438,6 +451,7 @@ void Bot::Update(DWORD dt) {
     static DWORD target_timer = 0;
     target_timer += dt;
 
+    // todo: move commander stuff into plugin probably
     if (m_Config.Commander && m_Config.Survivor)
         m_Survivor.Update(dt);
 
@@ -455,6 +469,7 @@ void Bot::Update(DWORD dt) {
         }
     }
 
+    // todo: create some ship enforcer class
     static DWORD ship_timer;
 
     ship_timer += dt;

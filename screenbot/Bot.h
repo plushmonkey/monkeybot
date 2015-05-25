@@ -54,6 +54,7 @@ private:
     bool m_Flagging;
     PluginManager m_PluginManager;
 
+    api::SelectorPtr m_EnemySelector;
 
     std::mutex m_SendMutex;
     std::string m_SendBuffer;
@@ -101,6 +102,8 @@ public:
         if (m_MaxEnergy == 0) return 0;
         return static_cast<int>((m_Energy / (float)m_MaxEnergy) * 100);
     }
+
+    void SetEnemySelector(api::SelectorPtr selector);
 
     bool FullEnergy() const;
 
@@ -176,6 +179,12 @@ public:
     SurvivorGame* GetSurvivorGame() { return &m_Survivor; }
 
     void ForceLogRead();
+
+    bool IsInSafe() const {
+        return m_Client->IsInSafe(GetPos(), m_Level);
+    }
+
+    unsigned int GetFreq() const;
 };
 
 #define RegisterBotUpdater(bot, function) (bot)->RegisterUpdater(std::bind(&function, this, std::placeholders::_1, std::placeholders::_2)); 

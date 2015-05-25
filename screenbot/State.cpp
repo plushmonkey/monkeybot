@@ -232,7 +232,7 @@ void ChaseState::Update(DWORD dt) {
 
     // Only fire if the bot is close enough to fire
     bool fire = m_Bot->GetConfig().MinGunRange == 0 || total_dist <= m_Bot->GetConfig().MinGunRange * .8;
-    if (fire && !client->InSafe(pos, m_Bot->GetLevel()))
+    if (fire && !client->IsInSafe(pos, m_Bot->GetLevel()))
         client->Gun(GunState::Tap, m_Bot->GetEnergyPercent());
     else
         client->Gun(GunState::Off);
@@ -768,7 +768,7 @@ void AggressiveState::Update(DWORD dt) {
     ClientPtr client = m_Bot->GetClient();
     Vec2 pos = m_Bot->GetPos();
 
-    bool insafe = client->InSafe(pos, m_Bot->GetLevel());
+    bool insafe = client->IsInSafe(pos, m_Bot->GetLevel());
     int tardist = m_Bot->GetConfig().TargetDistance;
     int energypct = m_Bot->GetEnergyPercent();
 
