@@ -16,7 +16,8 @@ public:
     virtual int OnUpdate(unsigned long dt) = 0;
     virtual int OnDestroy() = 0;
 
-    virtual void OnChatMessage(ChatMessage* mesg) = 0;
+    virtual void OnChatMessage(ChatMessage* mesg) { }
+    virtual void OnKill(KillMessage* mesg) { }
 };
 
 namespace api { class Bot; }

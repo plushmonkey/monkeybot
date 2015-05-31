@@ -89,8 +89,8 @@ public:
     virtual void EnterShip(int num);
     virtual void Spec();
 
-    virtual std::vector<PlayerPtr> GetEnemies();
-    virtual PlayerPtr GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist);
+    virtual std::vector<api::PlayerPtr> GetEnemies();
+    virtual api::PlayerPtr GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist);
 
     virtual Vec2 GetRealPosition(Vec2 bot_pos, Vec2 target, const Level& level);
 
@@ -99,11 +99,11 @@ public:
 
     virtual int GetFreq();
 
-    virtual PlayerList GetFreqPlayers(int freq);
-    virtual PlayerList GetPlayers();
+    virtual api::PlayerList GetFreqPlayers(int freq);
+    virtual api::PlayerList GetPlayers();
 
     virtual bool OnSoloFreq();
-    virtual PlayerPtr GetSelectedPlayer();
+    virtual api::PlayerPtr GetSelectedPlayer();
     virtual void MoveTicker(Direction dir);
 
     ScreenAreaPtr GetRadar() { return m_Radar; }

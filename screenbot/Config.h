@@ -11,7 +11,7 @@
 #include <iosfwd>
 #include <json/json.h>
 
-class Config {
+class Config  {
 public:
     typedef std::vector<u64> RotationValues;
 
@@ -63,6 +63,9 @@ public:
     Config();
     bool Load(const std::string& jsonfile);
     void LoadShip(api::Ship ship);
+
+    Json::Value GetRoot() const;
+    Json::Value GetZoneConfig() const;
 };
 
 std::ostream& operator<<(std::ostream& os, const Config& config);

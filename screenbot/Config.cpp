@@ -178,6 +178,16 @@ void Config::LoadShip(api::Ship ship) {
     LoadFromNode(ship_node);
 }
 
+Json::Value Config::GetRoot() const {
+    return m_Root;
+}
+
+Json::Value Config::GetZoneConfig() const {
+    std::string zone = m_Root.get("Zone", "Hyperspace").asString();
+
+    return m_Root[zone];
+}
+
 bool Config::Load(const std::string& jsonfile) {
     std::ifstream input(jsonfile, std::ios::binary);
     if (!input.is_open()) return false;

@@ -4,17 +4,18 @@
 #include "Util.h"
 #include "MemorySensor.h"
 #include "Config.h"
+#include "Bot.h"
 
-std::shared_ptr<Player> ClosestEnemySelector::Select(api::Bot* bot) {
+std::shared_ptr<api::Player> ClosestEnemySelector::Select(api::Bot* bot) {
     ClientPtr client = bot->GetClient();
 
-    std::vector<PlayerPtr> enemies = client->GetEnemies(); 
+    std::vector<api::PlayerPtr> enemies = client->GetEnemies(); 
 
-    if (enemies.size() == 0) return PlayerPtr(nullptr);
+    if (enemies.size() == 0) return api::PlayerPtr(nullptr);
 
     // Distance of closest enemy with multiplier applied
     double closest_calc_dist = std::numeric_limits<double>::max();
-    PlayerPtr& closest = enemies.at(0);
+    api::PlayerPtr closest = api::PlayerPtr(nullptr);
     // Determines how much the rotation difference will increase distance by
     const double RotationMultiplier = 2.25; 
 
@@ -23,7 +24,7 @@ std::shared_ptr<Player> ClosestEnemySelector::Select(api::Bot* bot) {
     bool in_safe = bot->IsInSafe();
 
     for (unsigned int i = 0; i < enemies.size(); i++) {
-        PlayerPtr& enemy = enemies.at(i);
+        api::PlayerPtr& enemy = enemies.at(i);
         int cdx, cdy;
         double cdist;
 
@@ -57,19 +58,17 @@ TargetEnemySelector::TargetEnemySelector(const std::string& name)
 { 
 }
 
-#include <iostream>
-
-PlayerPtr TargetEnemySelector::Select(api::Bot* bot) {
-    PlayerList players = bot->GetMemorySensor().GetPlayers();
+api::PlayerPtr TargetEnemySelector::Select(api::Bot* bot) {
+   api::PlayerList players = bot->GetMemorySensor().GetPlayers();
 
     Vec2 bad_pos(0, 0);
     unsigned int bot_freq = bot->GetFreq();
 
-    bool center_only = bot->GetConfig().CenterOnly;
-    int center_radius = bot->GetConfig().CenterRadius;
-    Vec2 spawn(bot->GetConfig().SpawnX, bot->GetConfig().SpawnY);
+    bool center_only = ((Bot*)bot)->GetConfig().CenterOnly;
+    int center_radius = ((Bot*)bot)->GetConfig().CenterRadius;
+    Vec2 spawn(((Bot*)bot)->GetConfig().SpawnX, ((Bot*)bot)->GetConfig().SpawnY);
 
-    PlayerList::iterator find = std::find_if(players.begin(), players.end(), [&](PlayerPtr player) {
+   api::PlayerList::iterator find = std::find_if(players.begin(), players.end(), [&](api::PlayerPtr player) {
         std::string lower = Util::strtolower(player->GetName());
         Vec2 pos = player->GetPosition() / 16;
 
@@ -89,4 +88,12 @@ PlayerPtr TargetEnemySelector::Select(api::Bot* bot) {
 
     // Fall back to choosing closest enemy if target can't be found
     return m_ClosestSelector.Select(bot);
+}
+
+api::SelectorPtr EnemySelectorFactory::CreateClosest() {
+    return api::SelectorPtr(new ClosestEnemySelector());
+}
+
+api::SelectorPtr EnemySelectorFactory::CreateTarget(const std::string& target) {
+    return api::SelectorPtr(new TargetEnemySelector(target));
 }

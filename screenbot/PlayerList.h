@@ -10,9 +10,9 @@
 class PlayerWindow {
 private:
     ScreenAreaPtr m_Area;
-    PlayerList m_Players;
+    api::PlayerList m_Players;
     unsigned long m_UpdateTimer;
-    PlayerPtr m_Selected;
+    api::PlayerPtr m_Selected;
 
     std::string GetLineText(int line);
 public:
@@ -23,16 +23,16 @@ public:
 
     void Update(unsigned long dt);
 
-    int GetPlayerIndex(PlayerPtr player);
-    PlayerPtr GetPlayer(int index) { return m_Players.at(index); }
-    PlayerPtr Find(const std::string& name);
-    PlayerList GetFrequency(int freq);
+    int GetPlayerIndex(api::PlayerPtr player);
+    api::PlayerPtr GetPlayer(int index) { return m_Players.at(index); }
+    api::PlayerPtr Find(const std::string& name);
+    api::PlayerList GetFrequency(int freq);
 
-    Direction GetDirection(PlayerPtr player);
+    Direction GetDirection(api::PlayerPtr player);
 
-    PlayerPtr GetSelectedPlayer() { return m_Selected; }
+    api::PlayerPtr GetSelectedPlayer() { return m_Selected; }
 
-    PlayerList GetPlayers() { return m_Players; }
+    api::PlayerList GetPlayers() { return m_Players; }
 };
 
 #endif

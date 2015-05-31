@@ -7,8 +7,51 @@
 
 #include <thread>
 
+std::string HelpCommand::GetPermission() const {
+    return "";
+}
 
-std::string ReloadConfCommand::GetPermission() {
+void HelpCommand::Invoke(api::Bot* bot, const std::string& sender, const std::string& args) {
+    if (args.length() == 0) {
+        bot->GetClient()->SendPM(sender, "Type !commands for a list of commands. Use !help command_name for help with a command.");
+        return;
+    }
+
+    auto& handler = bot->GetCommandHandler();
+
+    std::string find = Util::strtolower(args);
+    api::Command* command = nullptr;
+    bool permission = false;
+
+    for (const auto kv : handler) {
+        std::string name = Util::strtolower(kv.first);
+
+        if (name.compare(find) == 0) {
+            command = kv.second.get();
+            permission = handler.HasPermission(sender, kv.second);
+            find = kv.first;
+            break;
+        }
+    }
+
+    std::string help = find + ": Command not found.";
+    if (command) {
+        help = find + ": ";
+
+        if (command->GetHelp().length() > 0)
+            help += command->GetHelp();
+        else
+            help += "No help found.";
+    }
+
+    if (!permission)
+        help = find + ": You don't have permission to use that command.";
+
+    bot->GetClient()->SendPM(sender, help);
+}
+
+
+std::string ReloadConfCommand::GetPermission() const {
     return "default.reloadconf";
 }
 
@@ -17,7 +60,7 @@ void ReloadConfCommand::Invoke(api::Bot* bot, const std::string& sender, const s
     ((CommandHandler&)bot->GetCommandHandler()).InitPermissions();
 }
 
-std::string ShipCommand::GetPermission() {
+std::string ShipCommand::GetPermission() const {
     return "default.ship";
 }
 
@@ -33,7 +76,7 @@ void ShipCommand::Invoke(api::Bot* bot, const std::string& sender, const std::st
     std::cout << "Ship: " << ship << std::endl;
 }
 
-std::string TargetCommand::GetPermission() {
+std::string TargetCommand::GetPermission() const {
     return "default.target";
 }
 
@@ -46,19 +89,7 @@ void TargetCommand::Invoke(api::Bot* bot, const std::string& sender, const std::
     std::cout << "Target: " << (args.length() > 0 ? args : "None") << std::endl;
 }
 
-std::string PriorityCommand::GetPermission() {
-    return "default.priority";
-}
-
-void PriorityCommand::Invoke(api::Bot* bot, const std::string& sender, const std::string& args) {
-    bot->GetClient()->SetPriorityTarget(args);
-
-    std::cout << "Priority Target: " << (args.length() > 0 ? args : "None") << std::endl;
-
-    ((Bot*)bot)->GetSurvivorGame()->SetTarget(args);
-}
-
-std::string TauntCommand::GetPermission() {
+std::string TauntCommand::GetPermission() const {
     return "default.taunt";
 }
 
@@ -70,7 +101,7 @@ void TauntCommand::Invoke(api::Bot* bot, const std::string& sender, const std::s
     std::cout << "Taunt: " << std::boolalpha << taunt << std::endl;
 }
 
-std::string SayCommand::GetPermission() {
+std::string SayCommand::GetPermission() const {
     return "default.say";
 }
 
@@ -78,7 +109,7 @@ void SayCommand::Invoke(api::Bot* bot, const std::string& sender, const std::str
     bot->GetClient()->SendString(args);
 }
 
-std::string FreqCommand::GetPermission() {
+std::string FreqCommand::GetPermission() const {
     return "default.freq";
 }
 
@@ -100,7 +131,7 @@ void FreqCommand::Invoke(api::Bot* bot, const std::string& sender, const std::st
     client->SendString("=" + std::to_string(freq));
 }
 
-std::string FlagCommand::GetPermission() {
+std::string FlagCommand::GetPermission() const {
     return "default.flag";
 }
 
@@ -149,7 +180,7 @@ void FlagCommand::Invoke(api::Bot* bot, const std::string& sender, const std::st
     ((Bot*)bot)->SetFlagging(flagging);
 }
 
-std::string VersionCommand::GetPermission() {
+std::string VersionCommand::GetPermission() const {
     return "";
 }
 
@@ -161,7 +192,7 @@ void VersionCommand::Invoke(api::Bot* bot, const std::string& sender, const std:
     bot->GetClient()->SendPM(sender, to_send);
 }
 
-std::string OwnerCommand::GetPermission() {
+std::string OwnerCommand::GetPermission() const {
     return "";
 }
 
@@ -174,7 +205,7 @@ void OwnerCommand::Invoke(api::Bot* bot, const std::string& sender, const std::s
 }
 
 
-std::string CommanderCommand::GetPermission() {
+std::string CommanderCommand::GetPermission() const {
     return "default.commander";
 }
 
@@ -184,7 +215,7 @@ void CommanderCommand::Invoke(api::Bot* bot, const std::string& sender, const st
     std::cout << "Commander: " << std::boolalpha << bot->GetConfig().Commander << std::endl;
 }
 
-std::string RevengeCommand::GetPermission() {
+std::string RevengeCommand::GetPermission() const {
     return "default.revenge";
 }
 

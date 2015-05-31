@@ -10,7 +10,7 @@
 
 class Bot;
 
-class PluginManager : public MessageHandler<ChatMessage> {
+class PluginManager : public MessageHandler<ChatMessage>, public MessageHandler<KillMessage> {
 public:
     typedef std::vector<PluginInstance*> Plugins;
     typedef Plugins::const_iterator const_iterator;
@@ -24,6 +24,7 @@ private:
 
     bool OnUpdate(api::Bot* bot, unsigned long dt);
     void HandleMessage(ChatMessage* mesg);
+    void HandleMessage(KillMessage* mesg);
     std::string PluginManager::GetPluginPath(const std::string& name);
 public:
     PluginManager();

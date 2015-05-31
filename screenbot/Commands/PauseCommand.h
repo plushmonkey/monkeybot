@@ -5,7 +5,8 @@
 
 class PauseCommand : public api::Command {
 public:
-    std::string GetPermission();
+    std::string GetHelp() const { return "Pauses the bot."; }
+    std::string GetPermission() const;
     void Invoke(api::Bot* bot, const std::string& sender, const std::string& args);
 };
 

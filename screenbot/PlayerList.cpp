@@ -103,10 +103,10 @@ void PlayerWindow::Update(unsigned long dt) {
     }
 }
 
-PlayerPtr PlayerWindow::Find(const std::string& name) {
+api::PlayerPtr PlayerWindow::Find(const std::string& name) {
     std::string tofind = name.substr(0, 12);
 
-    for (PlayerPtr player : m_Players) {
+    for (api::PlayerPtr player : m_Players) {
         if (player->GetName().substr(0, 12).compare(tofind) == 0)
             return player;
     }
@@ -114,7 +114,7 @@ PlayerPtr PlayerWindow::Find(const std::string& name) {
     return shared_ptr<Player>();
 }
 
-int PlayerWindow::GetPlayerIndex(PlayerPtr player) {
+int PlayerWindow::GetPlayerIndex(api::PlayerPtr player) {
     for (size_t i = 0; i < m_Players.size(); ++i) {
         if (player == m_Players.at(i))
             return i;
@@ -122,12 +122,12 @@ int PlayerWindow::GetPlayerIndex(PlayerPtr player) {
     return -1;
 }
 
-Direction PlayerWindow::GetDirection(PlayerPtr player) {
+Direction PlayerWindow::GetDirection(api::PlayerPtr player) {
     int index = GetPlayerIndex(player);
 
     if (index < 0) return Direction::None;
 
-    PlayerPtr selected = GetSelectedPlayer();
+    api::PlayerPtr selected = GetSelectedPlayer();
     int selected_index = GetPlayerIndex(selected);
 
     if (selected_index == index) return Direction::None;
@@ -135,9 +135,9 @@ Direction PlayerWindow::GetDirection(PlayerPtr player) {
     return selected_index < index ? Direction::Down : Direction::Up;
 }
 
-PlayerList PlayerWindow::GetFrequency(int freq) {
-    PlayerList list;
-    for (PlayerPtr player : m_Players) {
+api::PlayerList PlayerWindow::GetFrequency(int freq) {
+   api::PlayerList list;
+   for (api::PlayerPtr player : m_Players) {
         if (player->GetFreq() == freq)
             list.push_back(player);
     }

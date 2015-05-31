@@ -73,9 +73,11 @@ void PluginManager::UnloadPlugin(const std::string& name) {
         std::string plugin_name = Util::strtolower(m_Plugins[i]->GetName());
 
         if (find.compare(plugin_name) == 0) {
-            std::cout << plugin_name << " unloaded." << std::endl;
             PluginInstance* inst = m_Plugins[i];
 
+            inst->GetPlugin()->OnDestroy();
+
+            std::cout << plugin_name << " unloaded." << std::endl;
             m_Plugins.erase(m_Plugins.begin() + i);
 
             delete inst;
@@ -175,6 +177,17 @@ void PluginManager::HandleMessage(ChatMessage* mesg) {
         Plugin* plugin = (*iter)->GetPlugin();
         if (plugin)
             plugin->OnChatMessage(mesg);
+        ++iter;
+    }
+}
+
+void PluginManager::HandleMessage(KillMessage* mesg) {
+    auto iter = begin();
+
+    while (iter != end()) {
+        Plugin* plugin = (*iter)->GetPlugin();
+        if (plugin)
+            plugin->OnKill(mesg);
         ++iter;
     }
 }

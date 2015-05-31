@@ -27,7 +27,7 @@ Bot::Bot(int ship)
     : m_Finder(_T("Continuum")),
       m_Window(0),
       m_State(nullptr),
-      m_ShipNum(ship),
+      m_Ship(api::Ship(ship - 1)),
       m_EnemyTargetInfo(0, 0, 0),
       m_Energy(0),
       m_LastEnergy(0),
@@ -44,7 +44,9 @@ Bot::Bot(int ship)
       m_Paused(false),
       m_Survivor(this),
       m_MemorySensor(this),
-      m_EnemySelector(new ClosestEnemySelector())
+      m_EnemySelector(new ClosestEnemySelector()),
+      m_ShipEnforcer(new ShipEnforcer(this)),
+      m_EnemySelectors(new EnemySelectorFactory())
 { }
 
 ClientPtr Bot::GetClient() {
@@ -112,15 +114,15 @@ void Bot::SetShip(api::Ship ship) {
     api::Ship current = m_MemorySensor.GetBotPlayer()->GetShip();
     if (ship == current) return;
 
-    if (ship != api::Ship::Spectator)
-        m_ShipNum = (int)ship + 1;
+    m_Ship = ship;
 
     if (m_Client->InShip()) {
         m_Client->ReleaseKeys();
         m_Client->SetXRadar(false);
 
         int timeout = 5000;
-        while (!FullEnergy() && (timeout > 0 || ship == api::Ship::Spectator)) {
+        //while (!FullEnergy() && (timeout > 0 || ship == api::Ship::Spectator)) {
+        while (!FullEnergy() && timeout > 0) {
             m_Client->Update(100);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             timeout -= 100;
@@ -128,7 +130,7 @@ void Bot::SetShip(api::Ship ship) {
     }
 
     if (ship != api::Ship::Spectator) {
-        m_Client->EnterShip(m_ShipNum);
+        m_Client->EnterShip(GetShipNum());
 
         m_Config.LoadShip(GetShip());
     } else {
@@ -174,7 +176,7 @@ void Bot::SendMessage(const std::string& str) {
     }
 }
 
-void Bot::ForceLogRead() {
+void Bot::UpdateLog() {
     m_LogReader->Update(0);
     MQueue.Dispatch();
 }
@@ -223,7 +225,7 @@ void Bot::SelectShip() {
         return;
     }
 
-    m_ShipNum = input[0] - 0x30;
+    m_Ship = (api::Ship)(input[0] - 0x30 - 1);
 }
 
 void Bot::CheckLancs(const std::string& line) {
@@ -232,7 +234,8 @@ void Bot::CheckLancs(const std::string& line) {
 
     std::string regex_str = R"::(^\s*\(S|E\) (.+)$)::";
 
-    if (m_ShipNum > 6 || m_ShipNum == 3 || m_ShipNum == 4)
+    int ship_num = GetShipNum();
+    if (ship_num > 6 || ship_num == 3 || ship_num == 4)
         regex_str = R"::(^\s*\(S\) (.+)$)::";
 
     std::regex summoner_regex(regex_str);
@@ -289,120 +292,11 @@ void Bot::HandleMessage(ChatMessage* mesg) {
         CheckLancs(line);
 }
 
-bool Bot::EnforceShip() {
-    bool in_ship = m_Client->InShip();
-
-    if (!in_ship) {
-        m_Client->ReleaseKeys();
-
-        m_MaxEnergy = 0;
-
-        m_Client->EnterShip(m_ShipNum);
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));
-        m_Client->Update(30);
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-        if (m_Client->InShip()) {
-            in_ship = true;
-            if (m_Config.Attach && m_Config.Hyperspace) {
-                if (m_Flagging) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    m_Client->SendString("?flag");
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                }
-                m_Client->SendString("?lancs");
-
-                this->SetState(std::make_shared<AttachState>(this));
-            } else {
-                this->SetState(std::make_shared<PatrolState>(this));
-            }
-        } else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(3500));
-        }
-    }
-
-    return in_ship;
-}
-
 void Bot::SetEnemySelector(api::SelectorPtr selector) {
     m_EnemySelector = selector;
 }
 
-void Bot::Update(DWORD dt) {
-    m_LogReader->Update(dt);
-
-    {
-        std::lock_guard<std::mutex> lock(m_SendMutex);
-        if (m_SendBuffer.length() > 0) {
-            m_Client->SendString(m_SendBuffer);
-            m_SendBuffer.clear();
-        }
-    }
-
-    if (m_Paused) {
-        MQueue.Dispatch();
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        return;
-    }
-
-    m_Client->Update(dt);
-
-    bool in_ship = EnforceShip();
-    if (!in_ship) {
-        MQueue.Dispatch();
-        return;
-    }
-    
-    m_Client->EnableMulti(m_Config.MultiFire);
-
-    m_LastEnergy = m_Energy;
-    m_Energy = m_Client->GetEnergy();
-
-    // Reset maximum energy on every death
-    if (m_Energy == 0) m_MaxEnergy = 0;
-    if (m_Energy > m_MaxEnergy) m_MaxEnergy = m_Energy;
-
-    if (!IsInCenter() && m_Config.CenterOnly && !m_Config.Attach && in_ship) {
-        m_Client->ReleaseKeys();
-
-        if (GetEnergyPercent() == 100)
-            tcout << "Warping because position is out of center " << GetPos() << "." << std::endl;
-        m_Client->Warp();
-    }
-
-    m_LancTimer += dt;
-
-    if (m_LancTimer >= 35000 && m_Config.Hyperspace) {
-        if (m_Config.Attach)
-            m_Client->SendString("?lancs");
-        m_LancTimer = 0;
-    }
-
-    Vec2 pos = GetPos();
-
-    // Attach to ticked player when in center safe
-    if (m_Config.Attach && !m_Client->OnSoloFreq() && this->GetStateType() != api::StateType::AttachState) {
-        if (IsInCenter()) {
-            unsigned int freq = m_MemorySensor.GetBotPlayer()->GetFreq();
-            PlayerList players = m_MemorySensor.GetPlayers();
-            bool should_attach = false;
-            Vec2 spawn(GetConfig().SpawnX, GetConfig().SpawnY);
-            
-            for (PlayerPtr &player : players){
-                if (player->GetFreq() == freq) {
-                    if ((player->GetPosition() / 16 - spawn).Length() > GetConfig().CenterRadius) {
-                        should_attach = true;
-                        break;
-                    }
-                }
-            }
-            if (should_attach)
-                SetState(std::make_shared<AttachState>(this));
-        }
-    }
-
-    
+void Bot::FindEnemy(unsigned long dt) {
     int dx, dy;
     double dist;
 
@@ -418,7 +312,7 @@ void Bot::Update(DWORD dt) {
         m_EnemyTargetInfo.dx = dx;
         m_EnemyTargetInfo.dy = dy;
         m_EnemyTargetInfo.dist = dist;
-        
+
         SetLastEnemy(timeGetTime());
 
         if (m_Config.CenterOnly) {
@@ -433,7 +327,7 @@ void Bot::Update(DWORD dt) {
         m_RepelTimer += dt;
         int epct = GetEnergyPercent();
 
-        bool delay_over = m_RepelTimer > (unsigned int)m_MemorySensor.GetShipSettings(GetShip()).BombFireDelay * 10;
+        bool delay_over = m_RepelTimer >(unsigned int)m_MemorySensor.GetShipSettings(GetShip()).BombFireDelay * 10;
         bool lost_energy = GetLastEnergy() > GetEnergy() && GetLastEnergy() - GetEnergy() < 300;
         if (delay_over && epct > 0 && lost_energy && epct < m_Config.RepelPercent) {
             m_Client->Repel();
@@ -447,6 +341,100 @@ void Bot::Update(DWORD dt) {
         m_EnemyTarget = nullptr;
         m_EnemyTargetInfo.dist = 0.0;
     }
+}
+
+void Bot::AttachUpdate(unsigned long dt) {
+    Vec2 pos = GetPos();
+    // Attach to ticked player when in center safe
+    if (m_Config.Attach && !m_Client->OnSoloFreq() && this->GetStateType() != api::StateType::AttachState) {
+        if (IsInCenter()) {
+            unsigned int freq = m_MemorySensor.GetBotPlayer()->GetFreq();
+            api::PlayerList players = m_MemorySensor.GetPlayers();
+            bool should_attach = false;
+            Vec2 spawn(GetConfig().SpawnX, GetConfig().SpawnY);
+
+            for (api::PlayerPtr&player : players) {
+                if (player->GetFreq() == freq) {
+                    if ((player->GetPosition() / 16 - spawn).Length() > GetConfig().CenterRadius) {
+                        should_attach = true;
+                        break;
+                    }
+                }
+            }
+            if (should_attach)
+                SetState(std::make_shared<AttachState>(this));
+        }
+    }
+}
+
+void Bot::EnforceCenter(unsigned long dt) {
+    if (!IsInCenter() && m_Config.CenterOnly && !m_Config.Attach && IsInShip()) {
+        m_Client->ReleaseKeys();
+
+        if (GetEnergyPercent() == 100)
+            tcout << "Warping because position is out of center " << GetPos() << "." << std::endl;
+        m_Client->Warp();
+    }
+}
+
+void Bot::Update(DWORD dt) {
+    m_LogReader->Update(dt);
+
+    {
+        std::lock_guard<std::mutex> lock(m_SendMutex);
+        if (m_SendBuffer.length() > 0) {
+            m_Client->SendString(m_SendBuffer);
+            m_SendBuffer.clear();
+        }
+    }
+
+    if (m_Paused) {
+        m_MemorySensor.OnUpdate(this, dt);
+        m_ShipEnforcer->OnUpdate(this, dt);
+        MQueue.Dispatch();
+        std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+        return;
+    }
+
+    m_Client->Update(dt);
+
+    // Update all of the updaters
+    for (auto kv : m_Updaters) {
+        if (!kv.second(this, dt)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            MQueue.Dispatch();
+            return;
+        }
+    }
+
+    if (!IsInShip()) {
+        MQueue.Dispatch();
+        return;
+    }
+    
+    // This shouldn't be here
+    m_Client->EnableMulti(m_Config.MultiFire);
+
+    m_LastEnergy = m_Energy;
+    m_Energy = m_Client->GetEnergy();
+
+    // Reset maximum energy on every death
+    if (m_Energy == 0) m_MaxEnergy = 0;
+    if (m_Energy > m_MaxEnergy) m_MaxEnergy = m_Energy;
+
+    EnforceCenter(dt);
+
+    // todo: pull into hyperspace plugin
+    m_LancTimer += dt;
+
+    if (m_LancTimer >= 35000 && m_Config.Hyperspace) {
+        if (m_Config.Attach)
+            m_Client->SendString("?lancs");
+        m_LancTimer = 0;
+    }
+
+    AttachUpdate(dt);
+    FindEnemy(dt);
 
     static DWORD target_timer = 0;
     target_timer += dt;
@@ -459,32 +447,6 @@ void Bot::Update(DWORD dt) {
         m_Client->SendString(";!target " + m_EnemyTarget->GetName());
         m_LastTarget = m_EnemyTarget;
         target_timer = 0;
-    }
-
-    for (auto kv : m_Updaters) {
-        if (!kv.second(this, dt)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            MQueue.Dispatch();
-            return;
-        }
-    }
-
-    // todo: create some ship enforcer class
-    static DWORD ship_timer;
-
-    ship_timer += dt;
-
-    // This needs to happen after memory sensor is updated or the bot will try
-    // to switch ships twice when revenge rage mode is finished.
-    if (ship_timer >= 5000) {
-        PlayerPtr bot = m_MemorySensor.GetBotPlayer();
-
-        if (bot) {
-            api::Ship ship = bot->GetShip();
-            if (ship != GetShip())
-                this->SetShip(GetShip());
-        }
-        ship_timer = 0;
     }
 
     m_State->Update(dt);

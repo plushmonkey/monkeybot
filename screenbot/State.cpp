@@ -149,7 +149,7 @@ void ChaseState::Update(DWORD dt) {
     }
 
     Vec2 pos = m_Bot->GetPos();
-    PlayerPtr enemy = m_Bot->GetEnemyTarget();
+    api::PlayerPtr enemy = m_Bot->GetEnemyTarget();
     Vec2 enemy_pos = enemy->GetPosition() / 16;
 
     bool near_wall = Util::NearWall(pos, m_Bot->GetGrid());
@@ -338,11 +338,11 @@ void BaseduelState::Update(DWORD dt) {
 FollowState::FollowState(api::Bot* bot, std::string follow)
     : State(bot), m_StuckTimer(0)
 {
-    PlayerList players = m_Bot->GetMemorySensor().GetPlayers();
+   api::PlayerList players = m_Bot->GetMemorySensor().GetPlayers();
 
     follow = Util::strtolower(follow);
 
-    PlayerList::iterator it = std::find_if(players.begin(), players.end(), [&](PlayerPtr player) {
+   api::PlayerList::iterator it = std::find_if(players.begin(), players.end(), [&](api::PlayerPtr player) {
         const std::string& name = Util::strtolower(player->GetName());
         return name.compare(follow) == 0;
     });
@@ -353,12 +353,12 @@ FollowState::FollowState(api::Bot* bot, std::string follow)
         return;
     }
 
-    m_FollowPlayer = *it;
+    m_FollowPlayer = std::shared_ptr<Player>((Player*)it->get());
 }
 
 void FollowState::Update(DWORD dt) {
     ClientPtr client = m_Bot->GetClient();
-    PlayerPtr player = m_FollowPlayer.lock();
+    api::PlayerPtr player = m_FollowPlayer.lock();
 
     if (!player) {
         std::cerr << "Could not find player to follow. Switching to PatrolState." << std::endl;

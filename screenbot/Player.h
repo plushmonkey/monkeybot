@@ -8,7 +8,7 @@
 #include <memory>
 #include <vector>
 
-class Player {
+class Player : public api::Player {
 private:
     std::string m_Name;
     unsigned int m_Freq;
@@ -66,7 +66,7 @@ public:
 
 };
 
-typedef shared_ptr<Player> PlayerPtr;
-typedef std::vector<PlayerPtr> PlayerList;
+//typedef shared_ptr<api::Player> api::PlayerPtr;
+//typedef std::vector<api::PlayerPtr>api::PlayerList;
 
 #endif

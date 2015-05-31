@@ -91,9 +91,9 @@ int ScreenClient::GetFreq() {
     return m_MemorySensor.GetFrequency();
 }
 
-PlayerList ScreenClient::GetFreqPlayers(int freq) {
+api::PlayerList ScreenClient::GetFreqPlayers(int freq) {
     auto players = m_MemorySensor.GetPlayers();
-    PlayerList team;
+   api::PlayerList team;
 
     for (auto p : players) {
         if (freq == p->GetFreq())
@@ -102,7 +102,7 @@ PlayerList ScreenClient::GetFreqPlayers(int freq) {
     return team;
 }
 
-PlayerList ScreenClient::GetPlayers() {
+api::PlayerList ScreenClient::GetPlayers() {
     return m_MemorySensor.GetPlayers();
 }
 
@@ -111,7 +111,7 @@ bool ScreenClient::OnSoloFreq() {
     return GetFreqPlayers(freq).size() <= 1;
 }
 
-PlayerPtr ScreenClient::GetSelectedPlayer() {
+api::PlayerPtr ScreenClient::GetSelectedPlayer() {
     return m_PlayerWindow.GetSelectedPlayer();
 }
 
@@ -140,10 +140,11 @@ void ScreenClient::EnableMulti(bool enable) {
         bool set = false;
         while (!set && count < 50) {
             m_Keyboard.Down(VK_DELETE);
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
             m_Keyboard.Up(VK_DELETE);
-
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
             m_Screen->Update();
+
             m_MultiState = DetermineMultiState();
 
             set = (enable && m_MultiState == MultiState::On) || (!enable && m_MultiState == MultiState::Off);
@@ -349,9 +350,9 @@ void ScreenClient::Spec() {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
 
-std::vector<PlayerPtr> ScreenClient::GetEnemies() {
-    std::vector<PlayerPtr> enemies;
-    PlayerList players = m_MemorySensor.GetPlayers();
+std::vector<api::PlayerPtr> ScreenClient::GetEnemies() {
+    std::vector<api::PlayerPtr> enemies;
+   api::PlayerList players = m_MemorySensor.GetPlayers();
     for (auto p : players) {
         if (p->GetFreq() != GetFreq() &&
             p->GetShip() != api::Ship::Spectator &&
@@ -381,14 +382,14 @@ void ScreenClient::SetPriorityTarget(const std::string& name) {
     std::transform(m_PriorityTarget.begin(), m_PriorityTarget.end(), m_PriorityTarget.begin(), tolower);
 }
 
-PlayerPtr ScreenClient::GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist) {
-    std::vector<PlayerPtr> enemies = GetEnemies(); // Grab all of the players visible on radar. Returns position in world space
+api::PlayerPtr ScreenClient::GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level& level, int* dx, int* dy, double* dist) {
+    std::vector<api::PlayerPtr> enemies = GetEnemies(); // Grab all of the players visible on radar. Returns position in world space
 
-    if (enemies.size() == 0) return PlayerPtr(nullptr);
+    if (enemies.size() == 0) return api::PlayerPtr(nullptr);
 
     *dist = std::numeric_limits<double>::max(); // Distance of closest enemy
     double closest_calc_dist = std::numeric_limits<double>::max(); // Distance of closest enemy with multiplier applied
-    PlayerPtr& closest = enemies.at(0); // The closest enemy
+    api::PlayerPtr& closest = enemies.at(0); // The closest enemy
     const double RotationMultiplier = 2.5; // Determines how much the rotation difference will increase distance by
     bool using_target = false;
 
@@ -396,7 +397,7 @@ PlayerPtr ScreenClient::GetClosestEnemy(Vec2 real_pos, Vec2 heading, const Level
     
 
     for (unsigned int i = 0; i < enemies.size(); i++) {
-        PlayerPtr& enemy = enemies.at(i);
+        api::PlayerPtr& enemy = enemies.at(i);
         int cdx, cdy;
         double cdist;
 
@@ -722,7 +723,7 @@ std::vector<Vec2> ScreenClient::FindMines(Vec2 bot_pixel_pos) {
 }
 
 void ScreenClient::SelectPlayer(const std::string& name) {
-    PlayerPtr target = m_PlayerWindow.Find(name);
+    api::PlayerPtr target = m_PlayerWindow.Find(name);
 
     std::cout << "Selecting " << name << std::endl;
 

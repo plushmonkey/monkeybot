@@ -45,15 +45,15 @@ void SurvivorGame::AnnounceDeath() {
         seconds -= mins * 60;
 
         /* Find priority player's name to get formatted name */
-        PlayerList players = m_Bot->GetMemorySensor().GetPlayers();
-        PlayerList::const_iterator priority_player = std::find_if(players.begin(), players.end(), [&](PlayerPtr p) {
+       api::PlayerList players = m_Bot->GetMemorySensor().GetPlayers();
+       api::PlayerList::const_iterator priority_player = std::find_if(players.begin(), players.end(), [&](api::PlayerPtr p) {
             std::string name = p->GetName();
             std::transform(name.begin(), name.end(), name.begin(), tolower);
             return name.compare(m_Target) == 0;
         });
 
         /* Read any kill messages in log so the kill count is correct */
-        m_Bot->ForceLogRead();
+        m_Bot->UpdateLog();
 
         std::stringstream ss;
 
@@ -81,7 +81,7 @@ void SurvivorGame::AnnounceDeath() {
 void SurvivorGame::Update(DWORD dt) {
     if (m_Target.length() == 0) return;
 
-    PlayerPtr enemy = m_Bot->GetEnemyTarget();
+    api::PlayerPtr enemy = m_Bot->GetEnemyTarget();
     if (!enemy)
         AnnounceDeath();
 

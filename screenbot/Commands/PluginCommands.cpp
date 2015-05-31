@@ -6,7 +6,7 @@
 #include <iostream>
 #include <sstream>
 
-std::string PluginsCommand::GetPermission() {
+std::string PluginsCommand::GetPermission() const {
     return "default.plugins";
 }
 
@@ -38,7 +38,7 @@ void PluginsCommand::Invoke(api::Bot* bot, const std::string& sender, const std:
         client->SendPM(sender, ss.str());
 }
 
-std::string LoadCommand::GetPermission() {
+std::string LoadCommand::GetPermission() const {
     return "default.load";
 }
 
@@ -50,7 +50,7 @@ void LoadCommand::Invoke(api::Bot* bot, const std::string& sender, const std::st
     pm.LoadPlugin(bot, args);
 }
 
-std::string UnloadCommand::GetPermission() {
+std::string UnloadCommand::GetPermission() const {
     return "default.load";
 }
 

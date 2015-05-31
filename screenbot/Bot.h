@@ -15,6 +15,7 @@
 #include "Revenge.h"
 #include "plugin/PluginManager.h"
 #include "Version.h"
+#include "ShipEnforcer.h"
 
 #include <memory>
 #include <mutex>
@@ -38,10 +39,10 @@ private:
     WindowFinder m_Finder;
     HWND m_Window;
     api::StatePtr m_State;
-    int m_ShipNum;
-    PlayerPtr m_EnemyTarget;
+    api::Ship m_Ship;
+    api::PlayerPtr m_EnemyTarget;
     TargetInfo m_EnemyTargetInfo;
-    PlayerPtr m_LastTarget;
+    api::PlayerPtr m_LastTarget;
     int m_MaxEnergy;
     int m_Energy;
     int m_LastEnergy;
@@ -74,9 +75,15 @@ private:
 
     std::string m_AttachTarget;
 
+    shared_ptr<ShipEnforcer> m_ShipEnforcer;
+    shared_ptr<api::EnemySelectorFactory> m_EnemySelectors;
+
     HWND SelectWindow();
     void SelectShip();
-    bool EnforceShip();
+    //bool EnforceShip();
+    void FindEnemy(unsigned long dt);
+    void AttachUpdate(unsigned long dt);
+    void EnforceCenter(unsigned long dt);
     void HandleMessage(ChatMessage* mesg);
     
 public:
@@ -92,7 +99,7 @@ public:
     Pathing::Grid<short>& GetGrid() { return m_Grid; }
     const Level& GetLevel() const { return m_Level; }
 
-    PlayerPtr GetEnemyTarget() const { return m_EnemyTarget; }
+    api::PlayerPtr GetEnemyTarget() const { return m_EnemyTarget; }
     TargetInfo GetEnemyTargetInfo() const { return m_EnemyTargetInfo; }
 
     int GetEnergy() const { return m_Energy; }
@@ -157,7 +164,8 @@ public:
 
     shared_ptr<Revenge> GetRevenge() { return m_Revenge; }
 
-    api::Ship GetShip() const { return (api::Ship)(m_ShipNum - 1); }
+    api::Ship GetShip() const { return m_Ship; }
+    int GetShipNum() const { return (int)m_Ship + 1; }
 
     UpdateID RegisterUpdater(UpdateFunction func) {
         static UpdateID id;
@@ -178,13 +186,18 @@ public:
 
     SurvivorGame* GetSurvivorGame() { return &m_Survivor; }
 
-    void ForceLogRead();
+    void UpdateLog();
 
     bool IsInSafe() const {
         return m_Client->IsInSafe(GetPos(), m_Level);
     }
 
+    bool IsInShip() const {
+        return m_MemorySensor.GetBotPlayer()->GetShip() != api::Ship::Spectator;
+    }
+
     unsigned int GetFreq() const;
+    shared_ptr<api::EnemySelectorFactory> GetEnemySelectors() { return m_EnemySelectors; }
 };
 
 #define RegisterBotUpdater(bot, function) (bot)->RegisterUpdater(std::bind(&function, this, std::placeholders::_1, std::placeholders::_2)); 

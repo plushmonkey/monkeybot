@@ -118,7 +118,7 @@ void CommandHandler::UnregisterCommand(const std::string& name) {
     auto iter = m_Commands.find(name_lower);
     if (iter == m_Commands.end()) return;
 
-    m_Commands.erase(name_lower);
+    m_Commands.erase(iter);
 }
 
 CommandHandler::const_iterator CommandHandler::begin() const {
@@ -146,7 +146,7 @@ void CommandHandler::InitPermissions() {
 }
 
 CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
-    RegisterCommand("help", std::make_shared<CommandsCommand>());
+    RegisterCommand("help", std::make_shared<HelpCommand>());
     RegisterCommand("commands", std::make_shared<CommandsCommand>());
     RegisterCommand("version", std::make_shared<VersionCommand>());
     RegisterCommand("owner", std::make_shared<OwnerCommand>());
@@ -163,9 +163,6 @@ CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
     RegisterCommand("flag", std::make_shared<FlagCommand>());
     RegisterCommand("freq", std::make_shared<FreqCommand>());
     RegisterCommand("target", std::make_shared<TargetCommand>());
-
-    /* Probably should change the name of this and make it part of survivor plugin. */
-    //RegisterCommand("priority", std::make_shared<PriorityCommand>());
 
     /* TODO: Pull into own plugins */
     RegisterCommand("commander", std::make_shared<CommanderCommand>());

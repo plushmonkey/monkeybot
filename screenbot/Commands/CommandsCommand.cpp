@@ -6,7 +6,7 @@
 #include <iostream>
 #include <sstream>
 
-std::string CommandsCommand::GetPermission() {
+std::string CommandsCommand::GetPermission() const {
     return "";
 }
 

@@ -13,16 +13,14 @@
 #undef SendMessage
 
 struct TargetInfo;
-class Config;
 class PluginManager;
-
-namespace Memory { class MemorySensor; }
+class Config;
 
 namespace api {
 
-enum class Ship { Warbird, Javelin, Spider, Leviathan, Terrier, Weasel, Lancaster, Shark, Spectator };
-
 class Selector;
+class Player;
+class EnemySelectorFactory;
 
 class Bot {
 public:
@@ -43,6 +41,7 @@ public:
 
 
     virtual UpdateID RegisterUpdater(UpdateFunction func) = 0;
+    virtual void UnregisterUpdater(UpdateID id) = 0;
 
     /**
      * \brief Gets the bot's player name.
@@ -122,7 +121,7 @@ public:
     virtual Pathing::Grid<short>& GetGrid() = 0;
     virtual const Level& GetLevel() const = 0;
 
-    virtual Memory::MemorySensor& GetMemorySensor() = 0;
+    virtual MemorySensor& GetMemorySensor() = 0;
 
     virtual void Follow(const std::string& name) = 0;
 
@@ -137,6 +136,8 @@ public:
     virtual bool IsInSafe() const = 0;
     virtual void SetEnemySelector(std::shared_ptr<Selector> selector) = 0;
     virtual unsigned int GetFreq() const = 0;
+    virtual void UpdateLog() = 0;
+    virtual std::shared_ptr<api::EnemySelectorFactory> GetEnemySelectors() = 0;
 };
 
 } // ns

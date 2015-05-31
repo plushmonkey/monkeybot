@@ -13,8 +13,9 @@ class Command {
 private:
 public:
     virtual ~Command() { }
-    virtual std::string GetPermission() = 0;
+    virtual std::string GetPermission() const = 0;
     virtual void Invoke(api::Bot* bot, const std::string& sender, const std::string& args) = 0;
+    virtual std::string GetHelp() const { return ""; }
 };
 typedef std::shared_ptr<Command> CommandPtr;
 

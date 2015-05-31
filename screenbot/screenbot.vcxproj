@@ -256,6 +256,7 @@
     <ClCompile Include="ScreenArea.cpp" />
     <ClCompile Include="ScreenGrabber.cpp" />
     <ClCompile Include="Selector.cpp" />
+    <ClCompile Include="ShipEnforcer.cpp" />
     <ClCompile Include="State.cpp" />
     <ClCompile Include="Survivor.cpp" />
     <ClCompile Include="Taunter.cpp" />
@@ -268,6 +269,7 @@
     <ClInclude Include="api\Bot.h" />
     <ClInclude Include="api\Client.h" />
     <ClInclude Include="api\Command.h" />
+    <ClInclude Include="api\Player.h" />
     <ClInclude Include="api\State.h" />
     <ClInclude Include="api\Version.h" />
     <ClInclude Include="Bot.h" />
@@ -297,6 +299,7 @@
     <ClInclude Include="plugin\PluginManager.h" />
     <ClInclude Include="Revenge.h" />
     <ClInclude Include="Selector.h" />
+    <ClInclude Include="ShipEnforcer.h" />
     <ClInclude Include="Survivor.h" />
     <ClInclude Include="Taunter.h" />
     <ClInclude Include="Pathing.h" />

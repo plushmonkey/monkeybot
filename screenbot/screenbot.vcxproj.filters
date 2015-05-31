@@ -135,6 +135,9 @@
     <ClCompile Include="Selector.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ShipEnforcer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -277,6 +280,12 @@
     </ClInclude>
     <ClInclude Include="Selector.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ShipEnforcer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="api\Player.h">
+      <Filter>Header Files\api</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

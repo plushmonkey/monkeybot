@@ -21,9 +21,10 @@ enum class MultiState {
 enum class Direction;
 class Level;
 class Vec2;
-class Player;
 
 namespace api {    
+
+class Player;
 
 class Client {
 public:

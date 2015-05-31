@@ -67,8 +67,8 @@ SensorError MemorySensor::Initialize(HWND window) {
     return SensorError::None;
 }
 
-PlayerList MemorySensor::GetPlayers() {
-    PlayerList players;
+api::PlayerList MemorySensor::GetPlayers() {
+   api::PlayerList players;
 
     MapToVector(m_Players, players);
 
@@ -183,7 +183,7 @@ void MemorySensor::DetectPlayers() {
         std::string name = Memory::GetString(m_ProcessHandle, player_addr + NameOffset, 23);
         name = name.substr(0, strlen(name.c_str())); // trim nulls
 
-        PlayerPtr player;
+        api::PlayerPtr player;
 
         auto found = m_Players.find(pid);
         if (found == m_Players.end()) {
