@@ -241,6 +241,16 @@ void ScreenClient::Repel() {
     m_Keyboard.ToggleDown();
 }
 
+void ScreenClient::Rocket() {
+    m_Keyboard.ToggleDown();
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+    m_Keyboard.Send(VK_F3);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    m_Keyboard.ToggleDown();
+}
+
 void ScreenClient::Decoy() {
 	m_Keyboard.ToggleDown();
 	std::this_thread::sleep_for(std::chrono::milliseconds(30));
@@ -446,8 +456,15 @@ Vec2 ScreenClient::GetRealPosition(Vec2 bot_pos, Vec2 target, const Level& level
     return Util::FindTargetPos(bot_pos, target, m_Screen, m_Radar, level, 9);
 }
 
-int ScreenClient::GetEnergy()  {
-    return Util::GetEnergy(m_EnergyArea);
+int ScreenClient::GetEnergy(api::Ship current_ship)  {
+    const ShipSettings& settings = m_MemorySensor.GetShipSettings(current_ship);
+    int max_energy = settings.MaximumEnergy;
+    int digits = 4;
+
+    if (max_energy >= 10000)
+        digits = 5;
+
+    return Util::GetEnergy(m_EnergyArea, digits);
 }
 
 int ScreenClient::GetRotation() {

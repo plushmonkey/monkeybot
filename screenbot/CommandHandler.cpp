@@ -145,11 +145,29 @@ void CommandHandler::InitPermissions() {
     }
 }
 
+// Debug command
+class EnergyCommand : public api::Command {
+public:
+    std::string GetHelp() const { return "Debug command to output energy/maxenergy."; }
+    std::string GetPermission() const { return ""; };
+    void Invoke(api::Bot* bot, const std::string& sender, const std::string& args) {
+        int energy = bot->GetEnergy();
+        int maxenergy = bot->GetMaxEnergy();
+        std::stringstream ss;
+
+        ss << "Energy: " << energy << "/" << maxenergy;
+
+        bot->GetClient()->SendPM(sender, ss.str());
+    }
+};
+
 CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
     RegisterCommand("help", std::make_shared<HelpCommand>());
     RegisterCommand("commands", std::make_shared<CommandsCommand>());
     RegisterCommand("version", std::make_shared<VersionCommand>());
     RegisterCommand("owner", std::make_shared<OwnerCommand>());
+
+    RegisterCommand("energy", std::make_shared<EnergyCommand>());
 
     RegisterCommand("reloadconf", std::make_shared<ReloadConfCommand>());
     RegisterCommand("pause", std::make_shared<PauseCommand>());

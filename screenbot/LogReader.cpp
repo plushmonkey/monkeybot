@@ -60,6 +60,12 @@ ChatMessage* LogReader::GetChatMessage(const std::string& line) {
     mesg->SetMessage(message);
     mesg->SetType(type);
 
+    /* Ignore the enter/leave messages for turrets */
+    if (player.length() > 0 && player[0] == '<') {
+        delete mesg;
+        return nullptr;
+    }
+
     return mesg;
 }
 
@@ -80,6 +86,9 @@ void LogReader::Update(unsigned long dt) {
     for (auto line : tokens) {
         if (line.length() <= 1) continue;
         ChatMessage* mesg = GetChatMessage(line);
+
+        if (!mesg) continue;
+
         MQueue.PushMessage(mesg);
 
         std::sregex_iterator begin(line.begin(), line.end(), KillRE);

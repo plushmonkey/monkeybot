@@ -74,7 +74,7 @@ public:
     virtual void SetXRadar(bool on);
     virtual void Warp();
 
-    virtual int GetEnergy();
+    virtual int GetEnergy(api::Ship current_ship);
     virtual int GetRotation();
     virtual bool IsInSafe(Vec2 real_pos, const Level& level) const;
 
@@ -134,6 +134,7 @@ public:
     virtual MultiState GetMultiState() const {
         return m_MultiState;
     }
+    void Rocket();
 };
 
 #endif

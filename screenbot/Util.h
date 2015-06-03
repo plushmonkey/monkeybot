@@ -16,7 +16,7 @@ namespace Util {
 
     float GetRadarPerPixel(const ScreenAreaPtr& radar, int mapzoom);
     Vec2 GetBotRadarPos(Vec2 real_pos, const ScreenAreaPtr& radar, int mapzoom);
-    int GetEnergy(ScreenAreaPtr* energyarea);
+    int GetEnergy(ScreenAreaPtr* energyarea, int digits);
     int GetEnergyDigit(int digit, ScreenAreaPtr* energyarea);
     bool InSafe(const ScreenAreaPtr& area, Vec2 coord);
     void GetDistance(Vec2 from, Vec2 to, int *dx, int *dy, double* dist);

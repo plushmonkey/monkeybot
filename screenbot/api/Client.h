@@ -43,7 +43,7 @@ public:
     virtual void SetXRadar(bool on) = 0;
     virtual void Warp() = 0;
 
-    virtual int GetEnergy() = 0;
+    virtual int GetEnergy(api::Ship current_ship) = 0;
     virtual int GetRotation() = 0;
     virtual bool IsInSafe(Vec2 real_pos, const Level& level) const = 0;
 
@@ -95,6 +95,7 @@ public:
     virtual void EnableMulti(bool enable) = 0;
 
     virtual MultiState GetMultiState() const = 0;
+    virtual void Rocket() = 0;
 };
 
 } // ns

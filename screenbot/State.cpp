@@ -699,6 +699,7 @@ AggressiveState::AggressiveState(api::Bot* bot)
       m_LastEnemyPos(0,0),
       m_NearWall(0),
       m_BurstTimer(100000),
+      m_RocketTimer(10000),
       m_LastSafeTime(0)
 {
 	m_DecoyTimer = 0;
@@ -895,12 +896,34 @@ void AggressiveState::Update(DWORD dt) {
         }
 
         /* Fire decoys */
-		m_DecoyTimer += dt;
+        m_DecoyTimer += dt;
         if (!insafe && m_Bot->GetConfig().DecoyDelay > 0 && m_DecoyTimer >= m_Bot->GetConfig().DecoyDelay) {
-			client->Decoy();
-			m_DecoyTimer = 0;
-		}
+            client->Decoy();
+            m_DecoyTimer = 0;
+        }
 
+        /* Fire rockets */
+        api::Ship ship = m_Bot->GetShip();
+        const ShipSettings& settings = m_Bot->GetMemorySensor().GetShipSettings(ship);
+        float rocket_duration_ms = settings.RocketTime * 10.0f;
+        float tiles_per_ms = (settings.InitialSpeed / 10.0f / 16.0f) / 1000.0f;
+        const int RocketThrust = 37;
+        float speed_per_ms = RocketThrust / 100.0f / 16.0f / 1000.0f;
+
+        m_RocketTimer += dt;
+        if (m_RocketTimer > rocket_duration_ms) {
+            Vec2 direction = Vec2Normalize(pos - target);
+            float current_speed = (float)vBot.Length();
+            float max_speed = settings.InitialSpeed / 10.0f / 16.0f;
+            float ms_to_max = ((max_speed - current_speed) / 1000.0f) / speed_per_ms;
+            Vec2 estimated_pos = pos + direction * (tiles_per_ms * (rocket_duration_ms - ms_to_max));
+
+            if ((dist * dist) > (estimated_pos - pos).LengthSquared() * .75) {
+                m_Bot->GetClient()->Rocket();
+                m_RocketTimer = 0;
+            }
+        }
+        
         double heading_dot = heading.Dot(target_heading);
         const double MaxGunDotDiff = 0.2;
         const double MaxBombDotDiff = 0.01;

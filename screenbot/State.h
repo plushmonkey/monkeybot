@@ -79,6 +79,7 @@ private:
     DWORD m_NearWall;
     DWORD m_BurstTimer;
 	DWORD m_DecoyTimer;
+    DWORD m_RocketTimer;
     DWORD m_LastSafeTime;
 
 public:

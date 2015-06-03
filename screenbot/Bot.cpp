@@ -87,7 +87,7 @@ Vec2 Bot::GetVelocity() const {
 }
 
 bool Bot::FullEnergy() const {
-    return !m_Client->InShip() || (m_Client->GetEnergy() >= GetMaxEnergy() && m_Client->GetEnergy() != 0);
+    return !m_Client->InShip() || (m_Client->GetEnergy(GetShip()) >= GetMaxEnergy() && m_Client->GetEnergy(GetShip()) != 0);
 }
 
 unsigned int Bot::GetFreq() const {
@@ -390,7 +390,8 @@ void Bot::Update(DWORD dt) {
 
     if (m_Paused) {
         m_MemorySensor.OnUpdate(this, dt);
-        m_ShipEnforcer->OnUpdate(this, dt);
+        if (IsInShip())
+            m_ShipEnforcer->OnUpdate(this, dt);
         MQueue.Dispatch();
         std::this_thread::sleep_for(std::chrono::milliseconds(2500));
         return;
@@ -409,6 +410,7 @@ void Bot::Update(DWORD dt) {
 
     if (!IsInShip()) {
         MQueue.Dispatch();
+        std::this_thread::sleep_for(std::chrono::milliseconds(2500));
         return;
     }
     
@@ -416,7 +418,7 @@ void Bot::Update(DWORD dt) {
     m_Client->EnableMulti(m_Config.MultiFire);
 
     m_LastEnergy = m_Energy;
-    m_Energy = m_Client->GetEnergy();
+    m_Energy = m_Client->GetEnergy(GetShip());
 
     // Reset maximum energy on every death
     if (m_Energy == 0) m_MaxEnergy = 0;

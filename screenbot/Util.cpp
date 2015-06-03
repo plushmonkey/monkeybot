@@ -259,7 +259,7 @@ int GetEnergyDigit(int digit, ScreenAreaPtr* energyarea) {
     return 0;
 }
 
-int GetEnergy(ScreenAreaPtr* energyarea) {
+int GetEnergy(ScreenAreaPtr* energyarea, int digits) {
     // Default to 2000 energy if resolution isn't supported
     if (!energyarea[0]) return 2000;
 
@@ -267,6 +267,10 @@ int GetEnergy(ScreenAreaPtr* energyarea) {
         energyarea[i]->Update();
 
     int first = GetEnergyDigit(0, energyarea);
+
+    if (digits == 4)
+        first = 0;
+
     int second = GetEnergyDigit(1, energyarea);
     int third = GetEnergyDigit(2, energyarea);
     int fourth = GetEnergyDigit(3, energyarea);
