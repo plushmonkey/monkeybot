@@ -132,7 +132,7 @@ std::string CleverbotHTTP::Send() {
         std::string sessionid = parsed.second;
 
         m_Conversation.push_back(m_Data[Stimulus].second);
-        m_Conversation.push_back(answer);
+        m_Conversation.push_back(URLEncode(answer));
 
         m_Data[SessionID].second = sessionid;
 
@@ -144,9 +144,13 @@ std::string CleverbotHTTP::Send() {
 }
 
 void CleverbotHTTP::UpdateConversation() {
-    for (std::size_t i = m_Conversation.size(); i > 0; --i) {
-        std::string line = m_Conversation[i - 1];
-        std::size_t current = m_Conversation.size() - i;
+    using namespace std;
+
+    for (size_t i = m_Conversation.size(); i > 0; --i) {
+        string line = m_Conversation[i - 1];
+        size_t current = m_Conversation.size() - i;
+
+        if (current > 6) break;
 
         m_Data[VText2 + current].second = line;
     }
