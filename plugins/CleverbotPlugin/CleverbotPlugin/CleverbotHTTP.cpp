@@ -14,32 +14,32 @@ std::size_t CurlWriteString(void* buffer, std::size_t size, std::size_t nmemb, v
 
 CleverbotHTTP::CleverbotHTTP()
     : m_Header({
-    "User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36",
-    "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-    "Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7",
-    "Accept-Language: en-us,en;q=0.8,en-us;q=0.5,en;q=0.3",
-    "Cache-Control: no-cache",
-    "Host: " + m_Host,
-    "Origin: " + m_Protocol + m_Host + "/",
-    "Referer: " + m_Protocol + m_Host + "/",
-    "Pragma: no-cache"
-}),
-m_Data({
-    { "stimulus", "" },
-    { "vText2", "" }, // Newest convo message
-    { "vText3", "" },
-    { "vText4", "" },
-    { "vText5", "" },
-    { "vText6", "" },
-    { "vText7", "" },
-    { "vText8", "" }, // Oldest convo message
-    { "sessionid", "" },
-    { "cb_settings_language", "en" },
-    { "cb_settings_scripting", "no" },
-    { "islearning", "1" },
-    { "icognoid", "wsf" },
-    { "icognocheck", "" }
-    })
+        "User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36",
+        "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+        "Accept-Language: en-us,en;q=0.8,en-us;q=0.5,en;q=0.3",
+        "Cache-Control: no-cache",
+        "Host: " + m_Host,
+        "Origin: " + m_Protocol + m_Host + "/",
+        "Referer: " + m_Protocol + m_Host + "/",
+        "Pragma: no-cache"
+      }),
+      m_Data({
+        { "stimulus", "" },
+        { "vText2", "" }, // Newest convo message
+        { "vText3", "" },
+        { "vText4", "" },
+        { "vText5", "" },
+        { "vText6", "" },
+        { "vText7", "" },
+        { "vText8", "" }, // Oldest convo message
+        { "sessionid", "" },
+        { "cb_settings_language", "en" },
+        { "cb_settings_scripting", "no" },
+        { "islearning", "1" },
+        { "icognoid", "wsf" },
+        { "icognocheck", "" }
+      })
 {
     m_Curl = curl_easy_init();
 
@@ -118,8 +118,10 @@ std::string CleverbotHTTP::Send() {
 
     res = curl_easy_perform(m_Curl);
 
-    if (res != CURLE_OK)
+    if (res != CURLE_OK) {
+        std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
         data = "";
+    }
 
     curl_slist_free_all(header);
 
@@ -133,6 +135,8 @@ std::string CleverbotHTTP::Send() {
         m_Conversation.push_back(answer);
 
         m_Data[SessionID].second = sessionid;
+
+        std::cout << answer << std::endl;
         return answer;
     }
 
@@ -183,13 +187,7 @@ std::string CleverbotHTTP::CreatePOST() const {
 
         if (kv.second.length() == 0) continue;
 
-        char* key = curl_easy_escape(m_Curl, kv.first.c_str(), kv.first.length());
-        char* value = curl_easy_escape(m_Curl, kv.second.c_str(), kv.second.length());
-
-        ss << "&" << key << "=" << value;
-
-        curl_free(value);
-        curl_free(key);
+        ss << "&" << kv.first << "=" << kv.second;
     }
 
     return ss.str();
