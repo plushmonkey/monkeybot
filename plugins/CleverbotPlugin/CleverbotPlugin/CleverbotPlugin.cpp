@@ -1,5 +1,6 @@
 #include "api/Api.h"
 #include "plugin/Plugin.h"
+#include "CleverbotHTTP.h"
 
 #include <algorithm>
 #include <future>
@@ -10,13 +11,13 @@
 #include <random>
 #include <atomic>
 
+#include "curl/curl.h"
+
 /**
  * Simple plugin example. 
  * Both this plugin and the bot need to be compiled in release mode.
  * Statically link it by setting the configuration option in C/C++ -> Code Generation -> Runtime Library to Multi-threaded (/MT).
- * 
- * Cleverbot needs to be installed for python using pip. 'pip install cleverbot'
- * Put the cbot.py in the same directory as the screenbot.exe.
+ * Put libcurl.dll in the same folder as screenbot.exe.
  */
 
 namespace {
@@ -46,35 +47,11 @@ std::string strtolower(std::string str) {
     return str;
 }
 
-
-class Cleverbot {
-public:
-    static std::string Think(std::string thought) {
-        thought.erase(std::remove(thought.begin(), thought.end(), '"'));
-
-        std::string program("python cbot.py");
-        std::string run = program + " \"" + thought + "\"";
-
-        FILE *pipe = _popen(run.c_str(), "r");
-        if (!pipe) return "";
-
-        std::string result;
-        char buffer[200];
-        while (!feof(pipe)) {
-            if (fgets(buffer, 200, pipe) != nullptr)
-                result += buffer;
-        }
-        _pclose(pipe);
-
-        result.erase(std::remove(result.begin(), result.end(), '\r'));
-        result.erase(std::remove(result.begin(), result.end(), '\n'));
-        return result;
-    }
-};
-
 class CleverbotQueue {
 private:
-    const int m_TimeoutMS = 10 * 1000;
+    const int m_TimeoutMS = 8 * 1000;
+
+    CleverbotHTTP m_Cleverbot;
 
     std::shared_ptr<std::thread> m_Thread;
     std::queue<std::string> m_Queue;
@@ -115,13 +92,15 @@ private:
             std::string thought = m_Queue.front();
             m_Queue.pop();
             m_Mutex.unlock();
-
-            std::future<std::string> future = std::async(std::launch::async, std::bind(Cleverbot::Think, thought));
+            
+            std::future<std::string> future = std::async(std::launch::async, std::bind(&CleverbotHTTP::Think, &m_Cleverbot, thought));
             if (future.wait_for(std::chrono::milliseconds(m_TimeoutMS)) != std::future_status::ready) {
                 std::cout << "Timeout." << std::endl;
                 continue;
             }
+
             std::string response = future.get();
+            
             if (response.length() > 0) {
                 if (response.at(0) == '*')
                     response.insert(response.begin(), '.');
@@ -135,7 +114,9 @@ private:
 
                 switch (m_Type) {
                 case ChatMessage::Type::Channel:
-                    to_send = ";" + std::to_string(m_Channel) + ";";
+                    to_send = ";";
+                    if (Channel > 1)
+                        to_send += std::to_string(m_Channel) + ";";
                     break;
                 case ChatMessage::Type::Team:
                     to_send = "'";
@@ -209,11 +190,13 @@ public:
 
 extern "C" {
     PLUGIN_FUNC Plugin* CreatePlugin(api::Bot* bot) {
+        curl_global_init(CURL_GLOBAL_ALL);
         return new CleverbotPlugin(bot);
     }
 
     PLUGIN_FUNC void DestroyPlugin(Plugin* plugin) {
         delete plugin;
+        curl_global_cleanup();
     }
 
     PLUGIN_FUNC const char* GetPluginName() {
