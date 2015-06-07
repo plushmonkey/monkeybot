@@ -10,8 +10,8 @@
 #include <string>
 #include <random>
 #include <atomic>
-
-#include "curl/curl.h"
+#include <chrono>
+#include <curl/curl.h>
 
 /**
  * Simple plugin example. 
@@ -51,7 +51,7 @@ class CleverbotQueue {
 private:
     const int m_TimeoutMS = 8 * 1000;
 
-    CleverbotHTTP m_Cleverbot;
+    std::shared_ptr<CleverbotHTTP> m_Cleverbot;
 
     std::shared_ptr<std::thread> m_Thread;
     std::queue<std::string> m_Queue;
@@ -65,11 +65,14 @@ private:
 
     void StripEntities(std::string& str) {
         using namespace std;
-        size_t begin = str.find("&");
-        size_t end = str.find(";");
 
-        if (begin == string::npos || end == string::npos || begin >= end) return;
-        str.erase(begin, end - begin + 1);
+        while (true) {
+            size_t begin = str.find("&");
+            size_t end = str.find(";");
+
+            if (begin == string::npos || end == string::npos || begin >= end) return;
+            str.erase(begin, end - begin + 1);
+        }
     }
 
     bool Contains(std::string str, const std::string& find) {
@@ -79,9 +82,61 @@ private:
         return str.find(find_lower) != std::string::npos;
     }
 
+    std::string EraseName(std::string thought) {
+        std::string bot_name = strtolower(m_Bot->GetName());
+        thought = strtolower(thought);
+
+        // Don't erase name if it's the only thing in the line
+        if (thought.compare(bot_name) == 0) return thought;
+
+        std::size_t pos = thought.find(bot_name);
+
+        if (pos != std::string::npos)
+            thought.erase(pos, bot_name.length());
+
+        if (thought.length() > pos && thought[pos] == ' ')
+            thought.erase(pos, 1);
+
+        return thought;
+    }
+
+    void HandleResponse(std::string response) {
+        std::cout << "Response: " << response << std::endl;
+
+        if (response.length() > 0) {
+            if (response.at(0) == '*')
+                response.insert(response.begin(), '.');
+
+            if (Contains(response, "clever")) return;
+            if (Contains(response, "ios app")) return;
+
+            StripEntities(response);
+
+            std::string to_send;
+
+            switch (m_Type) {
+                case ChatMessage::Type::Channel:
+                    to_send = ";";
+                    if (Channel > 1)
+                        to_send += std::to_string(m_Channel) + ";";
+                break;
+                case ChatMessage::Type::Team:
+                    to_send = "'";
+                break;
+            }
+
+            to_send += response;
+            m_Bot->SendMessage(to_send);
+        }
+    }
+
     void Run() {
         m_Running = true;
         while (m_Running) {
+            // Load it in this thread so main thread doesn't block
+            if (!m_Cleverbot)
+                m_Cleverbot = std::make_shared<CleverbotHTTP>();
+
             m_Mutex.lock();
             if (m_Queue.empty()) {
                 m_Mutex.unlock();
@@ -92,42 +147,21 @@ private:
             std::string thought = m_Queue.front();
             m_Queue.pop();
             m_Mutex.unlock();
-            
-            std::future<std::string> future = std::async(std::launch::async, std::bind(&CleverbotHTTP::Think, &m_Cleverbot, thought));
+
+            thought = EraseName(thought);
+
+            std::cout << "Thinking: " << thought << std::endl;
+
+            std::future<std::string> future = std::async(std::launch::async, std::bind(&CleverbotHTTP::Think, m_Cleverbot.get(), thought));
             if (future.wait_for(std::chrono::milliseconds(m_TimeoutMS)) != std::future_status::ready) {
                 std::cout << "Timeout." << std::endl;
                 continue;
             }
 
-            std::string response = future.get();
-            
-            if (response.length() > 0) {
-                if (response.at(0) == '*')
-                    response.insert(response.begin(), '.');
-
-                if (Contains(response, "clever")) continue;
-                if (Contains(response, "ios app")) continue;
-
-                StripEntities(response);
-
-                std::string to_send;
-
-                switch (m_Type) {
-                case ChatMessage::Type::Channel:
-                    to_send = ";";
-                    if (Channel > 1)
-                        to_send += std::to_string(m_Channel) + ";";
-                    break;
-                case ChatMessage::Type::Team:
-                    to_send = "'";
-                    break;
-                }
-
-                to_send += response;
-                m_Bot->SendMessage(to_send);
-            }
+            HandleResponse(future.get());
         }
     }
+
 public:
     CleverbotQueue(api::Bot* bot, ChatMessage::Type type, int channel) : m_Bot(bot), m_Queue(), m_Mutex(), m_Type(type), m_Channel(channel) {
         m_Thread = std::make_shared<std::thread>(&CleverbotQueue::Run, this);
@@ -154,9 +188,11 @@ public:
     CleverbotPlugin(api::Bot* bot) : m_Bot(bot) { }
 
     int OnCreate() {
-        std::string version = m_Bot->GetVersion().GetString();
+        m_CBQ = std::make_shared<CleverbotQueue>(m_Bot, ChatType, Channel);
 
+        std::string version = m_Bot->GetVersion().GetString();
         std::cout << "Cleverbot loaded for monkeybot version " << version << std::endl;
+
         return 0;
     }
 
@@ -171,8 +207,6 @@ public:
     void OnChatMessage(ChatMessage* mesg) {
         if (mesg->GetType() != ChatType || mesg->GetPlayer().compare(m_Bot->GetName()) == 0)
             return;
-        if (!m_CBQ.get())
-            m_CBQ = std::make_shared<CleverbotQueue>(m_Bot, ChatType, Channel);
 
         if (ChatType == ChatMessage::Type::Channel && mesg->GetChannel() != Channel) return;
 
@@ -180,10 +214,8 @@ public:
         std::string name = strtolower(m_Bot->GetName());
 
         bool contains_name = message.find(name) != std::string::npos;
-        if (contains_name || Random::GetReal() <= RespondChance) {
-            if (m_CBQ.get())
-                m_CBQ->Enqueue(mesg->GetMessage());
-        }
+        if (contains_name || Random::GetReal() <= RespondChance)
+            m_CBQ->Enqueue(mesg->GetMessage());
     }
 };
 

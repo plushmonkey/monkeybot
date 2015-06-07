@@ -89,6 +89,8 @@ std::string CleverbotHTTP::CreateCookie(const std::string& key, const std::strin
 }
 
 std::string CleverbotHTTP::Think(const std::string& thought) {
+    if (thought.length() == 0) return "";
+
     m_Data[Stimulus].second = URLEncode(thought);
 
     std::string result = Send();

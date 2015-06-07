@@ -142,6 +142,8 @@ int PluginManager::LoadPlugins(Bot* bot, const std::string& directory) {
         }
     } while (FindNextFile(hFind, &fd));
 
+    FindClose(hFind);
+
     return count;
 }
 
