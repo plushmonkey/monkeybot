@@ -567,6 +567,12 @@ void PatrolState::Update(DWORD dt) {
         target = m_Waypoints.front();
     }
 
+    if (!m_Bot->GetGrid().IsOpen((short)target.x, (short)target.y)) {
+        m_Waypoints.erase(m_Waypoints.begin());
+        return;
+    }
+
+
     if (!m_Bot->GetGrid().IsSolid((short)pos.x, (short)pos.y) && m_Bot->GetGrid().IsOpen((short)target.x, (short)target.y)) {
         static DWORD path_timer = 0;
 

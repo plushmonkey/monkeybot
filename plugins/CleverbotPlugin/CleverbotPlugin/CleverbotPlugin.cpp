@@ -24,7 +24,7 @@ namespace {
 
 const ChatMessage::Type ChatType = ChatMessage::Type::Public;
 const int Channel = 2;
-const double RespondChance = 0.2;
+const double BaseRespondChance = 0.1;
 
 } // ns
 
@@ -101,14 +101,16 @@ private:
     }
 
     void HandleResponse(std::string response) {
+        static const std::vector<std::string> filter = { "clever", "ios app" };
+
         std::cout << "Response: " << response << std::endl;
 
         if (response.length() > 0) {
             if (response.at(0) == '*')
                 response.insert(response.begin(), '.');
 
-            if (Contains(response, "clever")) return;
-            if (Contains(response, "ios app")) return;
+            for (const std::string& str : filter)
+                if (Contains(response, str)) return;
 
             StripEntities(response);
 
@@ -181,8 +183,28 @@ public:
 
 class CleverbotPlugin : public Plugin {
 private:
+    typedef std::chrono::system_clock::rep Timestamp;
+
     api::Bot* m_Bot;
     std::shared_ptr<CleverbotQueue> m_CBQ;
+    bool m_LastReference; // True if the last message not sent by bot had the bot name in it
+
+    struct Message {
+        std::string player;
+        std::string message;
+
+        Message(ChatMessage* mesg) : player(mesg->GetPlayer()), message(mesg->GetMessage()) { }
+    };
+
+    struct StoredMessage {
+        Message message;
+        Timestamp timestamp;
+
+        StoredMessage(ChatMessage* mesg, Timestamp timestamp) : message(mesg), timestamp(timestamp) { }
+    };
+
+    typedef std::deque<StoredMessage> ChatQueue;
+    ChatQueue m_ChatQueue;
 
 public:
     CleverbotPlugin(api::Bot* bot) : m_Bot(bot) { }
@@ -196,6 +218,13 @@ public:
         return 0;
     }
 
+    Timestamp GetTime() const {
+        using namespace std::chrono;
+
+        auto duration = system_clock::now().time_since_epoch();
+        return duration_cast<milliseconds>(duration).count();
+    }
+
     int OnUpdate(unsigned long dt) {
         return 0;
     }
@@ -204,18 +233,76 @@ public:
         return 0;
     }
 
-    void OnChatMessage(ChatMessage* mesg) {
-        if (mesg->GetType() != ChatType || mesg->GetPlayer().compare(m_Bot->GetName()) == 0)
-            return;
+    void PurgeMessages() {
+        const Timestamp AliveTime = 1000 * 60 * 3;
+        const Timestamp timestamp = GetTime();
 
-        if (ChatType == ChatMessage::Type::Channel && mesg->GetChannel() != Channel) return;
+        while (!m_ChatQueue.empty()) {
+            StoredMessage message = m_ChatQueue.front();
+            if (timestamp - message.timestamp < AliveTime)
+                break;
+            m_ChatQueue.pop_front();
+        }
+    }
 
-        std::string message = strtolower(mesg->GetMessage());
+    std::size_t GetReferenceCount() const {
+        ChatQueue::const_iterator iter = m_ChatQueue.begin();
         std::string name = strtolower(m_Bot->GetName());
+        std::size_t references = 0;
 
-        bool contains_name = message.find(name) != std::string::npos;
-        if (contains_name || Random::GetReal() <= RespondChance)
+        while (iter != m_ChatQueue.end()) {
+            std::string message = strtolower(iter->message.message);
+
+            if (message.find(name) != std::string::npos)
+                ++references;
+
+            ++iter;
+        }
+
+        return references;
+    }
+
+    std::size_t GetChatterCount() const {
+        std::size_t chatters = m_ChatQueue.size();
+        return chatters;
+    }
+
+    double GetRespondChance() const {
+        std::size_t chatters = GetChatterCount();
+
+        if (chatters <= 1 || m_LastReference) return 1.0;
+
+        std::size_t references = GetReferenceCount();
+
+        return BaseRespondChance + (1.0 / (chatters * 1.75)) + ((references / chatters) * .50);
+    }
+
+    void OnChatMessage(ChatMessage* mesg) {
+        using namespace std;
+
+        if (mesg->GetType() != ChatType) return;
+        if (ChatType == ChatMessage::Type::Channel && mesg->GetChannel() != Channel)  return;
+        if (mesg->GetPlayer().compare(m_Bot->GetName()) == 0) return;
+
+        PurgeMessages();
+
+        StoredMessage stored(mesg, GetTime());
+
+        bool push = m_ChatQueue.empty() || (!m_ChatQueue.empty() && m_ChatQueue.back().message.player.compare(mesg->GetPlayer()) != 0);
+        if (push)
+            m_ChatQueue.push_back(stored);
+        
+        string message = strtolower(mesg->GetMessage());
+        string name = strtolower(m_Bot->GetName());
+        double respond_chance = GetRespondChance();
+
+        std::cout << "Chatters: " << GetChatterCount() << " Respond Chance: " << respond_chance << std::endl;
+
+        bool contains_name = message.find(name) != string::npos;
+        if (contains_name || Random::GetReal() <= respond_chance)
             m_CBQ->Enqueue(mesg->GetMessage());
+
+        m_LastReference = contains_name;
     }
 };
 
