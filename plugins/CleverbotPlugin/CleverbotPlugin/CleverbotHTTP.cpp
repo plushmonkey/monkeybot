@@ -138,7 +138,6 @@ std::string CleverbotHTTP::Send() {
 
         m_Data[SessionID].second = sessionid;
 
-        std::cout << answer << std::endl;
         return answer;
     }
 

@@ -17,7 +17,6 @@
  * Simple plugin example. 
  * Both this plugin and the bot need to be compiled in release mode.
  * Statically link it by setting the configuration option in C/C++ -> Code Generation -> Runtime Library to Multi-threaded (/MT).
- * Put libcurl.dll in the same folder as screenbot.exe.
  */
 
 namespace {
@@ -274,7 +273,7 @@ public:
 
         std::size_t references = GetReferenceCount();
 
-        return BaseRespondChance + (1.0 / (chatters * 1.75)) + ((references / chatters) * .50);
+        return BaseRespondChance + (1.0 / (chatters * 1.75)) + ((references / (double)chatters) * .50);
     }
 
     void OnChatMessage(ChatMessage* mesg) {
@@ -286,19 +285,22 @@ public:
 
         PurgeMessages();
 
+        string message = strtolower(mesg->GetMessage());
+        string name = strtolower(m_Bot->GetName());
+        double respond_chance = GetRespondChance();
+        bool contains_name = message.find(name) != string::npos;
+
+        if (contains_name)
+            m_ChatQueue.clear();
+
         StoredMessage stored(mesg, GetTime());
 
         bool push = m_ChatQueue.empty() || (!m_ChatQueue.empty() && m_ChatQueue.back().message.player.compare(mesg->GetPlayer()) != 0);
         if (push)
             m_ChatQueue.push_back(stored);
         
-        string message = strtolower(mesg->GetMessage());
-        string name = strtolower(m_Bot->GetName());
-        double respond_chance = GetRespondChance();
+        std::cout << "Chatters: " << GetChatterCount() << " References: " << GetReferenceCount() << " Respond Chance: " << respond_chance << std::endl;
 
-        std::cout << "Chatters: " << GetChatterCount() << " Respond Chance: " << respond_chance << std::endl;
-
-        bool contains_name = message.find(name) != string::npos;
         if (contains_name || Random::GetReal() <= respond_chance)
             m_CBQ->Enqueue(mesg->GetMessage());
 

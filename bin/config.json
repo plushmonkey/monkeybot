@@ -96,10 +96,15 @@
       "(400, 585)", "(565, 580)", "(600, 475)", "(512, 460)", "(425, 460)", "(385, 505)"
     ],
 
+    /** List of permissions for commands. Use * for wildcard. Using * as the name applies to everyone that doesn't already have a permission set.  */
     "Permissions": {
         "monkey": [ "*" ],
-        "taz": [ "default.*" ]
+        "taz": [ "default.*" ],
+        "*": [ "default.plugins" ]
     },
+    
+    /** The response for !owner command. */
+    "Owner": "",
 
     /** Sends one of these randomly when the bot kills a player that isn't in the whitelist.
      * {name} will be replaced with the dead player's name.
