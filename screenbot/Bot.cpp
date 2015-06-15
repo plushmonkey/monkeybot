@@ -209,6 +209,12 @@ HWND Bot::SelectWindow() {
     return select_map[selection]->first;
 }
 
+bool Bot::WindowHasFocus() const {
+    HWND focus = GetForegroundWindow();
+
+    return focus == m_Window;
+}
+
 void Bot::SelectShip() {
     static bool selected;
 
@@ -378,6 +384,23 @@ void Bot::EnforceCenter(unsigned long dt) {
 }
 
 void Bot::Update(DWORD dt) {
+    static bool paused_for_focus = false;
+
+    bool has_focus = WindowHasFocus();
+
+    if (!has_focus) {
+        if (!GetPaused()) {
+            SetPaused(true);
+
+            paused_for_focus = true;
+        }
+    } else {
+        if (paused_for_focus) {
+            paused_for_focus = false;
+            SetPaused(false);
+        }
+    }
+
     m_LogReader->Update(dt);
 
     {
@@ -393,6 +416,7 @@ void Bot::Update(DWORD dt) {
         if (IsInShip())
             m_ShipEnforcer->OnUpdate(this, dt);
         MQueue.Dispatch();
+        m_Client->ReleaseKeys();
         std::this_thread::sleep_for(std::chrono::milliseconds(2500));
         return;
     }

@@ -85,7 +85,8 @@ private:
     void AttachUpdate(unsigned long dt);
     void EnforceCenter(unsigned long dt);
     void HandleMessage(ChatMessage* mesg);
-    
+    bool WindowHasFocus() const;
+
 public:
     Bot(int ship);
 

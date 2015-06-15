@@ -6,7 +6,7 @@ namespace {
 
 const int Major = 4;
 const int Minor = 0;
-const int Revision = 0;
+const int Revision = 1;
 
 } // ns
 
