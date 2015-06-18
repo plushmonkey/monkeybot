@@ -12,7 +12,7 @@ std::size_t CurlWriteString(void* buffer, std::size_t size, std::size_t nmemb, v
     return size * nmemb;
 }
 
-CleverbotHTTP::CleverbotHTTP()
+CleverbotHTTP::CleverbotHTTP(long timeout)
     : m_Header({
         "User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36",
         "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
@@ -39,7 +39,8 @@ CleverbotHTTP::CleverbotHTTP()
         { "islearning", "1" },
         { "icognoid", "wsf" },
         { "icognocheck", "" }
-      })
+      }),
+      m_Timeout(timeout)
 {
     m_Curl = curl_easy_init();
 
@@ -61,7 +62,7 @@ std::string CleverbotHTTP::URLEncode(const std::string& str) const {
 }
 
 // Initializes XVIS cookie
-void CleverbotHTTP::InitializeCookies() {
+bool CleverbotHTTP::InitializeCookies() {
     CURLcode res;
 
     curl_slist* header = CreateHeader();
@@ -77,6 +78,8 @@ void CleverbotHTTP::InitializeCookies() {
     res = curl_easy_perform(m_Curl);
 
     curl_slist_free_all(header);
+
+    return res == CURLE_OK;
 }
 
 std::string CleverbotHTTP::CreateCookie(const std::string& key, const std::string& value) {

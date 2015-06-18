@@ -21,6 +21,7 @@
 
 namespace {
 
+const long Timeout = 12000;
 const ChatMessage::Type ChatType = ChatMessage::Type::Public;
 const int Channel = 2;
 const double BaseRespondChance = 0.1;
@@ -136,7 +137,7 @@ private:
         while (m_Running) {
             // Load it in this thread so main thread doesn't block
             if (!m_Cleverbot)
-                m_Cleverbot = std::make_shared<CleverbotHTTP>();
+                m_Cleverbot = std::make_shared<CleverbotHTTP>(Timeout);
 
             m_Mutex.lock();
             if (m_Queue.empty()) {
@@ -154,10 +155,8 @@ private:
             std::cout << "Thinking: " << thought << std::endl;
 
             std::future<std::string> future = std::async(std::launch::async, std::bind(&CleverbotHTTP::Think, m_Cleverbot.get(), thought));
-            if (future.wait_for(std::chrono::milliseconds(m_TimeoutMS)) != std::future_status::ready) {
-                std::cout << "Timeout." << std::endl;
+            if (future.wait_for(std::chrono::milliseconds(m_TimeoutMS)) != std::future_status::ready)
                 continue;
-            }
 
             HandleResponse(future.get());
         }
@@ -206,7 +205,7 @@ private:
     ChatQueue m_ChatQueue;
 
 public:
-    CleverbotPlugin(api::Bot* bot) : m_Bot(bot) { }
+    CleverbotPlugin(api::Bot* bot) : m_Bot(bot), m_LastReference(false) { }
 
     int OnCreate() {
         m_CBQ = std::make_shared<CleverbotQueue>(m_Bot, ChatType, Channel);
@@ -289,9 +288,6 @@ public:
         string name = strtolower(m_Bot->GetName());
         double respond_chance = GetRespondChance();
         bool contains_name = message.find(name) != string::npos;
-
-        if (contains_name)
-            m_ChatQueue.clear();
 
         StoredMessage stored(mesg, GetTime());
 

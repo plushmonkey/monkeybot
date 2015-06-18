@@ -13,7 +13,7 @@ private:
     const std::string m_Resource = "/webservicemin";
     const std::string m_APIUrl = m_Protocol + m_Host + m_Resource;
     const std::vector<std::string> m_Header;
-    const long m_Timeout = 8000;
+    const long m_Timeout;
 
     enum DataType { Stimulus, VText2, VText3, VText4, VText5, VText6, VText7, VText8, SessionID, CBSettingsLanguage, CBSettingsScripting, IsLearning, IcognoID, IcognoCheck };
     typedef std::pair<std::string, std::string> DataPair;
@@ -30,11 +30,11 @@ private:
     std::string CreatePOST() const;
     std::string GetDigest() const;
     void UpdateConversation();
-    void InitializeCookies();
+    bool InitializeCookies();
     std::string CreateCookie(const std::string& key, const std::string& value);
 
 public:
-    CleverbotHTTP();
+    CleverbotHTTP(long timeout = 8000);
     ~CleverbotHTTP();
 
     std::string Think(const std::string& thought);
