@@ -468,6 +468,7 @@ int ScreenClient::GetEnergy(api::Ship current_ship)  {
 }
 
 int ScreenClient::GetRotation() {
+    return m_MemorySensor.GetBotPlayer()->GetRotation();
     u64 val = 0;
 
     for (int i = 0; i < 4; i++) {

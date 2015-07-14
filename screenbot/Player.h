@@ -18,6 +18,7 @@ private:
     unsigned short m_Pid;
     api::Ship m_Ship;
     bool m_InArena;
+    unsigned char m_Status;
 
 public:
     Player() 
@@ -48,6 +49,7 @@ public:
     unsigned short GetPid() const { return m_Pid; }
     api::Ship GetShip() const { return m_Ship; }
     bool InArena() const { return m_InArena; }
+    unsigned char GetStatus() const { return m_Status; }
 
     void SetName(const std::string& name) { m_Name = name; }
     void SetFreq(unsigned int freq) { m_Freq = freq; }
@@ -63,7 +65,7 @@ public:
     void SetPid(unsigned short pid) { m_Pid = pid; }
     void SetShip(api::Ship ship) { m_Ship = ship; }
     void SetInArena(bool inarena) { m_InArena = inarena; }
-
+    void SetStatus(unsigned char status) { m_Status = status; }
 };
 
 //typedef shared_ptr<api::Player> api::PlayerPtr;

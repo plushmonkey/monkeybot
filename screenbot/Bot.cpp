@@ -415,9 +415,10 @@ void Bot::Update(DWORD dt) {
         m_MemorySensor.OnUpdate(this, dt);
         if (IsInShip())
             m_ShipEnforcer->OnUpdate(this, dt);
+        m_PluginManager.OnUpdate(this, dt);
         MQueue.Dispatch();
         m_Client->ReleaseKeys();
-        std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));
         return;
     }
 

@@ -36,7 +36,8 @@ MemorySensor::MemorySensor(Bot* bot)
       m_Name(""),
       m_SettingsTimer(0),
       m_SelectedIndex(-1),
-      m_ShipSettings()
+      m_ShipSettings(),
+      m_CurrentChatEntry(0)
 {
     m_UpdateID = RegisterBotUpdater(bot, MemorySensor::OnUpdate);
 }
@@ -164,6 +165,7 @@ void MemorySensor::DetectPlayers() {
     const unsigned char SpeedOffset = 0x10;
     const unsigned char IDOffset = 0x18;
     const unsigned char ShipOffset = 0x5C;
+    const unsigned char StatusOffset = 0x60;
 
     for (auto kv : m_Players)
         kv.second->SetInArena(false);
@@ -182,6 +184,8 @@ void MemorySensor::DetectPlayers() {
         unsigned short ship = Memory::GetU32(m_ProcessHandle, player_addr + ShipOffset);
         std::string name = Memory::GetString(m_ProcessHandle, player_addr + NameOffset, 23);
         name = name.substr(0, strlen(name.c_str())); // trim nulls
+        unsigned char status = 0;
+        Memory::Read(m_ProcessHandle, player_addr + StatusOffset, &status, 1);
 
         api::PlayerPtr player;
 
@@ -205,6 +209,7 @@ void MemorySensor::DetectPlayers() {
         player->SetVelocity(Vec2(xspeed, yspeed));
         player->SetPid(pid);
         player->SetShip(static_cast<api::Ship>(ship));
+        player->SetStatus(status);
 
         if (name.compare(m_Name) == 0)
             m_BotPlayer = player;
@@ -215,6 +220,39 @@ void MemorySensor::DetectPlayers() {
             iter = m_Players.erase(iter);
         else
             ++iter;
+    }
+}
+
+void MemorySensor::DetectChat() {
+    uintptr_t addr = Memory::GetU32(m_ProcessHandle, m_ContBaseAddr + 0xC1AFC) + 0x2DD08;
+
+    // The address where chat begins
+    uintptr_t chat_addr = Memory::GetU32(m_ProcessHandle, addr);
+    // The number of chat entries
+    u32 entry_count = Memory::GetU32(m_ProcessHandle, addr + 8);
+    // The size of each chat entry
+    const unsigned int EntrySize = 0x124;
+
+    int count = entry_count - m_CurrentChatEntry;
+
+    if (count < 0)
+        count += 64;
+
+    for (int i = 0; i < count; ++i) {
+        ChatEntry entry;
+
+        if (m_CurrentChatEntry >= 1024)
+            m_CurrentChatEntry -= 64;
+
+        uintptr_t current_addr = chat_addr + (m_CurrentChatEntry * EntrySize);
+
+        Memory::Read(m_ProcessHandle, current_addr, &entry, sizeof(ChatEntry));
+
+        m_ChatLog.push_back(entry);
+
+        std::cout << entry.player << (strlen(entry.player) > 0 ? "> " : "") << entry.message << std::endl;
+
+        m_CurrentChatEntry++;
     }
 }
 
@@ -239,6 +277,8 @@ bool MemorySensor::OnUpdate(api::Bot *bot, unsigned long dt) {
     DetectFreq();
     DetectPlayers();
     DetectSelected();
+    //DetectChat();
+
     return true;
 }
 

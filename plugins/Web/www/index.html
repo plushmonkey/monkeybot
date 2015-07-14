@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ws</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script src="js/main.js"></script>
+  <style>
+    body {
+      background-color: black;
+    }
+
+    #Font {
+      position: absolute;
+      visibility: hidden;
+      height: auto;
+      width: auto;
+      white-space: nowrap;
+    }
+
+    #background {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      left: 0px;
+      top: 0px;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .stretch {
+      width: 100%;
+      height: 100%;
+    }
+
+    .team {
+      color: rgb(255, 240, 64);
+    }
+
+    .enemy {
+      color: rgb(160, 160, 255);
+    }
+  </style>
+</head>
+<body>
+  <div id="background">
+    <img src="images/radar.png" class="stretch" alt=""/>
+    <div id="players">
+    </div>
+  </div>
+
+  <div id="Font">
+    A
+  </div>
+</body>
+</html>

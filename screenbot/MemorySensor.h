@@ -24,6 +24,13 @@ class MemorySensor : public api::MemorySensor {
 public:
     typedef unsigned short PlayerID;
 
+    struct ChatEntry {
+        char message[255];
+        unsigned char type; // 0x02 == pub
+        char player[24];
+        char unknown[12];
+    };
+
 private:
     HANDLE m_ProcessHandle;
     uintptr_t m_ContBaseAddr;
@@ -33,6 +40,9 @@ private:
     bool m_Initialized;
     DWORD m_SettingsTimer;
     int m_SelectedIndex;
+
+    std::vector<ChatEntry> m_ChatLog;
+    u32 m_CurrentChatEntry;
 
     unsigned int m_UpdateID;
 
@@ -51,6 +61,7 @@ private:
     void DetectPosition();
     void DetectFreq();
     void DetectPlayers();
+    void DetectChat();
 
 public:
     MemorySensor(Bot* bot);
