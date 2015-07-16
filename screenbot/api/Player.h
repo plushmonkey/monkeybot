@@ -23,6 +23,7 @@ public:
     virtual unsigned short GetPid() const = 0;
     virtual api::Ship GetShip() const = 0;
     virtual bool InArena() const = 0;
+    virtual unsigned char GetStatus() const = 0;
 
     virtual void SetName(const std::string& name) = 0;
     virtual void SetFreq(unsigned int freq) = 0;
@@ -38,6 +39,7 @@ public:
     virtual void SetPid(unsigned short pid) = 0;
     virtual void SetShip(api::Ship ship) = 0;
     virtual void SetInArena(bool inarena) = 0;
+    virtual void SetStatus(unsigned char status) = 0;
 };
 
 typedef std::shared_ptr<Player> PlayerPtr;

@@ -22,7 +22,6 @@ private:
 
     void ClearPlugins();
 
-    bool OnUpdate(api::Bot* bot, unsigned long dt);
     void HandleMessage(ChatMessage* mesg);
     void HandleMessage(KillMessage* mesg);
     std::string PluginManager::GetPluginPath(const std::string& name);
@@ -30,6 +29,7 @@ public:
     PluginManager();
     ~PluginManager();
 
+    bool OnUpdate(api::Bot* bot, unsigned long dt);
     int LoadPlugins(Bot* bot, const std::string& directory);
 
     // Loads a single plugin. Prepends plugins/ and appends .dll
