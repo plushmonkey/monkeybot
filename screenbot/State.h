@@ -33,6 +33,8 @@ public:
     ChaseState(api::Bot* bot);
     virtual void Update(DWORD dt);
     virtual api::StateType GetType() const { return api::StateType::ChaseState; }
+
+    const Pathing::Plan& GetPlan() const { return m_Plan; }
 };
 
 class BaseduelState : public api::State {

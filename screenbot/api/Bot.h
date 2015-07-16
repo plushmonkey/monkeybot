@@ -50,6 +50,8 @@ public:
 
     virtual Ship GetShip() const = 0;
 
+
+    virtual StatePtr GetState() const = 0;
     /**
      * \brief Sets the current state of the bot.
      */

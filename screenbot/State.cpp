@@ -724,16 +724,16 @@ Vec2 CalculateShot(const Vec2& pShooter, const Vec2& pTarget, const Vec2& vShoot
     Vec2 solution;
 
     double disc = (b * b) - 4 * a * c;
-    if (disc < 0)
-        return pTarget;
+    double t = -1.0;
 
-    double t1 = (-b + std::sqrt(disc)) / (2 * a);
-    double t2 = (-b - std::sqrt(disc)) / (2 * a);
-    double t = 0.0;
-    if (t1 < t2 && t1 >= 0)
-        t = t1;
-    else
-        t = t2;
+    if (disc >= 0.0) {
+        double t1 = (-b + std::sqrt(disc)) / (2 * a);
+        double t2 = (-b - std::sqrt(disc)) / (2 * a);
+        if (t1 < t2 && t1 >= 0)
+            t = t1;
+        else
+            t = t2;
+    }
 
     // Only use the calculated shot if its collision is within acceptable timeframe
     if (t < 0 || t > 5) {

@@ -199,6 +199,8 @@ public:
 
     unsigned int GetFreq() const;
     shared_ptr<api::EnemySelectorFactory> GetEnemySelectors() { return m_EnemySelectors; }
+
+    api::StatePtr GetState() const { return m_State; }
 };
 
 #define RegisterBotUpdater(bot, function) (bot)->RegisterUpdater(std::bind(&function, this, std::placeholders::_1, std::placeholders::_2)); 
