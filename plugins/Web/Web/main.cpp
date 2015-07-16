@@ -3,6 +3,7 @@
 #include "api/Api.h"
 #include "plugin/Plugin.h"
 #include "Vector.h"
+#include "State.h"
 
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
@@ -114,7 +115,7 @@ Json::Value SerializePlayer(api::PlayerPtr player) {
 class WebPlugin : public Plugin {
 private:
     api::Bot* m_Bot;
-    const int UpdateFrequency = 1000;
+    const int UpdateFrequency = 100;
     int m_UpdateTimer;
     WebSocketServer m_Server;
 
@@ -135,20 +136,51 @@ public:
 
             api::PlayerList players = m_Bot->GetMemorySensor().GetPlayers();
 
-            Json::Value root;
-            
-            root["type"] = "players";
-            root["players"] = Json::Value(Json::arrayValue);
+            {
+                Json::Value root;
 
-            for (api::PlayerPtr player : players) {
-                Json::Value playerJSON = SerializePlayer(player);
+                root["type"] = "players";
+                root["players"] = Json::Value(Json::arrayValue);
 
-                root["players"].append(playerJSON);
+                for (api::PlayerPtr player : players) {
+                    Json::Value playerJSON = SerializePlayer(player);
+                    root["players"].append(playerJSON);
+                }
+
+                std::string to_send = root.toStyledString();
+
+                m_Server.Send(to_send);
             }
 
-            std::string to_send = root.toStyledString();
-            
-            m_Server.Send(to_send);
+
+            {
+                api::PlayerPtr target = m_Bot->GetEnemyTarget();
+                api::StatePtr state = m_Bot->GetState();
+                Json::Value root;
+
+                if (target) {
+                    root["type"] = "ai";
+                    root["ai"]["target"] = target->GetName();
+
+                    if (state->GetType() == api::StateType::ChaseState) {
+                        ChaseState* chase = dynamic_cast<ChaseState*>(state.get());
+                        Pathing::Plan plan = chase->GetPlan();
+
+                        root["ai"]["plan"] = Json::Value(Json::arrayValue);
+
+                        for (std::size_t i = 0; i < plan.size(); ++i) {
+                            root["ai"]["plan"][i]["x"] = plan[i]->x;
+                            root["ai"]["plan"][i]["y"] = plan[i]->y;
+                        }
+                    } else {
+                        root["ai"]["plan"] = Json::Value(Json::arrayValue);
+                        root["ai"]["plan"][0]["x"] = target->GetPosition().x / 16;
+                        root["ai"]["plan"][0]["y"] = target->GetPosition().y / 16;
+                    }
+
+                    m_Server.Send(root.toStyledString());
+                }
+            }
         }
 
         return 0;
