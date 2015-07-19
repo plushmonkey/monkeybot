@@ -287,5 +287,8 @@
     <ClInclude Include="api\Player.h">
       <Filter>Header Files\api</Filter>
     </ClInclude>
+    <ClInclude Include="Messages\EnterMessage.h">
+      <Filter>Header Files\Messages</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

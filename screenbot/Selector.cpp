@@ -6,6 +6,11 @@
 #include "Config.h"
 #include "Bot.h"
 
+bool InRect(Vec2 pos, Vec2 min_rect, Vec2 max_rect) {
+    return ((pos.x >= min_rect.x && pos.y >= min_rect.y) &&
+            (pos.x <= max_rect.x && pos.y <= max_rect.y));
+}
+
 std::shared_ptr<api::Player> ClosestEnemySelector::Select(api::Bot* bot) {
     ClientPtr client = bot->GetClient();
 
@@ -17,11 +22,17 @@ std::shared_ptr<api::Player> ClosestEnemySelector::Select(api::Bot* bot) {
     double closest_calc_dist = std::numeric_limits<double>::max();
     api::PlayerPtr closest = api::PlayerPtr(nullptr);
     // Determines how much the rotation difference will increase distance by
-    const double RotationMultiplier = 2.25; 
+    // TODO: change this to calculate rotation time using client settings
+    const double RotationMultiplier = 2.0; 
 
+    Vec2 spawn(((Bot*)bot)->GetConfig().SpawnX, ((Bot*)bot)->GetConfig().SpawnY);
+    int center_radius = ((Bot*)bot)->GetConfig().CenterRadius;
+    bool center_only = ((Bot*)bot)->GetConfig().CenterOnly;
     Vec2 bot_pos = bot->GetPos();
-    Vec2 heading = bot->GetHeading();
-    bool in_safe = bot->IsInSafe();
+    bool has_x = (bot->GetMemorySensor().GetBotPlayer()->GetStatus() & 4) != 0;
+    Vec2 resolution(1920, 1080); // Maybe use client resolution? Using standard 1080p so it's not so weak
+    Vec2 view_min = bot_pos - resolution / 16;
+    Vec2 view_max = bot_pos + resolution / 16;
 
     for (unsigned int i = 0; i < enemies.size(); i++) {
         api::PlayerPtr& enemy = enemies.at(i);
@@ -33,13 +44,27 @@ std::shared_ptr<api::Player> ClosestEnemySelector::Select(api::Bot* bot) {
         if (enemy_pos.x <= 0 && enemy_pos.y <= 0) continue;
         if (client->IsInSafe(enemy_pos, bot->GetLevel())) continue;
 
+        bool in_center = InRect(enemy_pos, spawn - center_radius, spawn + center_radius);
+
+        if (center_only && !in_center) continue;
+
         Util::GetDistance(enemy_pos, bot_pos, &cdx, &cdy, &cdist);
 
-        if (cdist < 15 && in_safe) continue;
+        if (cdist < 15 && bot->IsInSafe()) continue;
 
-        // Unit vector pointing towards this enemy
+        unsigned char status = enemy->GetStatus();
+        bool stealth = (status & 1) != 0;
+        bool cloak = (status & 2) != 0;
+
+        if (!has_x) {
+            if (stealth && cloak) continue;
+            bool visible = InRect(enemy_pos, view_min, view_max);
+
+            if (stealth && !visible) continue;
+        }
+
         Vec2 to_target = Vec2Normalize(enemy_pos - bot_pos); 
-        double dot = heading.Dot(to_target);
+        double dot = bot->GetHeading().Dot(to_target);
         double multiplier = 1.0 + ((1.0 - dot) / RotationMultiplier);
         double calc_dist = cdist * multiplier;
 
@@ -73,7 +98,7 @@ api::PlayerPtr TargetEnemySelector::Select(api::Bot* bot) {
         Vec2 pos = player->GetPosition() / 16;
 
         bool in_safe = bot->GetClient()->IsInSafe(pos, bot->GetLevel());
-        bool in_center = (pos - spawn).Length() <= center_radius;
+        bool in_center = InRect(pos, spawn - center_radius, spawn + center_radius);
         bool can_target = !in_safe && (!center_only || in_center);
 
         return lower.compare(m_Target) == 0 && 

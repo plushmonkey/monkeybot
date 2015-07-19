@@ -96,6 +96,11 @@ public:
 
     virtual MultiState GetMultiState() const = 0;
     virtual void Rocket() = 0;
+
+    /**
+     * \brief Gets the screen resolution in pixels.
+     */
+    virtual Vec2 GetResolution() = 0;
 };
 
 } // ns

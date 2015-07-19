@@ -778,3 +778,7 @@ void ScreenClient::SelectPlayer(const std::string& name) {
     // Keep going until it's selected
     SelectPlayer(name);
 }
+
+Vec2 ScreenClient::GetResolution() {
+    return Vec2(m_Screen->GetWidth(), m_Screen->GetHeight());
+}

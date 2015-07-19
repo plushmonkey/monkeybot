@@ -18,6 +18,8 @@ public:
 
     virtual void OnChatMessage(ChatMessage* mesg) { }
     virtual void OnKill(KillMessage* mesg) { }
+    virtual void OnEnter(EnterMessage* mesg) { }
+    virtual void OnLeave(LeaveMessage* mesg) { }
 };
 
 namespace api { class Bot; }

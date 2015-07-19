@@ -135,6 +135,7 @@ public:
         return m_MultiState;
     }
     void Rocket();
+    Vec2 GetResolution();
 };
 
 #endif

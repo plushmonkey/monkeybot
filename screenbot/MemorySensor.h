@@ -44,8 +44,6 @@ private:
     std::vector<ChatEntry> m_ChatLog;
     u32 m_CurrentChatEntry;
 
-    unsigned int m_UpdateID;
-
     std::map<PlayerID, api::PlayerPtr> m_Players;
     Vec2 m_Position;
     Vec2 m_Velocity;

@@ -10,7 +10,10 @@
 
 class Bot;
 
-class PluginManager : public MessageHandler<ChatMessage>, public MessageHandler<KillMessage> {
+class PluginManager : public MessageHandler<ChatMessage>, 
+                      public MessageHandler<KillMessage>,
+                      public MessageHandler<EnterMessage>,
+                      public MessageHandler<LeaveMessage> {
 public:
     typedef std::vector<PluginInstance*> Plugins;
     typedef Plugins::const_iterator const_iterator;
@@ -18,12 +21,13 @@ public:
 
 private:
     Plugins m_Plugins;
-    unsigned int m_UpdateID;
 
     void ClearPlugins();
 
     void HandleMessage(ChatMessage* mesg);
     void HandleMessage(KillMessage* mesg);
+    void HandleMessage(EnterMessage* mesg);
+    void HandleMessage(LeaveMessage* mesg);
     std::string PluginManager::GetPluginPath(const std::string& name);
 public:
     PluginManager();

@@ -412,10 +412,10 @@ void Bot::Update(DWORD dt) {
     }
 
     if (m_Paused) {
+        m_PluginManager.OnUpdate(this, dt);
         m_MemorySensor.OnUpdate(this, dt);
         if (IsInShip())
             m_ShipEnforcer->OnUpdate(this, dt);
-        m_PluginManager.OnUpdate(this, dt);
         MQueue.Dispatch();
         m_Client->ReleaseKeys();
         std::this_thread::sleep_for(std::chrono::milliseconds(25));
@@ -423,6 +423,9 @@ void Bot::Update(DWORD dt) {
     }
 
     m_Client->Update(dt);
+
+    m_PluginManager.OnUpdate(this, dt);
+    m_MemorySensor.OnUpdate(this, dt);
 
     // Update all of the updaters
     for (auto kv : m_Updaters) {

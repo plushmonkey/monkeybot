@@ -9,7 +9,6 @@ void PluginManager::ClearPlugins() {
 }
 
 PluginManager::PluginManager() 
-    : m_UpdateID(-1) 
 {
 }
 PluginManager::~PluginManager() {
@@ -40,9 +39,6 @@ std::string PluginManager::GetPluginPath(const std::string& name) {
 
 void PluginManager::LoadPlugin(api::Bot* bot, const std::string& name) {
     if (name.length() == 0) return;
-
-    if (m_UpdateID == -1)
-        m_UpdateID = bot->RegisterUpdater(std::bind(&PluginManager::OnUpdate, this, std::placeholders::_1, std::placeholders::_2));
 
     std::string filename = GetPluginPath(name);
     
@@ -87,9 +83,6 @@ void PluginManager::UnloadPlugin(const std::string& name) {
 
 int PluginManager::LoadPlugins(Bot* bot, const std::string& directory) {
     if (directory.length() == 0) return 0;
-
-    if (m_UpdateID == -1)
-        m_UpdateID = bot->RegisterUpdater(std::bind(&PluginManager::OnUpdate, this, std::placeholders::_1, std::placeholders::_2));
 
     char last_char = directory.at(directory.length() - 1);
 
@@ -190,6 +183,28 @@ void PluginManager::HandleMessage(KillMessage* mesg) {
         Plugin* plugin = (*iter)->GetPlugin();
         if (plugin)
             plugin->OnKill(mesg);
+        ++iter;
+    }
+}
+
+void PluginManager::HandleMessage(EnterMessage* mesg) {
+    auto iter = begin();
+
+    while (iter != end()) {
+        Plugin* plugin = (*iter)->GetPlugin();
+        if (plugin)
+            plugin->OnEnter(mesg);
+        ++iter;
+    }
+}
+
+void PluginManager::HandleMessage(LeaveMessage* mesg) {
+    auto iter = begin();
+
+    while (iter != end()) {
+        Plugin* plugin = (*iter)->GetPlugin();
+        if (plugin)
+            plugin->OnLeave(mesg);
         ++iter;
     }
 }

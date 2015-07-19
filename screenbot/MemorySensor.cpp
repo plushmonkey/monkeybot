@@ -39,7 +39,7 @@ MemorySensor::MemorySensor(Bot* bot)
       m_ShipSettings(),
       m_CurrentChatEntry(0)
 {
-    m_UpdateID = RegisterBotUpdater(bot, MemorySensor::OnUpdate);
+    
 }
 
 SensorError MemorySensor::Initialize(HWND window) {
@@ -170,6 +170,8 @@ void MemorySensor::DetectPlayers() {
     for (auto kv : m_Players)
         kv.second->SetInArena(false);
 
+    bool first_run = m_Players.size() == 0;
+
     for (unsigned short i = 0; i < count; ++i) {
         uintptr_t player_addr = Memory::GetU32(m_ProcessHandle, players_addr + (i * 4));
         if (player_addr == 0) continue;
@@ -213,13 +215,21 @@ void MemorySensor::DetectPlayers() {
 
         if (name.compare(m_Name) == 0)
             m_BotPlayer = player;
+
+        if (!first_run)
+            MQueue.PushMessage(new EnterMessage(player));
     }
 
     for (auto iter = m_Players.begin(); iter != m_Players.end(); ) {
-        if (!iter->second->InArena())
+        if (!iter->second->InArena()) {
+            std::string name = iter->second->GetName();
+
+            MQueue.PushMessage(new LeaveMessage(iter->second));
+
             iter = m_Players.erase(iter);
-        else
+        } else {
             ++iter;
+        }
     }
 }
 
@@ -238,6 +248,8 @@ void MemorySensor::DetectChat() {
     if (count < 0)
         count += 64;
 
+    bool first_run = m_ChatLog.size() == 0;
+
     for (int i = 0; i < count; ++i) {
         ChatEntry entry;
 
@@ -250,9 +262,12 @@ void MemorySensor::DetectChat() {
 
         m_ChatLog.push_back(entry);
 
-        std::cout << entry.player << (strlen(entry.player) > 0 ? "> " : "") << entry.message << std::endl;
+        if (!first_run) {
+            // TODO: Push new chat message on message queue, delete logreader
+            //std::cout << entry.player << (strlen(entry.player) > 0 ? "> " : "") << entry.message << std::endl;
+        }
 
-        m_CurrentChatEntry++;
+        ++m_CurrentChatEntry;
     }
 }
 
@@ -277,7 +292,7 @@ bool MemorySensor::OnUpdate(api::Bot *bot, unsigned long dt) {
     DetectFreq();
     DetectPlayers();
     DetectSelected();
-    //DetectChat();
+    DetectChat();
 
     return true;
 }

@@ -5,8 +5,12 @@
 
 #include <regex>
 
+namespace {
 
 const std::regex KillRE(R"::(^\s+(.+)\(([0-9]+)\) killed by: (.+)$)::");
+
+} // ns
+
 
 LogReader::LogReader(const std::string& filename, const unsigned int frequency) 
     : m_FileStream(filename),

@@ -3,5 +3,6 @@
 
 #include "KillMessage.h"
 #include "ChatMessage.h"
+#include "EnterMessage.h"
 
 #endif

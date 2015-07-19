@@ -290,6 +290,7 @@
     <ClInclude Include="LogReader.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="Messages\ChatMessage.h" />
+    <ClInclude Include="Messages\EnterMessage.h" />
     <ClInclude Include="Messages\KillMessage.h" />
     <ClInclude Include="MemorySensor.h" />
     <ClInclude Include="Messages\Messages.h" />
