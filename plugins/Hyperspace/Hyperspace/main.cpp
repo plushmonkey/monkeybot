@@ -18,6 +18,11 @@ void GetDistance(Vec2 from, Vec2 to, int *dx, int *dy, double* dist) {
         *dist = std::sqrt(cdx * cdx + cdy * cdy);
 }
 
+bool InRect(Vec2 pos, Vec2 min_rect, Vec2 max_rect) {
+    return ((pos.x >= min_rect.x && pos.y >= min_rect.y) &&
+            (pos.x <= max_rect.x && pos.y <= max_rect.y));
+}
+
 class HyperspaceSelector : public api::Selector {
 public:
     std::shared_ptr<api::Player> Select(api::Bot* bot) {
@@ -34,31 +39,45 @@ public:
         const double RotationMultiplier = 2.25;
 
         Vec2 bot_pos = bot->GetPos();
-        Vec2 heading = bot->GetHeading();
-        bool in_safe = bot->IsInSafe();
+        bool has_x = (bot->GetMemorySensor().GetBotPlayer()->GetStatus() & 4) != 0;
+        Vec2 resolution(1920, 1080); // Maybe use client resolution? Using standard 1080p so it's not so weak
+        Vec2 view_min = bot_pos - resolution / 16;
+        Vec2 view_max = bot_pos + resolution / 16;
 
-        for (unsigned int i = 0; i < enemies.size(); i++) {
+        Vec2 spawn(512, 512);
+        const int center_radius = 512 - 320;
+
+        for (unsigned int i = 0; i < enemies.size(); ++i) {
             api::PlayerPtr& enemy = enemies.at(i);
-            int cdx, cdy;
-            double cdist;
-
             Vec2 enemy_pos = enemy->GetPosition() / 16;
-
+            
             if (enemy_pos.x <= 0 && enemy_pos.y <= 0) continue;
             if (client->IsInSafe(enemy_pos, bot->GetLevel())) continue;
 
+            int cdx, cdy;
+            double cdist;
             GetDistance(enemy_pos, bot_pos, &cdx, &cdy, &cdist);
 
-            if (cdist < 15 && in_safe) continue;
+            if (cdist < 15 && bot->IsInSafe()) continue;
 
-            // 460, 613 -> 534, 670 = mini
-            bool in_mini = (enemy_pos.x >= 460 && enemy_pos.y >= 613 && enemy_pos.x <= 534 && enemy_pos.y <= 670);
+            bool in_center = InRect(enemy_pos, spawn - center_radius, spawn + center_radius);
+            bool in_mini = InRect(enemy_pos, Vec2(460, 613), Vec2(534, 670));
+            if (!in_center || in_mini) continue;
 
-            if (in_mini) continue;
+            unsigned char status = enemy->GetStatus();
+            bool stealth = (status & 1) != 0;
+            bool cloak = (status & 2) != 0;
+
+            if (!has_x) {
+                if (stealth && cloak) continue;
+                bool visible = InRect(enemy_pos, view_min, view_max);
+
+                if (stealth && !visible) continue;
+            }
 
             // Unit vector pointing towards this enemy
             Vec2 to_target = Vec2Normalize(enemy_pos - bot_pos);
-            double dot = heading.Dot(to_target);
+            double dot = bot->GetHeading().Dot(to_target);
             double multiplier = 1.0 + ((1.0 - dot) / RotationMultiplier);
             double calc_dist = cdist * multiplier;
 
