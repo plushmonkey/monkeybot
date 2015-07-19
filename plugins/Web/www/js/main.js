@@ -71,7 +71,7 @@ function getColor(player) {
   if (cloak && !stealth) return "#FFC8C8";
   if (stealth && cloak) return "#FF0000";
   if (xradar) return "#00FF00";
-  if (player.freq == 90) return "#FFA040";
+  if (player.freq == 90) return "#FFF040";
   if (player.freq == 91) return "#A0A0FF";
 
   return "white";
@@ -95,23 +95,12 @@ function update() {
 
   var players = PlayerManager.players;
 
-  var d = new Date();
-  var ms = d.getTime();
-
-  var remove = [];
-
   for (var i = 0; i < players.length; ++i) {
     if (players[i].pos.x != 0 && players[i].pos.y != 0) {
       players[i].pos.x += players[i].velocity.x * (UpdateFrequency / 1000);
       players[i].pos.y += players[i].velocity.y * (UpdateFrequency / 1000);
     }
-
-    if (ms - players[i].lastUpdated >= 1000)
-      remove.push(players[i]);
   }
-
-  for (var i = 0; i < remove.length; ++i)
-    PlayerManager.removePlayer(remove[i]);
 }
 
 function draw() {
@@ -126,7 +115,7 @@ function draw() {
 
   var bot = PlayerManager.getPlayerByName("taz");
 
-  if (pathPlan.length > 0 && bot.ship != 9) {
+  if (pathPlan.length > 0 && bot && bot.ship != 9) {
     ctx.strokeStyle = "red";
     ctx.beginPath();
 
@@ -137,13 +126,16 @@ function draw() {
     for (var i = 0; i < pathPlan.length; ++i) {
       var node = pathPlan[i];
 
-      pos = mapTileToCanvasCoords(node.x, node.y);
-      ctx.lineTo(pos.x, pos.y);
+      if (node.x != 0 && node.y != 0) {
+        pos = mapTileToCanvasCoords(node.x, node.y);
+        ctx.lineTo(pos.x, pos.y);
+      }
     }
     ctx.stroke();
   }
 
   var players = PlayerManager.players;
+
   for (var i = 0; i < players.length; ++i) {
     var player = players[i];
 
@@ -187,6 +179,52 @@ var handlers = {
     }
   },
 
+  player: function(view, offset) {
+    var name = String.fromCharCode.apply(null, new Uint8Array(view.buffer, offset + 2, 20));
+    var index = name.indexOf(String.fromCharCode(0));
+    name = name.slice(0, index);
+    
+    var player = {
+      name: name,
+      pid: view.getUint16(offset + 22, true),
+      ship: view.getUint8(offset + 24),
+      freq: view.getUint32(offset + 25, true),
+      rotation: view.getUint8(offset + 29),
+      pos: {
+        x: view.getFloat64(offset + 30, true),
+        y: view.getFloat64(offset + 38, true)
+      },
+      velocity: {
+        x: view.getFloat64(offset + 46, true),
+        y: view.getFloat64(offset + 54, true)
+      },
+      status: view.getUint8(offset + 62),
+      lastUpdated: (new Date()).getTime()
+    };
+
+    var found = PlayerManager.getPlayerByPid(player.pid);
+
+    if (!found) 
+      PlayerManager.addPlayer(player);
+    else
+      PlayerManager.updatePlayer(found, player);
+
+    return offset + 63;
+  },
+
+  disconnect: function(view, offset) {
+    var pid = view.getUint16(offset + 2, true);
+    var player = PlayerManager.getPlayerByPid(pid);
+
+    if (player) {
+      console.log(player.name + " disconnected");
+
+      PlayerManager.removePlayer(player);
+    }
+
+    return offset + 4;
+  },
+
   chat: function(obj) {
     var chat = obj.chat;
     var type = chat.type;
@@ -228,7 +266,7 @@ function connect() {
   };
 
   connection.onerror = function(error) {
-    console.log('WebSocket error ' + error);
+    console.log('WebSocket error');
   };
 
   var reconnect = function() {
@@ -246,22 +284,43 @@ function connect() {
   };
 
   connection.onmessage = function(e) {
-    var data = String.fromCharCode.apply(null, new Uint8Array(e.data));
-    var obj = JSON.parse(data);
+    var view = new DataView(e.data);
 
-    if (!obj) {
-      console.log("Failed to parse JSON object");
-      return;
+    if (view.byteLength <= 0) return;
+
+    var type = view.getUint16(0, true);
+
+    if (type == 0 || type == 1) {
+      var offset = 0;
+
+      while (offset < view.byteLength) {
+        if (type == 0) {
+          type = view.getUint16(offset, true);
+          offset = handlers.player(view, offset);
+        } else if (type == 1) {
+          type = view.getUint16(offset, true);
+          offset = handlers.disconnect(view, offset);
+        } else {
+          console.log("unknown type");
+        }
+      }
+    } else {
+      var data = String.fromCharCode.apply(null, new Uint8Array(e.data));
+      var obj = JSON.parse(data);
+
+      if (!obj) {
+        return;
+      }
+
+      var handler = handlers[obj.type];
+
+      if (!handler) {
+        console.log("Received unknown object", obj);
+        return;
+      }
+
+      handler(obj);
     }
-
-    var handler = handlers[obj.type];
-
-    if (!handler) {
-      console.log("Received unknown object", obj);
-      return;
-    }
-
-    handler(obj);
   };
 
   return connection;
