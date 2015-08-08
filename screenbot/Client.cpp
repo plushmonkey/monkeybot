@@ -524,10 +524,12 @@ void ScreenClient::GrabRadar() {
             }
         }
 
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        tcout << "Finding radar location. (Screen dimensions: " << m_Screen->GetWidth() << "x" << m_Screen->GetHeight() << ")" << std::endl;
-        tcout << "Saving screen to screen.bmp" << std::endl;
-        m_Screen->Save("screen.bmp");
+        if (radarend == 0) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            tcout << "Finding radar location. (Screen dimensions: " << m_Screen->GetWidth() << "x" << m_Screen->GetHeight() << ")" << std::endl;
+            tcout << "Saving screen to screen.bmp" << std::endl;
+            m_Screen->Save("screen.bmp");
+        }
     }
 
     int radarwidth = radarend - radarstart;

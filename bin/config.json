@@ -105,6 +105,9 @@
     
     /** The response for !owner command. */
     "Owner": "",
+    
+    /** The plugins to load at startup. The plugins are loaded from the plugins directory. */
+    "Plugins": [ ],
 
     /** Sends one of these randomly when the bot kills a player that isn't in the whitelist.
      * {name} will be replaced with the dead player's name.

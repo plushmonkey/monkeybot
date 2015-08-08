@@ -166,6 +166,15 @@ void Config::LoadFromNode(const Json::Value& node) {
                 ShipRotations[ship].push_back(rot_values[i].asInt64());
         }
     }
+    
+    const Json::Value plugins = node["Plugins"];
+
+    if (!plugins.isNull()) {
+        Plugins.clear();
+
+        for (size_t i = 0; i < plugins.size(); ++i)
+            Plugins.push_back(plugins[i].asString());
+    }
 }
 
 void Config::LoadShip(api::Ship ship) {
@@ -259,5 +268,15 @@ std::ostream& operator<<(std::ostream& os, const Config& c) {
 
     os << "Taunt count: " << c.Taunts.size() << std::endl;
     os << "Taunt whitelist count: " << c.TauntWhitelist.size() << std::endl;
+    
+    os << "Plugins: ";
+
+    for (auto iter = c.Plugins.begin(); iter != c.Plugins.end(); ++iter) {
+        if (iter != c.Plugins.begin())
+            os << ", ";
+        os << *iter;
+    }
+    os << std::endl;
+    
     return os;
 }

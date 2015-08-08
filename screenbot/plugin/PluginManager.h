@@ -37,7 +37,7 @@ public:
     int LoadPlugins(Bot* bot, const std::string& directory);
 
     // Loads a single plugin. Prepends plugins/ and appends .dll
-    void LoadPlugin(api::Bot* bot, const std::string& name);
+    bool LoadPlugin(api::Bot* bot, const std::string& name);
     void UnloadPlugin(const std::string& name);
 
     Plugins::size_type GetCount() const;

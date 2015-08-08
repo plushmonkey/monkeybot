@@ -59,6 +59,7 @@ public:
     RotationValues ShipRotations[8];
     std::map<std::string, std::vector<std::string>> Permissions;
     std::string Owner;
+    std::vector<std::string> Plugins;
 
     Config();
     bool Load(const std::string& jsonfile);

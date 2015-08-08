@@ -2,6 +2,12 @@
 #include "../Bot.h"
 #include "../Util.h"
 
+namespace {
+
+const std::string PluginFolder = "plugins";
+
+}
+
 void PluginManager::ClearPlugins() {
     for (Plugins::size_type i = 0; i < m_Plugins.size(); ++i)
         delete m_Plugins[i];
@@ -18,12 +24,12 @@ PluginManager::~PluginManager() {
 std::string PluginManager::GetPluginPath(const std::string& name) {
     std::string filename;
 
-    std::size_t pos = name.find("plugins\\");
+    std::size_t pos = name.find(PluginFolder + "\\");
     if (pos == std::string::npos)
-        pos = name.find("plugins/");
+        pos = name.find(PluginFolder + "/");
 
     if (pos != std::string::npos)
-        filename = name.substr(pos + strlen("plugins/"));
+        filename = name.substr(pos + PluginFolder.length() + 1);
 
     if (filename.length() == 0)
         filename = name;
@@ -32,34 +38,38 @@ std::string PluginManager::GetPluginPath(const std::string& name) {
     if (pos != std::string::npos)
         filename = filename.substr(0, pos);
 
-    filename = "plugins\\" + filename + ".dll";
+    filename = PluginFolder + "\\" + filename + ".dll";
 
     return filename;
 }
 
-void PluginManager::LoadPlugin(api::Bot* bot, const std::string& name) {
-    if (name.length() == 0) return;
+bool PluginManager::LoadPlugin(api::Bot* bot, const std::string& name) {
+    if (name.length() == 0) return false;
 
     std::string filename = GetPluginPath(name);
     
     HINSTANCE dll_handle = LoadLibrary(filename.c_str());
 
-    if (!dll_handle) return;
+    if (!dll_handle) return false;
+    
+    bool loaded = false;
 
     PluginCreateFunc create_func = reinterpret_cast<PluginCreateFunc>(GetProcAddress(dll_handle, "CreatePlugin"));
     PluginNameFunc name_func = reinterpret_cast<PluginNameFunc>(GetProcAddress(dll_handle, "GetPluginName"));
 
     if (create_func && name_func) {
-        PluginInstance* plugin = new PluginInstance(filename, name_func());
+        PluginInstance* instance = new PluginInstance(filename, name_func());
 
-        if (plugin) {
-            m_Plugins.push_back(plugin);
-            plugin->Create(bot);
+        if (instance) {
+            m_Plugins.push_back(instance);
+            Plugin* plugin = instance->Create(bot);
 
-            std::cout << plugin->GetName() << " loaded." << std::endl;
+            if (!(loaded = plugin != nullptr))
+                std::cerr << "Failed to create Plugin from PluginInstance for " << instance->GetName() << std::endl;
         }
     }
     FreeLibrary(dll_handle);
+    return loaded;
 }
 
 void PluginManager::UnloadPlugin(const std::string& name) {
@@ -85,57 +95,14 @@ int PluginManager::LoadPlugins(Bot* bot, const std::string& directory) {
     if (directory.length() == 0) return 0;
 
     char last_char = directory.at(directory.length() - 1);
-
-    std::string find = directory;
-
-    bool trailing = (last_char == '/' || last_char == '\\');
-
-    if (trailing)
-        find.append("*.dll");
-    else
-        find.append("\\*.dll");
-
-    WIN32_FIND_DATA fd;
-    HANDLE hFind = FindFirstFile(find.c_str(), &fd);
-
-    if (hFind == INVALID_HANDLE_VALUE) {
-        FindClose(hFind);
-        return 0;
-    }
-
     int count = 0;
+    
+    std::vector<std::string> plugins = bot->GetConfig().Plugins;
 
-    /* Load all the plugins in the directory */
-    do {
-        HINSTANCE dll_handle = nullptr;
-        try {
-            if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-                std::string path = directory;
-                if (!trailing) path += "\\";
-                path.append(fd.cFileName);
-
-                if ((dll_handle = LoadLibrary(path.c_str()))) {
-                    PluginCreateFunc create_func = reinterpret_cast<PluginCreateFunc>(GetProcAddress(dll_handle, "CreatePlugin"));
-                    PluginNameFunc name_func = reinterpret_cast<PluginNameFunc>(GetProcAddress(dll_handle, "GetPluginName"));
-
-                    if (create_func && name_func) {
-                        PluginInstance* plugin = new PluginInstance(path, name_func());
-
-                        if (plugin) {
-                            m_Plugins.push_back(plugin);
-                            plugin->Create(bot);
-                            ++count;
-                        }
-                    }
-                    FreeLibrary(dll_handle);
-                }
-            }
-        } catch (std::exception&) {
-            if (dll_handle) FreeLibrary(dll_handle);
-        }
-    } while (FindNextFile(hFind, &fd));
-
-    FindClose(hFind);
+    for (const std::string& plugin : plugins) {
+        if (LoadPlugin(bot, plugin))
+            ++count;
+    }
 
     return count;
 }
