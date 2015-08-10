@@ -24,19 +24,22 @@ public:
     Player() 
         : m_InArena(true), m_Freq(9999), 
           m_Rotation(0), m_Pid(0), 
-          m_Ship(api::Ship::Spectator)
+          m_Ship(api::Ship::Spectator),
+          m_Status(0)
     { }
 
     Player(const std::string& name) 
         : m_Name(name), m_InArena(true), 
           m_Freq(9999), m_Rotation(0), 
-          m_Pid(0), m_Ship(api::Ship::Spectator)
+          m_Pid(0), m_Ship(api::Ship::Spectator),
+          m_Status(0)
     { }
 
     Player(const std::string& name, unsigned short freq) 
         : m_Name(name), m_Freq(freq), 
           m_InArena(true), m_Rotation(0), 
-          m_Pid(0), m_Ship(api::Ship::Spectator)
+          m_Pid(0), m_Ship(api::Ship::Spectator),
+          m_Status(0)
     { }
 
     const std::string& GetName() const { return m_Name; }

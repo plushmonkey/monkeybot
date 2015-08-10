@@ -30,9 +30,9 @@ public:
 
     Direction GetDirection(api::PlayerPtr player);
 
-    api::PlayerPtr GetSelectedPlayer() { return m_Selected; }
+    api::PlayerPtr GetSelectedPlayer() const { return m_Selected; }
 
-    api::PlayerList GetPlayers() { return m_Players; }
+    api::PlayerList GetPlayers() const { return m_Players; }
 };
 
 #endif

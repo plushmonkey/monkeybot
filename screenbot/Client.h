@@ -106,7 +106,7 @@ public:
     virtual api::PlayerPtr GetSelectedPlayer();
     virtual void MoveTicker(Direction dir);
 
-    ScreenAreaPtr GetRadar() { return m_Radar; }
+    ScreenAreaPtr GetRadar() const { return m_Radar; }
 
     virtual std::vector<Vec2> FindMines(Vec2 bot_pixel_pos);
 

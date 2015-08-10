@@ -28,7 +28,7 @@ private:
     void HandleMessage(KillMessage* mesg);
     void HandleMessage(EnterMessage* mesg);
     void HandleMessage(LeaveMessage* mesg);
-    std::string PluginManager::GetPluginPath(const std::string& name);
+    std::string GetPluginPath(const std::string& name);
 public:
     PluginManager();
     ~PluginManager();

@@ -170,7 +170,7 @@ void MemorySensor::DetectPlayers() {
     for (auto kv : m_Players)
         kv.second->SetInArena(false);
 
-    bool first_run = m_Players.size() == 0;
+    bool first_run = m_Players.empty();
 
     for (unsigned short i = 0; i < count; ++i) {
         uintptr_t player_addr = Memory::GetU32(m_ProcessHandle, players_addr + (i * 4));
@@ -222,8 +222,6 @@ void MemorySensor::DetectPlayers() {
 
     for (auto iter = m_Players.begin(); iter != m_Players.end(); ) {
         if (!iter->second->InArena()) {
-            std::string name = iter->second->GetName();
-
             MQueue.PushMessage(new LeaveMessage(iter->second));
 
             iter = m_Players.erase(iter);

@@ -177,8 +177,7 @@ public:
     }
 
     void UnregisterUpdater(UpdateID id) {
-        if (m_Updaters.find(id) != m_Updaters.end())
-            m_Updaters.erase(id);
+        m_Updaters.erase(id);
     }
 
     Memory::MemorySensor& GetMemorySensor() {

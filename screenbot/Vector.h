@@ -24,12 +24,12 @@ public:
           y(other.y)
     { }
 
-    bool operator==(const Vec2& rhs) {
+    bool operator==(const Vec2& rhs) const {
         double epsilon = 0.00001;
         return std::fabs(x - rhs.x) < epsilon && std::fabs(y - rhs.y) < epsilon;
     }
 
-    bool operator!=(const Vec2& rhs) {
+    bool operator!=(const Vec2& rhs) const {
         return !(*this == rhs);
     }
 

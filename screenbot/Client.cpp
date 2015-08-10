@@ -469,17 +469,6 @@ int ScreenClient::GetEnergy(api::Ship current_ship)  {
 
 int ScreenClient::GetRotation() {
     return m_MemorySensor.GetBotPlayer()->GetRotation();
-    u64 val = 0;
-
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++)
-            val = m_Ship->GetPixel(16 + j, 16 + i) + val;
-    }
-
-    if (m_Rotations)
-        return m_Rotations->GetRotation(val);
-
-    return -1;
 }
 
 bool ScreenClient::IsInSafe(Vec2 real_pos, const Level& level) const {

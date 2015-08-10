@@ -64,7 +64,7 @@ bool PluginManager::LoadPlugin(api::Bot* bot, const std::string& name) {
             m_Plugins.push_back(instance);
             Plugin* plugin = instance->Create(bot);
 
-            if (!(loaded = plugin != nullptr))
+            if (!(loaded = (plugin != nullptr)))
                 std::cerr << "Failed to create Plugin from PluginInstance for " << instance->GetName() << std::endl;
         }
     }
@@ -94,7 +94,6 @@ void PluginManager::UnloadPlugin(const std::string& name) {
 int PluginManager::LoadPlugins(Bot* bot, const std::string& directory) {
     if (directory.length() == 0) return 0;
 
-    char last_char = directory.at(directory.length() - 1);
     int count = 0;
     
     std::vector<std::string> plugins = bot->GetConfig().Plugins;

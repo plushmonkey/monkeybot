@@ -30,9 +30,9 @@ std::shared_ptr<api::Player> ClosestEnemySelector::Select(api::Bot* bot) {
     bool center_only = ((Bot*)bot)->GetConfig().CenterOnly;
     Vec2 bot_pos = bot->GetPos();
     bool has_x = (bot->GetMemorySensor().GetBotPlayer()->GetStatus() & 4) != 0;
-    Vec2 resolution(1920, 1080); // Maybe use client resolution? Using standard 1080p so it's not so weak
-    Vec2 view_min = bot_pos - resolution / 16;
-    Vec2 view_max = bot_pos + resolution / 16;
+    Vec2 half_resolution = Vec2(1920, 1080) / 2;
+    Vec2 view_min = bot_pos - half_resolution / 16;
+    Vec2 view_max = bot_pos + half_resolution / 16;
 
     for (unsigned int i = 0; i < enemies.size(); i++) {
         api::PlayerPtr& enemy = enemies.at(i);

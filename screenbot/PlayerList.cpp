@@ -16,7 +16,7 @@ const int UpdateFrequency = 150; // ms
 
 }
 
-PlayerWindow::PlayerWindow() { }
+PlayerWindow::PlayerWindow() : m_UpdateTimer(0) { }
 
 PlayerWindow::PlayerWindow(ScreenAreaPtr area)
     : m_Area(area), m_UpdateTimer(0)

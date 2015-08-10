@@ -46,7 +46,8 @@ Bot::Bot(int ship)
       m_MemorySensor(this),
       m_EnemySelector(new ClosestEnemySelector()),
       m_ShipEnforcer(new ShipEnforcer(this)),
-      m_EnemySelectors(new EnemySelectorFactory())
+      m_EnemySelectors(new EnemySelectorFactory()),
+      m_Version()
 { }
 
 ClientPtr Bot::GetClient() {

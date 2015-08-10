@@ -74,7 +74,7 @@ struct Pixel {
     u8 r;
     u8 a;
 
-    Pixel() { }
+    Pixel() : b(0), g(0), r(0), a(0) { }
     Pixel(u8 r, u8 g, u8 b, u8 a) : b(b), g(g), r(r), a(a) { }
 };
 
