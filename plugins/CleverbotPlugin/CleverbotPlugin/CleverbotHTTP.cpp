@@ -130,7 +130,7 @@ std::string CleverbotHTTP::Send() {
 
     curl_slist_free_all(header);
 
-    if (data.length() > 0) {
+    if (!data.empty()) {
         std::pair<std::string, std::string> parsed = ParseResult(data);
 
         std::string answer = parsed.first;

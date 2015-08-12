@@ -561,7 +561,7 @@ bool SetClipboard(const std::string& str) {
 }
 
 // Sends a string by pasting. Limits each paste to 200. Calls itself with the remaining string to paste again.
-void ScreenClient::SendString(const std::string& str) {
+void ScreenClient::SendString(const std::string& str, bool paste) {
     using namespace std;
 
     lock_guard<mutex> lock(m_ChatMutex);
@@ -571,7 +571,7 @@ void ScreenClient::SendString(const std::string& str) {
     m_Keyboard.ReleaseAll();
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    if (SetClipboard(to_send)) {
+    if (paste && SetClipboard(to_send)) {
         m_Keyboard.Down(VK_SPACE); 
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
         m_Keyboard.Up(VK_SPACE);

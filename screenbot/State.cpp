@@ -126,7 +126,8 @@ ChaseState::ChaseState(api::Bot* bot)
     : State(bot), 
       m_StuckTimer(0), 
       m_LastCoord(0, 0),
-      m_LastRealEnemyCoord(0, 0)
+      m_LastRealEnemyCoord(0, 0),
+      m_LastEnemySeen(0)
 {
     m_Bot->GetClient()->ReleaseKeys();
 }
@@ -203,13 +204,24 @@ void ChaseState::Update(DWORD dt) {
             path_timer = 0;
         }
     } else {
-        if (m_Plan.size() == 0)
-            m_Plan.push_back(m_Bot->GetGrid().GetNode((short)enemy_pos.x, (short)enemy_pos.y));
+      //  if (m_Plan.size() == 0)
+        //    m_Plan.push_back(m_Bot->GetGrid().GetNode((short)enemy_pos.x, (short)enemy_pos.y));
     }
 
     if (m_Plan.size() == 0) {
+        m_LastEnemySeen += dt;
+
+        if (m_LastEnemySeen >= 45 * 1000) {
+            m_LastEnemySeen = 0;
+            client->ReleaseKeys();
+            client->Warp();
+            return;
+        }
+
         client->ReleaseKeys();
         return;
+    } else {
+        m_LastEnemySeen = 0;
     }
 
     Pathing::JPSNode* next_node = m_Plan.at(0);

@@ -26,6 +26,7 @@ class ChaseState : public api::State {
 private:
     Pathing::Plan m_Plan;
     DWORD m_StuckTimer;
+    DWORD m_LastEnemySeen;
     Vec2 m_LastCoord;
     Vec2 m_LastRealEnemyCoord;
 

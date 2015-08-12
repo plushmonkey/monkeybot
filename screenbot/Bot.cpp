@@ -442,9 +442,6 @@ void Bot::Update(DWORD dt) {
         std::this_thread::sleep_for(std::chrono::milliseconds(2500));
         return;
     }
-    
-    // This shouldn't be here
-    m_Client->EnableMulti(m_Config.MultiFire);
 
     m_LastEnergy = m_Energy;
     m_Energy = m_Client->GetEnergy(GetShip());

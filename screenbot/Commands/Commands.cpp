@@ -128,7 +128,8 @@ void FreqCommand::Invoke(api::Bot* bot, const std::string& sender, const std::st
         client->Update(100);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-    client->SendString("=" + std::to_string(freq));
+    client->SendString("=" + std::to_string(freq), false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(250));
 }
 
 std::string FlagCommand::GetPermission() const {
@@ -159,7 +160,7 @@ void FlagCommand::Invoke(api::Bot* bot, const std::string& sender, const std::st
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             client->Update(100);
         }
-        client->SendString("=" + std::to_string(freq));
+        client->SendString("=" + std::to_string(freq), false);
     } else {
         cfg.Attach = true;
         cfg.CenterOnly = false;
@@ -174,7 +175,7 @@ void FlagCommand::Invoke(api::Bot* bot, const std::string& sender, const std::st
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             client->Update(100);
         }
-        client->SendString("?flag");
+        client->SendString("?flag", false);
     }
 
     ((Bot*)bot)->SetFlagging(flagging);

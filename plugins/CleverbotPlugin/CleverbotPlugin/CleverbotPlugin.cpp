@@ -49,8 +49,6 @@ std::string strtolower(std::string str) {
 
 class CleverbotQueue {
 private:
-    const int m_TimeoutMS = 8 * 1000;
-
     std::shared_ptr<CleverbotHTTP> m_Cleverbot;
 
     std::shared_ptr<std::thread> m_Thread;
@@ -155,8 +153,10 @@ private:
             std::cout << "Thinking: " << thought << std::endl;
 
             std::future<std::string> future = std::async(std::launch::async, std::bind(&CleverbotHTTP::Think, m_Cleverbot.get(), thought));
-            if (future.wait_for(std::chrono::milliseconds(m_TimeoutMS)) != std::future_status::ready)
+            if (future.wait_for(std::chrono::milliseconds(Timeout)) != std::future_status::ready) {
+                std::cout << "Timeout." << std::endl;
                 continue;
+            }
 
             HandleResponse(future.get());
         }

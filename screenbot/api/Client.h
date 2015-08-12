@@ -81,7 +81,7 @@ public:
 
     virtual bool Emped() = 0;
 
-    virtual void SendString(const std::string& str) = 0;
+    virtual void SendString(const std::string& str, bool paste = true) = 0;
     virtual void SendPM(const std::string& target, const std::string& mesg) = 0;
     virtual void UseMacro(short num) = 0;
 

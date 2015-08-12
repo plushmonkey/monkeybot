@@ -115,7 +115,7 @@ public:
 
     virtual bool Emped();
 
-    virtual void SendString(const std::string& str);
+    virtual void SendString(const std::string& str, bool paste = true);
     virtual void SendPM(const std::string& target, const std::string& mesg);
     virtual void UseMacro(short num);
 
