@@ -50,7 +50,8 @@ private:
     unsigned int m_Freq;
     std::string m_Name;
 
-    ShipSettings m_ShipSettings[8];
+    ClientSettings m_Settings;
+    
     api::PlayerPtr m_BotPlayer;
 
     void DetectSelected();
@@ -71,7 +72,8 @@ public:
     const std::string& GetName() const { return m_Name; }
    api::PlayerList GetPlayers();
     api::PlayerPtr GetBotPlayer() const { return m_BotPlayer; }
-    const ShipSettings& GetShipSettings(api::Ship ship) const { return m_ShipSettings[(int)ship]; }
+    const ShipSettings& GetShipSettings(api::Ship ship) const { return m_Settings.ShipSettings[(int)ship]; }
+    const ClientSettings& GetClientSettings() const { return m_Settings; }
     bool OnUpdate(api::Bot* bot, unsigned long dt);
 };
 

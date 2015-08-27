@@ -36,7 +36,7 @@ MemorySensor::MemorySensor(Bot* bot)
       m_Name(""),
       m_SettingsTimer(0),
       m_SelectedIndex(-1),
-      m_ShipSettings(),
+      m_Settings(),
       m_CurrentChatEntry(0)
 {
     
@@ -85,11 +85,9 @@ void MemorySensor::DetectSelected() {
 
 void MemorySensor::DetectSettings() {
     uintptr_t addr = Memory::GetU32(m_ProcessHandle, m_ContBaseAddr + 0xC1AFC); // Starting address
-    size_t size = sizeof(ShipSettings);
-    addr += 0x127EC + 0x1AE70 + 0x04;
+    addr += 0x127EC + 0x1AE70;
 
-    for (size_t i = 0; i < 8; ++i)
-        Memory::Read(m_ProcessHandle, addr + ((size+16) * i), &m_ShipSettings[i], size);
+    Memory::Read(m_ProcessHandle, addr, &m_Settings, sizeof(ClientSettings));
 }
 
 void MemorySensor::DetectName() {
