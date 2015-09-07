@@ -998,142 +998,116 @@ void AggressiveState::Update(DWORD dt) {
     m_Bot->GetMovementManager()->SetEnabled(pursuit);
     steering.Target(m_Bot->GetEnemyTarget());
 
-    double dist = to_target.Length();
-    // Only fire guns if the enemy is within range
-    if (m_Bot->GetConfig().MinGunRange != 0 && dist > m_Bot->GetConfig().MinGunRange) {
-        client->Gun(GunState::Off);
-    } else {
-        /* Handle gunning */
-        if (energypct < m_Bot->GetConfig().RunPercent) {
-            if (dist <= m_Bot->GetConfig().IgnoreDelayDistance)
-                client->Gun(GunState::Constant);
-            else
-                client->Gun(GunState::Off);
-        } else {
-            if (insafe) {
-                client->Gun(GunState::Off);
-            } else {
-                // Do bullet delay if the closest enemy isn't close, ignore otherwise
-                if (dist > m_Bot->GetConfig().IgnoreDelayDistance)
-                    client->Gun(GunState::Tap, energypct);
-                else
-                    client->Gun(GunState::Constant);
-            }
-        }
-    }
-
-    if (pursuit) {
-        client->Gun(GunState::Off);
-        return;
-    }
-
-    const int ChaseFromSafeTime = 3000;
-    if (insafe)
-        m_LastSafeTime = timeGetTime();
-
-    /* Turn off x if energy low, turn back on when high */
-    client->SetXRadar(energypct > m_Bot->GetConfig().XPercent);
-
-    /* Wait in safe for energy */
-    if (insafe && energypct < 50) {
-        client->Gun(GunState::Tap);
-        client->ReleaseKeys();
-        return;
-    }
-
+    int dx, dy;
+    double dist;
+    int target_rot;
+    Vec2 target_heading;
+    int rot = m_Bot->GetClient()->GetRotation();
     DWORD cur_time = timeGetTime();
-    //int rot = client->GetRotation();
-    
+    Vec2 vBot;
 
-    /* Only update if there is a target enemy */
-    if (m_Bot->GetEnemyTarget().get() && m_Bot->GetEnemyTarget()->GetPosition() != Vec2(0, 0)) {
-        Vec2 target = m_Bot->GetEnemyTarget()->GetPosition() / 16;
+    if (!pursuit) {
+        const int ChaseFromSafeTime = 3000;
+        if (insafe)
+            m_LastSafeTime = timeGetTime();
 
-        int dx, dy;
+        /* Turn off x if energy low, turn back on when high */
+        client->SetXRadar(energypct > m_Bot->GetConfig().XPercent);
 
-        int rot = m_Bot->GetClient()->GetRotation();
-
-        Util::GetDistance(pos, target, &dx, &dy, &dist);
-
-        if (!Util::IsClearPath(pos, target, RADIUS, m_Bot->GetLevel())) {
-            m_Bot->SetState(std::make_shared<ChaseState>(m_Bot));
+        /* Wait in safe for energy */
+        if (insafe && energypct < 50) {
+            client->Gun(GunState::Tap);
+            client->ReleaseKeys();
             return;
         }
-        
-        m_LastEnemyPos = target;
 
-        Vec2 vEnemy = m_Bot->GetEnemyTarget()->GetVelocity() / 16;
-        Vec2 vBot = m_Bot->GetVelocity();
-        double proj_speed = m_Bot->GetMemorySensor().GetShipSettings(m_Bot->GetShip()).BulletSpeed;
+        /* Only update if there is a target enemy */
+        if (m_Bot->GetEnemyTarget().get() && m_Bot->GetEnemyTarget()->GetPosition() != Vec2(0, 0)) {
+            Vec2 target = m_Bot->GetEnemyTarget()->GetPosition() / 16;
 
-        Vec2 solution = CalculateShot(pos, target, vBot, vEnemy, proj_speed / 16.0 / 10.0);
+            Util::GetDistance(pos, target, &dx, &dy, &dist);
 
-        Util::GetDistance(pos, solution, &dx, &dy, nullptr);
-        
-        /* Move bot if it's stuck at a wall */
-        if (PointingAtWall(rot, (unsigned)pos.x, (unsigned)pos.y, m_Bot->GetLevel())) {
-            m_NearWall += dt;
-            if (m_NearWall >= 1000) {
-                // Bot has been near a wall for too long
-                client->Down(true);
+            if (!Util::IsClearPath(pos, target, RADIUS, m_Bot->GetLevel())) {
+                m_Bot->SetState(std::make_shared<ChaseState>(m_Bot));
+                return;
+            }
 
-                int dir = Random::GetU32(0, 1) ? VK_LEFT : VK_RIGHT;
+            m_LastEnemyPos = target;
 
-                dir == VK_LEFT ? client->Left(true) : client->Right(true);
+            Vec2 vEnemy = m_Bot->GetEnemyTarget()->GetVelocity() / 16;
+            vBot = m_Bot->GetVelocity();
+            double proj_speed = m_Bot->GetMemorySensor().GetShipSettings(m_Bot->GetShip()).BulletSpeed;
 
-                std::this_thread::sleep_for(std::chrono::milliseconds(250));
-                dir == VK_LEFT ? client->Left(false) : client->Right(false);
-                std::this_thread::sleep_for(std::chrono::milliseconds(250));
-                dir == VK_LEFT ? client->Left(true) : client->Right(true);
-                std::this_thread::sleep_for(std::chrono::milliseconds(250));
+            Vec2 solution = CalculateShot(pos, target, vBot, vEnemy, proj_speed / 16.0 / 10.0);
 
-                client->Down(false);
-                dir == VK_LEFT ? client->Left(false) : client->Right(false);
+            Util::GetDistance(pos, solution, &dx, &dy, nullptr);
 
+            /* Move bot if it's stuck at a wall */
+            if (PointingAtWall(rot, (unsigned)pos.x, (unsigned)pos.y, m_Bot->GetLevel())) {
+                m_NearWall += dt;
+                if (m_NearWall >= 1000) {
+                    // Bot has been near a wall for too long
+                    client->Down(true);
+
+                    int dir = Random::GetU32(0, 1) ? VK_LEFT : VK_RIGHT;
+
+                    dir == VK_LEFT ? client->Left(true) : client->Right(true);
+
+                    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+                    dir == VK_LEFT ? client->Left(false) : client->Right(false);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+                    dir == VK_LEFT ? client->Left(true) : client->Right(true);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+
+                    client->Down(false);
+                    dir == VK_LEFT ? client->Left(false) : client->Right(false);
+
+                    m_NearWall = 0;
+                }
+            } else {
                 m_NearWall = 0;
             }
-        } else {
-            m_NearWall = 0;
-        }
 
-        /* Handle rotation */
-        int target_rot = Util::GetTargetRotation(dx, dy);
-        Vec2 target_heading = Util::ContRotToVec(target_rot);
-        bool clockwise = Util::GetRotationDirection(heading, target_heading) == Direction::Right;
+            /* Handle rotation */
+            target_rot = Util::GetTargetRotation(dx, dy);
+            target_heading = Util::ContRotToVec(target_rot);
+            bool clockwise = Util::GetRotationDirection(heading, target_heading) == Direction::Right;
 
-        if (rot != target_rot) {
-            client->Left(!clockwise);
-            client->Right(clockwise);
-        } else {
-            client->Left(false);
-            client->Right(false);
-        }
-
-        /* Scale target distance by energy */
-        tardist -= (int)std::floor(tardist * ((energypct / 100.0f) * .33f));
-
-        if (timeGetTime() - m_LastSafeTime < ChaseFromSafeTime)
-            tardist = 0;
-
-        if (dist > tardist && dist <= tardist * 1.5) {
-            int max_speed = m_Bot->GetMemorySensor().GetShipSettings(m_Bot->GetShip()).InitialSpeed / 16 / 10;
-            double target_speed = dist / (tardist * 1.5) * max_speed;
-
-            m_Bot->SetSpeed(target_speed);
-        } else {
-            if (dist > tardist) {
-                client->Down(false);
-                client->Up(true);
+            if (rot != target_rot) {
+                client->Left(!clockwise);
+                client->Right(clockwise);
             } else {
-                client->Down(true);
-                client->Up(false);
+                client->Left(false);
+                client->Right(false);
             }
+
+            /* Scale target distance by energy */
+            tardist -= (int)std::floor(tardist * ((energypct / 100.0f) * .33f));
+
+            if (timeGetTime() - m_LastSafeTime < ChaseFromSafeTime)
+                tardist = 0;
+
+            if (dist > tardist && dist <= tardist * 1.5) {
+                int max_speed = m_Bot->GetMemorySensor().GetShipSettings(m_Bot->GetShip()).InitialSpeed / 16 / 10;
+                double target_speed = dist / (tardist * 1.5) * max_speed;
+
+                m_Bot->SetSpeed(target_speed);
+            } else {
+                if (dist > tardist) {
+                    client->Down(false);
+                    client->Up(true);
+                } else {
+                    client->Down(true);
+                    client->Up(false);
+                }
+            }
+
+            if (dist > 20 && m_Bot->GetEnergyPercent() > 80)
+                client->SetThrust(true);
+            else
+                client->SetThrust(false);
+
         }
-        
-        if (dist > 20 && m_Bot->GetEnergyPercent() > 80)
-            client->SetThrust(true);
-        else
-            client->SetThrust(false);
 
         /* Fire bursts */
         m_BurstTimer += dt;
@@ -1194,7 +1168,29 @@ void AggressiveState::Update(DWORD dt) {
                 client->Bomb();
         }
 
-       
+        // Only fire guns if the enemy is within range
+        if (m_Bot->GetConfig().MinGunRange != 0 && dist > m_Bot->GetConfig().MinGunRange) {
+            client->Gun(GunState::Off);
+            return;
+        }
+
+        /* Handle gunning */
+        if (energypct < m_Bot->GetConfig().RunPercent) {
+            if (dist <= m_Bot->GetConfig().IgnoreDelayDistance)
+                client->Gun(GunState::Constant);
+            else
+                client->Gun(GunState::Off);
+        } else {
+            if (insafe) {
+                client->Gun(GunState::Off);
+            } else {
+                // Do bullet delay if the closest enemy isn't close, ignore otherwise
+                if (dist > m_Bot->GetConfig().IgnoreDelayDistance)
+                    client->Gun(GunState::Tap, energypct);
+                else
+                    client->Gun(GunState::Constant);
+            }
+        }
 
     } else {
 		/* Clear input when there is no enemy */
