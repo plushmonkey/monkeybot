@@ -2,6 +2,8 @@
 #define API_H_
 
 #include "../ClientSettings.h"
+#include "../Vector.h"
+
 #include <Windows.h>
 #include <string>
 #include <memory>
@@ -30,6 +32,7 @@ public:
     virtual std::shared_ptr<api::Player> GetBotPlayer() const = 0;
     virtual const ShipSettings& GetShipSettings(api::Ship ship) const = 0;
     virtual bool OnUpdate(api::Bot* bot, unsigned long dt) = 0;
+    virtual const ClientSettings& GetClientSettings() const = 0;
 };
 
 } // ns
@@ -40,7 +43,8 @@ public:
 #include "State.h"
 #include "Command.h"
 #include "Player.h"
-
+#include "Config.h"
+#include "Steering.h"
 
 // Get rid of the ridiculous windows defines
 #ifdef GetMessage
@@ -63,15 +67,6 @@ public:
     virtual api::SelectorPtr CreateTarget(const std::string& target) = 0;
 };
 
-/*class Config {
-public:
-    virtual bool Load(const std::string& jsonfile) = 0;
-    virtual void LoadShip(api::Ship ship) = 0;
-
-    virtual Json::Value GetRoot() const = 0;
-    virtual Json::Value GetZoneConfig() const = 0;
-};
-*/
 } // ns
 
 #endif

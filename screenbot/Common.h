@@ -107,6 +107,7 @@ namespace Colors {
     extern const Pixel XRadarOff;
     extern const Pixel MultiNone;
     extern const Pixel MultiOff;
+    extern const Pixel BulletBounceColor;
 }
 
 class Font;

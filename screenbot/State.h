@@ -24,7 +24,8 @@ public:
 
 class ChaseState : public api::State {
 private:
-    Pathing::Plan m_Plan;
+    //Pathing::Plan m_Plan;
+    std::vector<Vec2> m_Plan;
     DWORD m_StuckTimer;
     DWORD m_LastEnemySeen;
     Vec2 m_LastCoord;
@@ -32,10 +33,12 @@ private:
 
 public:
     ChaseState(api::Bot* bot);
+    ~ChaseState();
+
     virtual void Update(DWORD dt);
     virtual api::StateType GetType() const { return api::StateType::ChaseState; }
 
-    const Pathing::Plan& GetPlan() const { return m_Plan; }
+    //const Pathing::Plan& GetPlan() const { return m_Plan; }
 };
 
 class BaseduelState : public api::State {
@@ -58,6 +61,8 @@ private:
 
 public:
     PatrolState(api::Bot* bot, std::vector<Vec2> waypoints = std::vector<Vec2>(), unsigned int close_distance = 25);
+    ~PatrolState();
+
     virtual void Update(DWORD dt);
     void ResetWaypoints(bool full = true);
     virtual api::StateType GetType() const { return api::StateType::PatrolState; }
@@ -87,6 +92,7 @@ private:
 
 public:
     AggressiveState(api::Bot* bot);
+    ~AggressiveState();
     virtual void Update(DWORD dt);
 
     virtual api::StateType GetType() const { return api::StateType::AggressiveState; }

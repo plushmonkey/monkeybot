@@ -19,7 +19,7 @@ private:
     api::Ship m_Ship;
     bool m_InArena;
     unsigned char m_Status;
-
+    
 public:
     Player() 
         : m_InArena(true), m_Freq(9999), 
@@ -69,6 +69,11 @@ public:
     void SetShip(api::Ship ship) { m_Ship = ship; }
     void SetInArena(bool inarena) { m_InArena = inarena; }
     void SetStatus(unsigned char status) { m_Status = status; }
+
+    Vec2 GetHeading() const {
+        double rad = (((40 - (GetRotation() + 30)) % 40) * 9) * (M_PI / 180);
+        return Vec2((float)std::cos(rad), -(float)std::sin(rad));
+    }
 };
 
 //typedef shared_ptr<api::Player> api::PlayerPtr;

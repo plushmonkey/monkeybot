@@ -136,6 +136,7 @@ public:
     }
     void Rocket();
     Vec2 GetResolution();
+    bool HasBouncingBullets() const;
 };
 
 #endif

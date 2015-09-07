@@ -246,6 +246,7 @@
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="MemorySensor.cpp" />
     <ClCompile Include="MessageQueue.cpp" />
+    <ClCompile Include="MovementManager.cpp" />
     <ClCompile Include="Pathing.cpp" />
     <ClCompile Include="PlayerList.cpp" />
     <ClCompile Include="plugin\PluginInstance.cpp" />
@@ -258,6 +259,8 @@
     <ClCompile Include="Selector.cpp" />
     <ClCompile Include="ShipEnforcer.cpp" />
     <ClCompile Include="State.cpp" />
+    <ClCompile Include="StateMachine.cpp" />
+    <ClCompile Include="Steering.cpp" />
     <ClCompile Include="Survivor.cpp" />
     <ClCompile Include="Taunter.cpp" />
     <ClCompile Include="Util.cpp" />
@@ -269,8 +272,10 @@
     <ClInclude Include="api\Bot.h" />
     <ClInclude Include="api\Client.h" />
     <ClInclude Include="api\Command.h" />
+    <ClInclude Include="api\Config.h" />
     <ClInclude Include="api\Player.h" />
     <ClInclude Include="api\State.h" />
+    <ClInclude Include="api\Steering.h" />
     <ClInclude Include="api\Version.h" />
     <ClInclude Include="Bot.h" />
     <ClInclude Include="ClientSettings.h" />
@@ -294,6 +299,7 @@
     <ClInclude Include="Messages\KillMessage.h" />
     <ClInclude Include="MemorySensor.h" />
     <ClInclude Include="Messages\Messages.h" />
+    <ClInclude Include="MovementManager.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="plugin\Plugin.h" />
     <ClInclude Include="plugin\PluginInstance.h" />
@@ -301,6 +307,8 @@
     <ClInclude Include="Revenge.h" />
     <ClInclude Include="Selector.h" />
     <ClInclude Include="ShipEnforcer.h" />
+    <ClInclude Include="StateMachine.h" />
+    <ClInclude Include="Steering.h" />
     <ClInclude Include="Survivor.h" />
     <ClInclude Include="Taunter.h" />
     <ClInclude Include="Pathing.h" />

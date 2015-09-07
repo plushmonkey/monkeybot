@@ -81,6 +81,7 @@ bool Level::Load(const tstring& filename) {
         pos += sizeof(Tile);
     }
     delete[] buffer;
+
     return true;
 }
 

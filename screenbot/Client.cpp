@@ -87,6 +87,17 @@ MultiState ScreenClient::DetermineMultiState() const {
     return MultiState::On;
 }
 
+bool ScreenClient::HasBouncingBullets() const {
+    const int GunIndicator = Util::GetIndicatorTop(Util::Indicator::Gun, m_Screen->GetHeight());
+    const int ScreenWidth = m_Screen->GetWidth();
+
+    int x = ScreenWidth - 18;
+    int y = GunIndicator + 11;
+
+    return m_Screen->GetPixel(x, y) == Colors::BulletBounceColor;
+}
+
+
 int ScreenClient::GetFreq() {
     return m_MemorySensor.GetFrequency();
 }

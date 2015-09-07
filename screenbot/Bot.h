@@ -16,6 +16,8 @@
 #include "plugin/PluginManager.h"
 #include "Version.h"
 #include "ShipEnforcer.h"
+#include "Steering.h"
+#include "MovementManager.h"
 
 #include <memory>
 #include <mutex>
@@ -38,7 +40,8 @@ class Bot : public api::Bot, public MessageHandler<ChatMessage> {
 private:
     WindowFinder m_Finder;
     HWND m_Window;
-    api::StatePtr m_State;
+    //api::StatePtr m_State;
+    api::StateMachinePtr m_StateMachine;
     api::Ship m_Ship;
     api::PlayerPtr m_EnemyTarget;
     TargetInfo m_EnemyTargetInfo;
@@ -54,6 +57,8 @@ private:
     bool m_Paused;
     bool m_Flagging;
     PluginManager m_PluginManager;
+    SteeringBehavior m_Steering;
+    std::shared_ptr<api::MovementManager> m_MovementManager;
 
     api::SelectorPtr m_EnemySelector;
 
@@ -144,11 +149,11 @@ public:
         return (pos - spawn).Length() < m_Config.CenterRadius;
     }
 
-    void SetState(api::StatePtr state) { m_State = state; }
+    void SetState(api::StatePtr state);
     void SetState(api::StateType type);
 
     api::StateType GetStateType() const {
-        return m_State->GetType();
+        return m_StateMachine->GetState()->GetType();
     }
 
     DWORD GetLastEnemy() const { return m_LastEnemy; }
@@ -199,7 +204,9 @@ public:
     unsigned int GetFreq() const;
     shared_ptr<api::EnemySelectorFactory> GetEnemySelectors() { return m_EnemySelectors; }
 
-    api::StatePtr GetState() const { return m_State; }
+    api::StatePtr GetState() const { return m_StateMachine->GetState(); }
+    SteeringBehavior& GetSteering() { return m_Steering; }
+    std::shared_ptr<api::MovementManager> GetMovementManager() { return m_MovementManager; }
 };
 
 #define RegisterBotUpdater(bot, function) (bot)->RegisterUpdater(std::bind(&function, this, std::placeholders::_1, std::placeholders::_2)); 

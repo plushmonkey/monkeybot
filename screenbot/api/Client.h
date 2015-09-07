@@ -101,6 +101,8 @@ public:
      * \brief Gets the screen resolution in pixels.
      */
     virtual Vec2 GetResolution() = 0;
+
+    virtual bool HasBouncingBullets() const = 0;
 };
 
 } // ns

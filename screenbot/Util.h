@@ -28,6 +28,7 @@ namespace Util {
     int GetShip(const ScreenAreaPtr& ship);
     int GetShipRadius(int n);
     bool InShip(const ScreenGrabberPtr& grabber);
+    Vec2 TraceVector(Vec2 from, Vec2 target, int radius, const Level& level);
     bool IsClearPath(Vec2 from, Vec2 target, int radius, const Level& level);
     Vec2 FindTargetPos(Vec2 bot_pos, Vec2 radar_coord, const ScreenGrabberPtr& grabber, const ScreenAreaPtr& radar, const Level& level, int mapzoom);
     Direction GetRotationDirection(Vec2 heading, Vec2 target);

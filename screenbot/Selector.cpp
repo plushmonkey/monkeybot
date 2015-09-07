@@ -33,6 +33,7 @@ std::shared_ptr<api::Player> ClosestEnemySelector::Select(api::Bot* bot) {
     Vec2 half_resolution = Vec2(1920, 1080) / 2;
     Vec2 view_min = bot_pos - half_resolution / 16;
     Vec2 view_max = bot_pos + half_resolution / 16;
+    bool bot_in_center = InRect(bot_pos, spawn - center_radius, spawn + center_radius);
 
     for (unsigned int i = 0; i < enemies.size(); i++) {
         api::PlayerPtr& enemy = enemies.at(i);
@@ -46,7 +47,7 @@ std::shared_ptr<api::Player> ClosestEnemySelector::Select(api::Bot* bot) {
 
         bool in_center = InRect(enemy_pos, spawn - center_radius, spawn + center_radius);
 
-        if (center_only && !in_center) continue;
+        if ((center_only || bot_in_center) && !in_center) continue;
 
         Util::GetDistance(enemy_pos, bot_pos, &cdx, &cdy, &cdist);
 

@@ -5,6 +5,7 @@
 #include "State.h"
 #include "Command.h"
 #include "Version.h"
+#include "Steering.h"
 #include "../Pathing.h"
 
 #include <memory>
@@ -140,6 +141,8 @@ public:
     virtual unsigned int GetFreq() const = 0;
     virtual void UpdateLog() = 0;
     virtual std::shared_ptr<api::EnemySelectorFactory> GetEnemySelectors() = 0;
+    virtual api::SteeringBehavior& GetSteering() = 0;
+    virtual std::shared_ptr<api::MovementManager> GetMovementManager() = 0;
 };
 
 } // ns

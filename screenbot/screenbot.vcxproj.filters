@@ -138,6 +138,15 @@
     <ClCompile Include="ShipEnforcer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Steering.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MovementManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="StateMachine.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -289,6 +298,21 @@
     </ClInclude>
     <ClInclude Include="Messages\EnterMessage.h">
       <Filter>Header Files\Messages</Filter>
+    </ClInclude>
+    <ClInclude Include="api\Config.h">
+      <Filter>Header Files\api</Filter>
+    </ClInclude>
+    <ClInclude Include="Steering.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MovementManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="api\Steering.h">
+      <Filter>Header Files\api</Filter>
+    </ClInclude>
+    <ClInclude Include="StateMachine.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -40,6 +40,7 @@ public:
     virtual void SetShip(api::Ship ship) = 0;
     virtual void SetInArena(bool inarena) = 0;
     virtual void SetStatus(unsigned char status) = 0;
+    virtual Vec2 GetHeading() const = 0;
 };
 
 typedef std::shared_ptr<Player> PlayerPtr;

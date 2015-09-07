@@ -297,16 +297,20 @@ bool FitsOnMap(int x, int y, int radius, const Level& level) {
 }
 
 bool IsClearPath(Vec2 from, Vec2 target, int radius, const Level& level) {
+    Vec2 collision = Util::TraceVector(from, target, radius, level);
+    return ((int)collision.x == (int)target.x && (int)collision.y == (int)target.y);
+}
+Vec2 TraceVector(Vec2 from, Vec2 target, int radius, const Level& level) {
     const int PathClearIncrease = 8;
     int numpixels;
     int d, dinc1, dinc2;
     int x, xinc1, xinc2;
     int y, yinc1, yinc2;
 
-    from.x *= 16;
-    from.y *= 16;
-    target.x *= 16;
-    target.y *= 16;
+    from.x = (int)from.x * 16;
+    from.y = (int)from.y * 16;
+    target.x = (int)target.x * 16;
+    target.y = (int)target.y * 16;
 
     int dx = (int)(target.x - from.x);
     int dy = (int)(target.y - from.y);
@@ -355,7 +359,7 @@ bool IsClearPath(Vec2 from, Vec2 target, int radius, const Level& level) {
 
     for (int i = 1; i < numpixels; i += PathClearIncrease) {
         if (!FitsOnMap(x, y, radius, level))
-            return false;
+            return Vec2(std::floor(x / 16.0), std::floor(y / 16.0));
 
         if (d < 0) {
             d += dinc1;
@@ -368,7 +372,7 @@ bool IsClearPath(Vec2 from, Vec2 target, int radius, const Level& level) {
         }
     }
 
-    return true;
+    return Vec2(std::floor(x / 16.0), std::floor(y / 16.0));
 }
 
 

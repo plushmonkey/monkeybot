@@ -13,4 +13,5 @@ namespace Colors {
     const Pixel XRadarOff(24, 82, 24, 0);
     const Pixel MultiNone(33, 49, 33, 0);
     const Pixel MultiOff(74, 74, 66, 0);
+    const Pixel BulletBounceColor(115, 255, 99, 0);
 }

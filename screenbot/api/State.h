@@ -30,6 +30,18 @@ public:
 
 typedef std::shared_ptr<State> StatePtr;
 
+class StateMachine {
+public:
+    virtual void Update(DWORD dt) = 0;
+    virtual void Push(StatePtr state) = 0;
+    virtual StatePtr Pop() = 0;
+    virtual StatePtr GetState() const = 0;
+    virtual bool IsEmpty() const = 0;
+    virtual void Clear() = 0;
+};
+
+typedef std::shared_ptr<StateMachine> StateMachinePtr;
+
 } // ns
 
 #endif

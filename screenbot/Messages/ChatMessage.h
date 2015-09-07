@@ -11,7 +11,7 @@
 
 class ChatMessage : public Message {
 public:
-    enum class Type { Public, Private, Team, Channel, Other };
+    enum class Type { Public, Private, Team, Channel, Other, Arena };
 
 private:
     std::string m_Message;

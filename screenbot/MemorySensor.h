@@ -25,10 +25,12 @@ public:
     typedef unsigned short PlayerID;
 
     struct ChatEntry {
-        char message[255];
-        unsigned char type; // 0x02 == pub
+        char message[256];
+        //unsigned char type; // 0x02 == pub
         char player[24];
-        char unknown[12];
+        char unknown[8];
+        unsigned char type;
+        char unknown2[3];
     };
 
 private:

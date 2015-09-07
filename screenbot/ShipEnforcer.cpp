@@ -14,7 +14,9 @@ bool ShipEnforcer::OnUpdate(api::Bot* bot, unsigned long dt) {
     return true;
 }
 
-ShipEnforcer::ShipEnforcer(api::Bot* bot) {
+ShipEnforcer::ShipEnforcer(api::Bot* bot)
+    : m_Bot(bot)
+{
     m_UpdateID = bot->RegisterUpdater(std::bind(&ShipEnforcer::OnUpdate, this, std::placeholders::_1, std::placeholders::_2));
 }
 

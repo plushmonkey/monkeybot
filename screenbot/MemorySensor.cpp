@@ -6,8 +6,15 @@
 
 #include <iostream>
 #include <algorithm>
+#include <regex>
 
 #pragma warning(disable : 4351)
+
+namespace {
+
+const std::regex ChatChannelRegex(R"::(^([0-9]+):(.+)> (.+)$)::");
+
+} // ns
 
 namespace Memory {
 
@@ -260,7 +267,52 @@ void MemorySensor::DetectChat() {
 
         if (!first_run) {
             // TODO: Push new chat message on message queue, delete logreader
-            //std::cout << entry.player << (strlen(entry.player) > 0 ? "> " : "") << entry.message << std::endl;
+            enum class ChatType {
+                Arena = 0,
+                Public = 2,
+                Private = 5,
+                Channel = 9
+            };
+            ChatMessage::Type type;
+
+            switch (entry.type) {
+            case 0:
+                type = ChatMessage::Type::Arena;
+                break;
+            case 2:
+                type = ChatMessage::Type::Public;
+                break;
+            case 5:
+                type = ChatMessage::Type::Private;
+                break;
+            case 9:
+                type = ChatMessage::Type::Channel;
+                break;
+            default:
+                type = ChatMessage::Type::Other;
+                break;
+            }
+
+            ChatMessage* mesg = new ChatMessage;
+
+            mesg->SetMessage(entry.message);
+            mesg->SetPlayer(entry.player);
+            mesg->SetType(type);
+
+            if (type == ChatMessage::Type::Channel) {
+                std::sregex_iterator begin(mesg->GetMessage().begin(), mesg->GetMessage().end(), ChatChannelRegex);
+                if (begin == std::sregex_iterator()) {
+                    mesg->SetType(ChatMessage::Type::Other);
+                } else {
+                    std::smatch match = *begin;
+
+                    mesg->SetChannel(atoi(std::string(match[1]).c_str()));
+                    mesg->SetMessage(match[3]);
+                }
+            }
+            
+            MQueue.PushMessage(mesg);
+            //std::cout << (int)entry.type << " - " << entry.player << (strlen(entry.player) > 0 ? "> " : "") << entry.message << std::endl;
         }
 
         ++m_CurrentChatEntry;

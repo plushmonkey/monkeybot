@@ -13,6 +13,7 @@
 #include "FileStream.h"
 #include "Random.h"
 #include "Selector.h"
+#include "StateMachine.h"
 
 #include <thread>
 #include <tchar.h>
@@ -26,7 +27,7 @@
 Bot::Bot(int ship)
     : m_Finder(_T("Continuum")),
       m_Window(0),
-      m_State(nullptr),
+      m_StateMachine(new StateMachine()),
       m_Ship(api::Ship(ship - 1)),
       m_EnemyTargetInfo(0, 0, 0),
       m_Energy(0),
@@ -47,7 +48,8 @@ Bot::Bot(int ship)
       m_EnemySelector(new ClosestEnemySelector()),
       m_ShipEnforcer(new ShipEnforcer(this)),
       m_EnemySelectors(new EnemySelectorFactory()),
-      m_Version()
+      m_Version(),
+      m_Steering(this)
 { }
 
 ClientPtr Bot::GetClient() {
@@ -59,6 +61,8 @@ std::string Bot::GetName() const {
 }
 
 void Bot::SetState(api::StateType type) {
+    m_StateMachine->Clear();
+
     switch (type) {
         case api::StateType::AggressiveState:
             SetState(std::make_shared<AggressiveState>(this));
@@ -76,6 +80,10 @@ void Bot::SetState(api::StateType type) {
             SetState(std::make_shared<BaseduelState>(this));
             break;
     }
+}
+void Bot::SetState(api::StatePtr state) {
+    m_StateMachine->Clear();
+    m_StateMachine->Push(state);
 }
 
 Vec2 Bot::GetHeading() const {
@@ -122,18 +130,21 @@ void Bot::SetShip(api::Ship ship) {
         m_Client->SetXRadar(false);
 
         int timeout = 5000;
-        //while (!FullEnergy() && (timeout > 0 || ship == api::Ship::Spectator)) {
         while (!FullEnergy() && timeout > 0) {
             m_Client->Update(100);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             timeout -= 100;
         }
+
     }
 
     if (ship != api::Ship::Spectator) {
         m_Client->EnterShip(GetShipNum());
 
         m_Config.LoadShip(GetShip());
+
+        m_MaxEnergy = 0;
+        std::this_thread::sleep_for(std::chrono::milliseconds(750));
     } else {
         m_Client->Spec();
     }
@@ -402,7 +413,7 @@ void Bot::Update(DWORD dt) {
         }
     }
 
-    m_LogReader->Update(dt);
+    //m_LogReader->Update(dt);
 
     {
         std::lock_guard<std::mutex> lock(m_SendMutex);
@@ -477,7 +488,11 @@ void Bot::Update(DWORD dt) {
         target_timer = 0;
     }
 
-    m_State->Update(dt);
+    if (m_EnemyTarget)
+        m_Steering.Target(m_EnemyTarget);
+
+    m_StateMachine->Update(dt);
+    m_MovementManager->Update(this, dt);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
     
@@ -543,6 +558,8 @@ int Bot::Run() {
     } catch (const std::exception& e) {
         Util::ExitWithError(e.what());
     }
+
+    m_MovementManager = std::make_shared<MovementManager>(this->GetClient(), &m_Steering);
 
     this->SetState(std::make_shared<PatrolState>(this));
 

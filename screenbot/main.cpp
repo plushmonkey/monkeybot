@@ -9,6 +9,19 @@
 
 #pragma comment(lib, "winmm.lib")
 
+class ChatLogger : MessageHandler<ChatMessage> {
+private:
+    api::Bot* m_Bot;
+
+    void HandleMessage(ChatMessage* mesg) {
+        std::cout << (int)mesg->GetType() << " * " << mesg->GetPlayer() << "> " << mesg->GetMessage() << std::endl;
+    }
+
+public:
+    ChatLogger(api::Bot* bot) : m_Bot(bot) { }
+
+};
+
 class Application {
 private:
     Bot m_Bot;
@@ -26,6 +39,8 @@ int Application::Run() {
         std::cerr << "Could not load fonts\\tallfont.bmp" << std::endl;
         std::abort();
     }
+
+    ChatLogger logger(&m_Bot);
 
     return m_Bot.Run();
 }

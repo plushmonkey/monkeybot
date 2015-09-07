@@ -25,7 +25,7 @@
 
 namespace {
 
-const int PathUpdateFrequency = 500;
+const int PathUpdateFrequency = 250;
 
 } // ns
 
@@ -122,6 +122,54 @@ double GetPlanDistance(const Pathing::Plan& plan) {
     return total_dist;
 }
 
+Vec2 ClosestWall(const Level& level, Pathing::JPSNode* node) {
+    static const std::vector<Vec2> directions = { Vec2(0, -1), Vec2(1, 0), Vec2(0, 1), Vec2(-1, 0) };
+    const int SearchLength = 5;
+    Vec2 closest;
+    double closest_dist = std::numeric_limits<double>::max();
+
+    Vec2 node_pos(node->x, node->y);
+
+    for (const auto& dir : directions) {
+        for (int i = 0; i < SearchLength; ++i) {
+            Vec2 current = node_pos + dir * i;
+            if (level.IsSolid((short)current.x, (short)current.y)) {
+                double dist = node_pos.Distance(current);
+                if (dist < closest_dist) {
+                    closest_dist = dist;
+                    closest = current;
+                }
+                break;
+            }
+        }
+    }
+
+    return closest;
+};
+
+void SmoothPath(const Level& level, const Pathing::Plan& plan, std::vector<Vec2>& result) {
+    const double Intensity = 2.0;
+
+    result.resize(plan.size());
+    for (std::size_t i = 0; i < plan.size(); ++i) {
+        Pathing::JPSNode* node = plan[i];
+        
+        //Vec2 closest = ClosestWall(level, node);
+        Vec2 current(node->x, node->y);
+        Vec2 new_pos(plan[i]->x, plan[i]->y);
+        
+        /*if (closest != Vec2(0, 0))
+            new_pos = current + Vec2Normalize(current - closest) * Intensity;
+        
+        if (current != new_pos) {
+            if (!Util::IsClearPath(current, new_pos, 1, level))
+                new_pos = current;
+        }*/
+        
+        result[i] = new_pos;
+    }
+}
+
 ChaseState::ChaseState(api::Bot* bot)
     : State(bot), 
       m_StuckTimer(0), 
@@ -130,28 +178,119 @@ ChaseState::ChaseState(api::Bot* bot)
       m_LastEnemySeen(0)
 {
     m_Bot->GetClient()->ReleaseKeys();
+
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorPursuit, false);
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorSeek, true);
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorArrive, true);
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorAvoid, true);
+
+    m_Bot->GetMovementManager()->SetEnabled(true);
+}
+
+ChaseState::~ChaseState() {
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorPursuit, false);
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorSeek, false);
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorArrive, false);
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorAvoid, false);
 }
 
 void ChaseState::Update(DWORD dt) {
     ClientPtr client = m_Bot->GetClient();
-    double target_speed = 100000.0;
 
     if (!m_Bot->GetEnemyTarget().get()) {
-        // Switch to patrol state if there is no enemy
-        // Set the waypoint to the last enemy spotted
         client->ReleaseKeys();
-        if (m_LastRealEnemyCoord != Vec2(0, 0)) {
-            std::vector<Vec2> waypoints = { m_LastRealEnemyCoord };
-            m_Bot->SetState(std::make_shared<PatrolState>(m_Bot, waypoints));
-        } else {
-            m_Bot->SetState(std::make_shared<PatrolState>(m_Bot));
-        }
+        m_Bot->SetState(std::make_shared<PatrolState>(m_Bot));
         return;
     }
 
+    api::SteeringBehavior& steering = m_Bot->GetSteering();
     Vec2 pos = m_Bot->GetPos();
+    Vec2 enemy_pos = steering.GetTargetPosition();
+
+    if (Util::IsClearPath(pos, enemy_pos, RADIUS, m_Bot->GetLevel())) {
+        m_Bot->SetState(std::make_shared<AggressiveState>(m_Bot));
+        return;
+    }
+
+    bool near_wall = Util::NearWall(pos, m_Bot->GetGrid());
+
+    m_StuckTimer += dt;
+    if (m_StuckTimer >= 2500) {
+        if (m_Bot->GetSpeed() < 1.0 && near_wall) {
+            client->Up(false);
+            client->Down(true);
+
+            int dir = Random::GetU32(0, 1) ? VK_LEFT : VK_RIGHT;
+
+            dir == VK_LEFT ? client->Left(true) : client->Right(true);
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+            dir == VK_LEFT ? client->Left(false) : client->Right(false);
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+            dir == VK_LEFT ? client->Left(true) : client->Right(true);
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+
+            client->Down(false);
+            dir == VK_LEFT ? client->Left(false) : client->Right(false);
+        }
+
+        m_LastCoord = pos;
+        m_StuckTimer = 0;
+    }
+
+    if (m_Bot->GetGrid().IsOpen((short)pos.x, (short)pos.y) && m_Bot->GetGrid().IsOpen((short)enemy_pos.x, (short)enemy_pos.y)) {
+        static DWORD path_timer = 0;
+
+        path_timer += dt;
+
+        if (path_timer >= PathUpdateFrequency || m_Plan.size() == 0) {
+            Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>); 
+
+            SmoothPath(m_Bot->GetLevel(), jps((short)enemy_pos.x, (short)enemy_pos.y, (short)pos.x, (short)pos.y, m_Bot->GetGrid()), m_Plan);
+
+            path_timer = 0;
+        }
+    }
+
+    if (m_Plan.size() == 0) {
+        m_LastEnemySeen += dt;
+
+        if (m_LastEnemySeen >= 45 * 1000) {
+            m_LastEnemySeen = 0;
+            client->ReleaseKeys();
+            client->Warp();
+            return;
+        }
+
+        client->ReleaseKeys();
+        return;
+    } else {
+        m_LastEnemySeen = 0;
+    }
+
+    //Pathing::JPSNode* next_node = m_Plan.at(0);
+    Vec2 next = m_Plan.at(0);
+    int dx, dy;
+    double dist = 0.0;
+
+    Util::GetDistance(pos, next, &dx, &dy, &dist);
+
+    // Grab the next node in the plan that isn't right beside the bot. NOTE: This can mess things up so the bot gets stuck on corners.
+    while (dist < 2 && m_Plan.size() > 1 && !near_wall) {
+        m_Plan.erase(m_Plan.begin());
+        next = m_Plan.at(0);
+        Util::GetDistance(pos, next, &dx, &dy, &dist);
+    }
+
+    steering.Target(next);
+
+    return;
+
+  /*  double target_speed = 100000.0;
+
+//    Vec2 pos = m_Bot->GetPos();
     api::PlayerPtr enemy = m_Bot->GetEnemyTarget();
-    Vec2 enemy_pos = enemy->GetPosition() / 16;
+    //Vec2 enemy_pos = enemy->GetPosition() / 16;
 
     bool near_wall = Util::NearWall(pos, m_Bot->GetGrid());
 
@@ -244,7 +383,9 @@ void ChaseState::Update(DWORD dt) {
 
     // Only fire if the bot is close enough to fire
     bool fire = m_Bot->GetConfig().MinGunRange == 0 || total_dist <= m_Bot->GetConfig().MinGunRange * .8;
-    if (fire && !client->IsInSafe(pos, m_Bot->GetLevel()))
+    bool bounce = m_Bot->GetClient()->HasBouncingBullets();
+
+    if (bounce && fire && !client->IsInSafe(pos, m_Bot->GetLevel()))
         client->Gun(GunState::Tap, m_Bot->GetEnergyPercent());
     else
         client->Gun(GunState::Off);
@@ -276,7 +417,7 @@ void ChaseState::Update(DWORD dt) {
     else
         client->SetThrust(false);
 
-    m_Bot->SetSpeed(target_speed);
+    m_Bot->SetSpeed(target_speed);*/
 }
 
 BaseduelState::BaseduelState(api::Bot* bot)
@@ -480,12 +621,18 @@ PatrolState::PatrolState(api::Bot* bot, std::vector<Vec2> waypoints, unsigned in
 {
     m_Bot->GetClient()->ReleaseKeys();
 
+    m_Bot->GetMovementManager()->SetEnabled(false);
+
     m_FullWaypoints = m_Bot->GetConfig().Waypoints;
 
     if (waypoints.size() > 0)
         m_Waypoints = waypoints;
     else
         ResetWaypoints(false);
+}
+
+PatrolState::~PatrolState() {
+    m_Bot->GetMovementManager()->SetEnabled(true);
 }
 
 void PatrolState::ResetWaypoints(bool full) {
@@ -723,6 +870,16 @@ AggressiveState::AggressiveState(api::Bot* bot)
 	m_DecoyTimer = 0;
 
     m_Bot->GetClient()->ReleaseKeys();
+
+    SteeringBehavior& steering = ((Bot*)m_Bot)->GetSteering();
+
+    steering.SetBehavior(SteeringBehavior::BehaviorPursuit, true);
+    steering.SetBehavior(SteeringBehavior::BehaviorArrive, false);
+    steering.SetBehavior(SteeringBehavior::BehaviorSeek, false);
+}
+
+AggressiveState::~AggressiveState() {
+    m_Bot->GetMovementManager()->SetEnabled(true);
 }
 
 Vec2 CalculateShot(const Vec2& pShooter, const Vec2& pTarget, const Vec2& vShooter, const Vec2& vTarget, double sProjectile) {
@@ -785,6 +942,46 @@ bool InBurstArea(const Vec2& pBot, Pathing::Grid<short>& grid) {
 
 void AggressiveState::Update(DWORD dt) {
     ClientPtr client = m_Bot->GetClient();
+
+    if (!m_Bot->GetEnemyTarget()) {
+        m_Bot->SetState(std::make_shared<PatrolState>(m_Bot));
+        return;
+    }
+
+    SteeringBehavior& steering = ((Bot*)m_Bot)->GetSteering();
+    Vec2 target = m_Bot->GetEnemyTarget()->GetPosition() / 16;
+    Vec2 to_target = target - m_Bot->GetPos();
+    Vec2 heading = m_Bot->GetHeading();
+
+    if (!Util::IsClearPath(m_Bot->GetPos(), target, RADIUS, m_Bot->GetLevel())) {
+        m_Bot->SetState(std::make_shared<ChaseState>(m_Bot));
+        return;
+    }
+
+    /*Vec2 enemy_heading = m_Bot->GetEnemyTarget()->GetHeading();
+
+    double heading_diff = heading.Dot(enemy_heading);
+
+    if (1.0 - heading_diff < 0.15) {
+        Vec2 from_target = m_Bot->GetPos() - target;
+        Vec2 norm = Vec2Normalize(from_target);
+        bool use_new = true;
+        Vec2 new_pos = target + Vec2Rotate(norm, M_PI / 180 * 25) * 10;
+        if (!Util::IsClearPath(m_Bot->GetPos(), new_pos, 1, m_Bot->GetLevel())) {
+            use_new = false;
+            new_pos = target + Vec2Rotate(norm, M_PI / 180 * -25) * 10;
+            if (Util::IsClearPath(m_Bot->GetPos(), new_pos, 1, m_Bot->GetLevel())) 
+                use_new = true;
+        }
+
+        if (use_new)
+            steering.Target(new_pos);
+        
+    } else {
+        steering.Target(m_Bot->GetEnemyTarget());
+    }
+    */
+    
     Vec2 pos = m_Bot->GetPos();
 
     bool insafe = client->IsInSafe(pos, m_Bot->GetLevel());
@@ -794,6 +991,16 @@ void AggressiveState::Update(DWORD dt) {
     if ((client->Emped() || energypct < m_Bot->GetConfig().RunPercent) && !insafe) {
         tardist = m_Bot->GetConfig().RunDistance;
         client->ReleaseKeys();
+    }
+
+    bool pursuit = to_target.Length() > tardist;
+    steering.SetBehavior(SteeringBehavior::BehaviorPursuit, pursuit);
+    m_Bot->GetMovementManager()->SetEnabled(pursuit);
+    steering.Target(m_Bot->GetEnemyTarget());
+
+    if (pursuit) {
+        client->Gun(GunState::Off);
+        return;
     }
 
     const int ChaseFromSafeTime = 3000;
@@ -811,8 +1018,8 @@ void AggressiveState::Update(DWORD dt) {
     }
 
     DWORD cur_time = timeGetTime();
-    int rot = client->GetRotation();
-    Vec2 heading = m_Bot->GetHeading();
+    //int rot = client->GetRotation();
+    
 
     /* Only update if there is a target enemy */
     if (m_Bot->GetEnemyTarget().get() && m_Bot->GetEnemyTarget()->GetPosition() != Vec2(0, 0)) {
@@ -820,6 +1027,8 @@ void AggressiveState::Update(DWORD dt) {
 
         int dx, dy;
         double dist;
+
+        int rot = m_Bot->GetClient()->GetRotation();
 
         Util::GetDistance(pos, target, &dx, &dy, &dist);
 
