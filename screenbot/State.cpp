@@ -998,6 +998,30 @@ void AggressiveState::Update(DWORD dt) {
     m_Bot->GetMovementManager()->SetEnabled(pursuit);
     steering.Target(m_Bot->GetEnemyTarget());
 
+    double dist = to_target.Length();
+    // Only fire guns if the enemy is within range
+    if (m_Bot->GetConfig().MinGunRange != 0 && dist > m_Bot->GetConfig().MinGunRange) {
+        client->Gun(GunState::Off);
+    } else {
+        /* Handle gunning */
+        if (energypct < m_Bot->GetConfig().RunPercent) {
+            if (dist <= m_Bot->GetConfig().IgnoreDelayDistance)
+                client->Gun(GunState::Constant);
+            else
+                client->Gun(GunState::Off);
+        } else {
+            if (insafe) {
+                client->Gun(GunState::Off);
+            } else {
+                // Do bullet delay if the closest enemy isn't close, ignore otherwise
+                if (dist > m_Bot->GetConfig().IgnoreDelayDistance)
+                    client->Gun(GunState::Tap, energypct);
+                else
+                    client->Gun(GunState::Constant);
+            }
+        }
+    }
+
     if (pursuit) {
         client->Gun(GunState::Off);
         return;
@@ -1026,7 +1050,6 @@ void AggressiveState::Update(DWORD dt) {
         Vec2 target = m_Bot->GetEnemyTarget()->GetPosition() / 16;
 
         int dx, dy;
-        double dist;
 
         int rot = m_Bot->GetClient()->GetRotation();
 
@@ -1171,29 +1194,7 @@ void AggressiveState::Update(DWORD dt) {
                 client->Bomb();
         }
 
-        // Only fire guns if the enemy is within range
-        if (m_Bot->GetConfig().MinGunRange != 0 && dist > m_Bot->GetConfig().MinGunRange) {
-            client->Gun(GunState::Off);
-            return;
-        }
-
-        /* Handle gunning */
-        if (energypct < m_Bot->GetConfig().RunPercent) {
-            if (dist <= m_Bot->GetConfig().IgnoreDelayDistance)
-                client->Gun(GunState::Constant);
-            else
-                client->Gun(GunState::Off);
-        } else {
-            if (insafe) {
-                client->Gun(GunState::Off);
-            } else {
-                // Do bullet delay if the closest enemy isn't close, ignore otherwise
-                if (dist > m_Bot->GetConfig().IgnoreDelayDistance)
-                    client->Gun(GunState::Tap, energypct);
-                else
-                    client->Gun(GunState::Constant);
-            }
-        }
+       
 
     } else {
 		/* Clear input when there is no enemy */
