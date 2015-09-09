@@ -943,7 +943,7 @@ bool InBurstArea(const Vec2& pBot, Pathing::Grid<short>& grid) {
 void AggressiveState::Update(DWORD dt) {
     ClientPtr client = m_Bot->GetClient();
 
-    if (!m_Bot->GetEnemyTarget()) {
+    if (!m_Bot->GetEnemyTarget() || m_Bot->GetEnemyTarget()->GetPosition() == Vec2(0, 0)) {
         m_Bot->SetState(std::make_shared<PatrolState>(m_Bot));
         return;
     }
@@ -999,222 +999,192 @@ void AggressiveState::Update(DWORD dt) {
     steering.Target(m_Bot->GetEnemyTarget());
 
     int dx, dy;
-    double dist;
+    double dist = to_target.Length();
     int target_rot;
     Vec2 target_heading;
     int rot = m_Bot->GetClient()->GetRotation();
     DWORD cur_time = timeGetTime();
     Vec2 vBot;
 
-    if (!pursuit) {
-        const int ChaseFromSafeTime = 3000;
-        if (insafe)
-            m_LastSafeTime = timeGetTime();
+    const int ChaseFromSafeTime = 3000;
+    if (insafe)
+        m_LastSafeTime = timeGetTime();
 
-        /* Turn off x if energy low, turn back on when high */
-        client->SetXRadar(energypct > m_Bot->GetConfig().XPercent);
+    /* Turn off x if energy low, turn back on when high */
+    client->SetXRadar(energypct > m_Bot->GetConfig().XPercent);
 
-        /* Wait in safe for energy */
-        if (insafe && energypct < 50) {
-            client->Gun(GunState::Tap);
-            client->ReleaseKeys();
-            return;
+    /* Wait in safe for energy */
+    if (insafe && energypct < 50) {
+        client->Gun(GunState::Tap);
+        client->ReleaseKeys();
+        return;
+    }
+
+    Util::GetDistance(pos, target, &dx, &dy, &dist);
+
+    if (!Util::IsClearPath(pos, target, RADIUS, m_Bot->GetLevel())) {
+        m_Bot->SetState(std::make_shared<ChaseState>(m_Bot));
+        return;
+    }
+
+    m_LastEnemyPos = target;
+
+    Vec2 vEnemy = m_Bot->GetEnemyTarget()->GetVelocity() / 16;
+    vBot = m_Bot->GetVelocity();
+    double proj_speed = m_Bot->GetMemorySensor().GetShipSettings(m_Bot->GetShip()).BulletSpeed;
+
+    Vec2 solution = CalculateShot(pos, target, vBot, vEnemy, proj_speed / 16.0 / 10.0);
+
+    Util::GetDistance(pos, solution, &dx, &dy, nullptr);
+
+    /* Move bot if it's stuck at a wall */
+    if (PointingAtWall(rot, (unsigned)pos.x, (unsigned)pos.y, m_Bot->GetLevel())) {
+        m_NearWall += dt;
+        if (m_NearWall >= 1000) {
+            // Bot has been near a wall for too long
+            client->Down(true);
+
+            int dir = Random::GetU32(0, 1) ? VK_LEFT : VK_RIGHT;
+
+            dir == VK_LEFT ? client->Left(true) : client->Right(true);
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+            dir == VK_LEFT ? client->Left(false) : client->Right(false);
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+            dir == VK_LEFT ? client->Left(true) : client->Right(true);
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+
+            client->Down(false);
+            dir == VK_LEFT ? client->Left(false) : client->Right(false);
+
+            m_NearWall = 0;
         }
-
-        /* Only update if there is a target enemy */
-        if (m_Bot->GetEnemyTarget().get() && m_Bot->GetEnemyTarget()->GetPosition() != Vec2(0, 0)) {
-            Vec2 target = m_Bot->GetEnemyTarget()->GetPosition() / 16;
-
-            Util::GetDistance(pos, target, &dx, &dy, &dist);
-
-            if (!Util::IsClearPath(pos, target, RADIUS, m_Bot->GetLevel())) {
-                m_Bot->SetState(std::make_shared<ChaseState>(m_Bot));
-                return;
-            }
-
-            m_LastEnemyPos = target;
-
-            Vec2 vEnemy = m_Bot->GetEnemyTarget()->GetVelocity() / 16;
-            vBot = m_Bot->GetVelocity();
-            double proj_speed = m_Bot->GetMemorySensor().GetShipSettings(m_Bot->GetShip()).BulletSpeed;
-
-            Vec2 solution = CalculateShot(pos, target, vBot, vEnemy, proj_speed / 16.0 / 10.0);
-
-            Util::GetDistance(pos, solution, &dx, &dy, nullptr);
-
-            /* Move bot if it's stuck at a wall */
-            if (PointingAtWall(rot, (unsigned)pos.x, (unsigned)pos.y, m_Bot->GetLevel())) {
-                m_NearWall += dt;
-                if (m_NearWall >= 1000) {
-                    // Bot has been near a wall for too long
-                    client->Down(true);
-
-                    int dir = Random::GetU32(0, 1) ? VK_LEFT : VK_RIGHT;
-
-                    dir == VK_LEFT ? client->Left(true) : client->Right(true);
-
-                    std::this_thread::sleep_for(std::chrono::milliseconds(250));
-                    dir == VK_LEFT ? client->Left(false) : client->Right(false);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(250));
-                    dir == VK_LEFT ? client->Left(true) : client->Right(true);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(250));
-
-                    client->Down(false);
-                    dir == VK_LEFT ? client->Left(false) : client->Right(false);
-
-                    m_NearWall = 0;
-                }
-            } else {
-                m_NearWall = 0;
-            }
-
-            /* Handle rotation */
-            target_rot = Util::GetTargetRotation(dx, dy);
-            target_heading = Util::ContRotToVec(target_rot);
-            bool clockwise = Util::GetRotationDirection(heading, target_heading) == Direction::Right;
-
-            if (rot != target_rot) {
-                client->Left(!clockwise);
-                client->Right(clockwise);
-            } else {
-                client->Left(false);
-                client->Right(false);
-            }
-
-            /* Scale target distance by energy */
-            tardist -= (int)std::floor(tardist * ((energypct / 100.0f) * .33f));
-
-            if (timeGetTime() - m_LastSafeTime < ChaseFromSafeTime)
-                tardist = 0;
-
-            if (dist > tardist && dist <= tardist * 1.5) {
-                int max_speed = m_Bot->GetMemorySensor().GetShipSettings(m_Bot->GetShip()).InitialSpeed / 16 / 10;
-                double target_speed = dist / (tardist * 1.5) * max_speed;
-
-                m_Bot->SetSpeed(target_speed);
-            } else {
-                if (dist > tardist) {
-                    client->Down(false);
-                    client->Up(true);
-                } else {
-                    client->Down(true);
-                    client->Up(false);
-                }
-            }
-
-            if (dist > 20 && m_Bot->GetEnergyPercent() > 80)
-                client->SetThrust(true);
-            else
-                client->SetThrust(false);
-
-        }
-
-        /* Fire bursts */
-        m_BurstTimer += dt;
-        if (m_BurstTimer >= 1000 && m_Bot->GetConfig().UseBurst) {
-            if (!insafe && dist < 15 && InBurstArea(pos, m_Bot->GetGrid())) {
-                client->Burst();
-
-                m_BurstTimer = 0;
-            }
-        }
-
-        /* Fire decoys */
-        m_DecoyTimer += dt;
-        if (!insafe && m_Bot->GetConfig().DecoyDelay > 0 && m_DecoyTimer >= m_Bot->GetConfig().DecoyDelay) {
-            client->Decoy();
-            m_DecoyTimer = 0;
-        }
-
-        /* Fire rockets */
-        api::Ship ship = m_Bot->GetShip();
-        const ShipSettings& settings = m_Bot->GetMemorySensor().GetShipSettings(ship);
-        float rocket_duration_ms = settings.RocketTime * 10.0f;
-        float tiles_per_ms = (settings.InitialSpeed / 10.0f / 16.0f) / 1000.0f;
-        const int RocketThrust = 37;
-        float speed_per_ms = RocketThrust / 100.0f / 16.0f / 1000.0f;
-
-        m_RocketTimer += dt;
-        if (m_RocketTimer > rocket_duration_ms) {
-            Vec2 direction = Vec2Normalize(pos - target);
-            float current_speed = (float)vBot.Length();
-            float max_speed = settings.InitialSpeed / 10.0f / 16.0f;
-            float ms_to_max = ((max_speed - current_speed) / 1000.0f) / speed_per_ms;
-            Vec2 estimated_pos = pos + direction * (tiles_per_ms * (rocket_duration_ms - ms_to_max));
-
-            if ((dist * dist) > (estimated_pos - pos).LengthSquared() * .75) {
-                m_Bot->GetClient()->Rocket();
-                m_RocketTimer = 0;
-            }
-        }
-        
-        double heading_dot = heading.Dot(target_heading);
-        const double MaxGunDotDiff = 0.2;
-        const double MaxBombDotDiff = 0.01;
-        /* Only fire weapons if pointing at enemy */
-        if ((1.0 - heading_dot) > MaxGunDotDiff && dist > 5 && (!m_Bot->GetConfig().Baseduel || m_Bot->IsInCenter())) {
-            client->Gun(GunState::Off);
-            return;
-        }
-
-        /* Calculate the dot product to determine if the bot is moving backwards */
-        Vec2 norm_vel = m_Bot->GetVelocity();
-        norm_vel.Normalize();
-        double dot = heading.Dot(norm_vel);
-
-        /* Handle bombing. Don't bomb if moving backwards unless energy is high. Don't close bomb. */
-        if (!insafe && energypct > m_Bot->GetConfig().StopBombing && (1.0 - heading_dot) <= MaxBombDotDiff) {
-            if ((dot >= 0.0 || energypct >= 50) && !PointingAtWall(rot, (unsigned)pos.x, (unsigned)pos.y, m_Bot->GetLevel()) && dist >= 7)
-                client->Bomb();
-        }
-
-        // Only fire guns if the enemy is within range
-        if (m_Bot->GetConfig().MinGunRange != 0 && dist > m_Bot->GetConfig().MinGunRange) {
-            client->Gun(GunState::Off);
-            return;
-        }
-
-        /* Handle gunning */
-        if (energypct < m_Bot->GetConfig().RunPercent) {
-            if (dist <= m_Bot->GetConfig().IgnoreDelayDistance)
-                client->Gun(GunState::Constant);
-            else
-                client->Gun(GunState::Off);
-        } else {
-            if (insafe) {
-                client->Gun(GunState::Off);
-            } else {
-                // Do bullet delay if the closest enemy isn't close, ignore otherwise
-                if (dist > m_Bot->GetConfig().IgnoreDelayDistance)
-                    client->Gun(GunState::Tap, energypct);
-                else
-                    client->Gun(GunState::Constant);
-            }
-        }
-
     } else {
-		/* Clear input when there is no enemy */
-		client->ReleaseKeys();
+        m_NearWall = 0;
+    }
 
-        /* Switch to patrol state when there is no enemy to fight */
-        if (m_Bot->GetConfig().Patrol) {
-            if (m_LastEnemyPos != Vec2(0, 0)) {
-                std::vector<Vec2> waypoints = { m_LastEnemyPos };
-                m_Bot->SetState(std::make_shared<PatrolState>(m_Bot, waypoints));
+    /* Scale target distance by energy */
+    tardist -= (int)std::floor(tardist * ((energypct / 100.0f) * .33f));
+
+    if (timeGetTime() - m_LastSafeTime < ChaseFromSafeTime)
+        tardist = 0;
+
+    /* Handle rotation */
+    target_rot = Util::GetTargetRotation(dx, dy);
+    target_heading = Util::ContRotToVec(target_rot);
+
+    if (!pursuit) {
+        bool clockwise = Util::GetRotationDirection(heading, target_heading) == Direction::Right;
+
+        if (rot != target_rot) {
+            client->Left(!clockwise);
+            client->Right(clockwise);
+        } else {
+            client->Left(false);
+            client->Right(false);
+        }
+
+        if (dist > tardist && dist <= tardist * 1.5) {
+            int max_speed = m_Bot->GetMemorySensor().GetShipSettings(m_Bot->GetShip()).InitialSpeed / 16 / 10;
+            double target_speed = dist / (tardist * 1.5) * max_speed;
+
+            m_Bot->SetSpeed(target_speed);
+        } else {
+            if (dist > tardist) {
+                client->Down(false);
+                client->Up(true);
             } else {
-                m_Bot->SetState(std::make_shared<PatrolState>(m_Bot));
+                client->Down(true);
+                client->Up(false);
             }
-            client->ReleaseKeys();
-            return;
-        }
-        
-        /* Warp to keep the bot in game */
-        if (cur_time > m_Bot->GetLastEnemy() + 1000 * 60) {
-            client->Warp();
-            m_Bot->SetLastEnemy(cur_time);
-            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if (dist > 20 && m_Bot->GetEnergyPercent() > 80)
+            client->SetThrust(true);
+        else
+            client->SetThrust(false);
+    }
+
+    /* Fire bursts */
+    m_BurstTimer += dt;
+    if (m_BurstTimer >= 1000 && m_Bot->GetConfig().UseBurst) {
+        if (!insafe && dist < 15 && InBurstArea(pos, m_Bot->GetGrid())) {
+            client->Burst();
+
+            m_BurstTimer = 0;
+        }
+    }
+
+    /* Fire decoys */
+    m_DecoyTimer += dt;
+    if (!insafe && m_Bot->GetConfig().DecoyDelay > 0 && m_DecoyTimer >= m_Bot->GetConfig().DecoyDelay) {
+        client->Decoy();
+        m_DecoyTimer = 0;
+    }
+
+    /* Fire rockets */
+    api::Ship ship = m_Bot->GetShip();
+    const ShipSettings& settings = m_Bot->GetMemorySensor().GetShipSettings(ship);
+    float rocket_duration_ms = settings.RocketTime * 10.0f;
+    float tiles_per_ms = (settings.InitialSpeed / 10.0f / 16.0f) / 1000.0f;
+    const int RocketThrust = 37;
+    float speed_per_ms = RocketThrust / 100.0f / 16.0f / 1000.0f;
+
+    m_RocketTimer += dt;
+    if (m_RocketTimer > rocket_duration_ms) {
+        Vec2 direction = Vec2Normalize(pos - target);
+        float current_speed = (float)vBot.Length();
+        float max_speed = settings.InitialSpeed / 10.0f / 16.0f;
+        float ms_to_max = ((max_speed - current_speed) / 1000.0f) / speed_per_ms;
+        Vec2 estimated_pos = pos + direction * (tiles_per_ms * (rocket_duration_ms - ms_to_max));
+
+        if ((dist * dist) > (estimated_pos - pos).LengthSquared() * .75) {
+            m_Bot->GetClient()->Rocket();
+            m_RocketTimer = 0;
+        }
+    }
+        
+    double heading_dot = heading.Dot(target_heading);
+    const double MaxGunDotDiff = 0.2;
+    const double MaxBombDotDiff = 0.01;
+    /* Only fire weapons if pointing at enemy */
+    if ((1.0 - heading_dot) > MaxGunDotDiff && dist > 5 && (!m_Bot->GetConfig().Baseduel || m_Bot->IsInCenter())) {
+        client->Gun(GunState::Off);
+        return;
+    }
+
+    /* Calculate the dot product to determine if the bot is moving backwards */
+    Vec2 norm_vel = m_Bot->GetVelocity();
+    norm_vel.Normalize();
+    double dot = heading.Dot(norm_vel);
+
+    /* Handle bombing. Don't bomb if moving backwards unless energy is high. Don't close bomb. */
+    if (!insafe && energypct > m_Bot->GetConfig().StopBombing && (1.0 - heading_dot) <= MaxBombDotDiff) {
+        if ((dot >= 0.0 || energypct >= 50) && !PointingAtWall(rot, (unsigned)pos.x, (unsigned)pos.y, m_Bot->GetLevel()) && dist >= 7)
+            client->Bomb();
+    }
+
+    // Only fire guns if the enemy is within range
+    if (m_Bot->GetConfig().MinGunRange != 0 && dist > m_Bot->GetConfig().MinGunRange) {
+        client->Gun(GunState::Off);
+        return;
+    }
+
+    /* Handle gunning */
+    if (energypct < m_Bot->GetConfig().RunPercent) {
+        if (dist <= m_Bot->GetConfig().IgnoreDelayDistance)
+            client->Gun(GunState::Constant);
+        else
+            client->Gun(GunState::Off);
+    } else {
+        if (insafe) {
+            client->Gun(GunState::Off);
+        } else {
+            // Do bullet delay if the closest enemy isn't close, ignore otherwise
+            if (dist > m_Bot->GetConfig().IgnoreDelayDistance)
+                client->Gun(GunState::Tap, energypct);
+            else
+                client->Gun(GunState::Constant);
+        }
     }
 }
