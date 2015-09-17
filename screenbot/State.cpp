@@ -671,6 +671,8 @@ void PatrolState::Update(DWORD dt) {
         return;
     }
 
+    m_Bot->GetMovementManager()->SetEnabled(false);
+
     int energypct = m_Bot->GetEnergyPercent();
     client->SetXRadar(energypct > m_Bot->GetConfig().XPercent);
 
