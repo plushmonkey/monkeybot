@@ -147,33 +147,8 @@ Vec2 ClosestWall(const Level& level, Pathing::JPSNode* node) {
     return closest;
 };
 
-void SmoothPath(const Level& level, const Pathing::Plan& plan, std::vector<Vec2>& result) {
-    const double Intensity = 2.0;
-
-    result.resize(plan.size());
-    for (std::size_t i = 0; i < plan.size(); ++i) {
-        Pathing::JPSNode* node = plan[i];
-        
-        //Vec2 closest = ClosestWall(level, node);
-        Vec2 current(node->x, node->y);
-        Vec2 new_pos(plan[i]->x, plan[i]->y);
-        
-        /*if (closest != Vec2(0, 0))
-            new_pos = current + Vec2Normalize(current - closest) * Intensity;
-        
-        if (current != new_pos) {
-            if (!Util::IsClearPath(current, new_pos, 1, level))
-                new_pos = current;
-        }*/
-        
-        result[i] = new_pos;
-    }
-}
-
 ChaseState::ChaseState(api::Bot* bot)
-    : State(bot), 
-      m_StuckTimer(0), 
-      m_LastCoord(0, 0),
+    : PathingState(bot), 
       m_LastRealEnemyCoord(0, 0),
       m_LastEnemySeen(0)
 {
@@ -212,45 +187,9 @@ void ChaseState::Update(DWORD dt) {
         return;
     }
 
-    bool near_wall = Util::NearWall(pos, m_Bot->GetGrid());
+    UpdateStuckCheck(dt);
 
-    m_StuckTimer += dt;
-    if (m_StuckTimer >= 2500) {
-        if (m_Bot->GetSpeed() < 1.0 && near_wall) {
-            client->Up(false);
-            client->Down(true);
-
-            int dir = Random::GetU32(0, 1) ? VK_LEFT : VK_RIGHT;
-
-            dir == VK_LEFT ? client->Left(true) : client->Right(true);
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(250));
-            dir == VK_LEFT ? client->Left(false) : client->Right(false);
-            std::this_thread::sleep_for(std::chrono::milliseconds(250));
-            dir == VK_LEFT ? client->Left(true) : client->Right(true);
-            std::this_thread::sleep_for(std::chrono::milliseconds(250));
-
-            client->Down(false);
-            dir == VK_LEFT ? client->Left(false) : client->Right(false);
-        }
-
-        m_LastCoord = pos;
-        m_StuckTimer = 0;
-    }
-
-    if (m_Bot->GetGrid().IsOpen((short)pos.x, (short)pos.y) && m_Bot->GetGrid().IsOpen((short)enemy_pos.x, (short)enemy_pos.y)) {
-        static DWORD path_timer = 0;
-
-        path_timer += dt;
-
-        if (path_timer >= PathUpdateFrequency || m_Plan.size() == 0) {
-            Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>); 
-
-            SmoothPath(m_Bot->GetLevel(), jps((short)enemy_pos.x, (short)enemy_pos.y, (short)pos.x, (short)pos.y, m_Bot->GetGrid()), m_Plan);
-
-            path_timer = 0;
-        }
-    }
+    UpdatePath(enemy_pos, dt);
 
     if (m_Plan.size() == 0) {
         m_LastEnemySeen += dt;
@@ -268,7 +207,6 @@ void ChaseState::Update(DWORD dt) {
         m_LastEnemySeen = 0;
     }
 
-    //Pathing::JPSNode* next_node = m_Plan.at(0);
     Vec2 next = m_Plan.at(0);
     int dx, dy;
     double dist = 0.0;
@@ -276,148 +214,13 @@ void ChaseState::Update(DWORD dt) {
     Util::GetDistance(pos, next, &dx, &dy, &dist);
 
     // Grab the next node in the plan that isn't right beside the bot. NOTE: This can mess things up so the bot gets stuck on corners.
-    while (dist < 2 && m_Plan.size() > 1 && !near_wall) {
+    while (((dist <= 1 && m_Bot->GetGrid().GetNode((short)next.x, (short)next.y)->near_wall) || (dist < 2 && !m_Bot->GetGrid().GetNode((short)next.x, (short)next.y)->near_wall)) && m_Plan.size() > 1) {
         m_Plan.erase(m_Plan.begin());
         next = m_Plan.at(0);
         Util::GetDistance(pos, next, &dx, &dy, &dist);
     }
 
     steering.Target(next);
-
-    return;
-
-  /*  double target_speed = 100000.0;
-
-//    Vec2 pos = m_Bot->GetPos();
-    api::PlayerPtr enemy = m_Bot->GetEnemyTarget();
-    //Vec2 enemy_pos = enemy->GetPosition() / 16;
-
-    bool near_wall = Util::NearWall(pos, m_Bot->GetGrid());
-
-    m_LastRealEnemyCoord = enemy_pos;
-
-    // Switch to aggressive state if there is direct line of sight
-    if (Util::IsClearPath(pos, enemy_pos, RADIUS, m_Bot->GetLevel())) {
-        m_Bot->SetState(std::make_shared<AggressiveState>(m_Bot));
-        return;
-    }
-
-    m_StuckTimer += dt;
-
-    // Check if stuck every 2.5 seconds
-    if (m_StuckTimer >= 2500) {
-        if (m_Bot->GetSpeed() < 1.0 && near_wall) {
-            // Stuck
-            client->Up(false);
-            client->Down(true);
-
-            int dir = Random::GetU32(0, 1) ? VK_LEFT : VK_RIGHT;
-
-            dir == VK_LEFT ? client->Left(true) : client->Right(true);
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(250));
-            dir == VK_LEFT ? client->Left(false) : client->Right(false);
-            std::this_thread::sleep_for(std::chrono::milliseconds(250));
-            dir == VK_LEFT ? client->Left(true) : client->Right(true);
-            std::this_thread::sleep_for(std::chrono::milliseconds(250));
-
-            client->Down(false);
-            dir == VK_LEFT ? client->Left(false) : client->Right(false);
-        }
-
-        m_LastCoord = pos;
-        m_StuckTimer = 0;
-    }
-
-    // Update the path if the bot and the enemy are both in reachable positions
-    if (m_Bot->GetGrid().IsOpen((short)pos.x, (short)pos.y) && m_Bot->GetGrid().IsOpen((short)enemy_pos.x, (short)enemy_pos.y)) {
-        static DWORD path_timer = 0;
-
-        path_timer += dt;
-
-        // Recalculate path every 1 second
-        if (path_timer >= PathUpdateFrequency || m_Plan.size() == 0) {
-            Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
-
-            m_Plan = jps((short)enemy_pos.x, (short)enemy_pos.y, (short)pos.x, (short)pos.y, m_Bot->GetGrid());
-            path_timer = 0;
-        }
-    } else {
-      //  if (m_Plan.size() == 0)
-        //    m_Plan.push_back(m_Bot->GetGrid().GetNode((short)enemy_pos.x, (short)enemy_pos.y));
-    }
-
-    if (m_Plan.size() == 0) {
-        m_LastEnemySeen += dt;
-
-        if (m_LastEnemySeen >= 45 * 1000) {
-            m_LastEnemySeen = 0;
-            client->ReleaseKeys();
-            client->Warp();
-            return;
-        }
-
-        client->ReleaseKeys();
-        return;
-    } else {
-        m_LastEnemySeen = 0;
-    }
-
-    Pathing::JPSNode* next_node = m_Plan.at(0);
-    Vec2 next(next_node->x, next_node->y);
-
-    int dx, dy;
-    double dist = 0.0;
-
-    Util::GetDistance(pos, next, &dx, &dy, &dist);
-
-    // Grab the next node in the plan that isn't right beside the bot. NOTE: This can mess things up so the bot gets stuck on corners.
-    while (dist < 3 && m_Plan.size() > 1 && !near_wall) {
-        m_Plan.erase(m_Plan.begin());
-        next_node = m_Plan.at(0);
-        next = Vec2(next_node->x, next_node->y);
-        Util::GetDistance(pos, next, &dx, &dy, &dist);
-    }
-
-    double total_dist = GetPlanDistance(m_Plan);
-
-    // Only fire if the bot is close enough to fire
-    bool fire = m_Bot->GetConfig().MinGunRange == 0 || total_dist <= m_Bot->GetConfig().MinGunRange * .8;
-    bool bounce = m_Bot->GetClient()->HasBouncingBullets();
-
-    if (bounce && fire && !client->IsInSafe(pos, m_Bot->GetLevel()))
-        client->Gun(GunState::Tap, m_Bot->GetEnergyPercent());
-    else
-        client->Gun(GunState::Off);
-
-    int rot = client->GetRotation();
-    int target_rot = Util::GetTargetRotation(dx, dy);
-
-    // Calculate rotation direction
-    Vec2 heading = m_Bot->GetHeading();
-    Vec2 target_heading = Util::ContRotToVec(target_rot);
-    bool clockwise = Util::GetRotationDirection(heading, target_heading) == Direction::Right;
-
-    if (rot != target_rot) {
-        client->Left(!clockwise);
-        client->Right(clockwise);
-    } else {
-        client->Left(false);
-        client->Right(false);
-    }
-
-    if (dist <= 7 && dist > 0) {
-        int max_speed = m_Bot->GetMemorySensor().GetShipSettings(m_Bot->GetShip()).InitialSpeed / 16 / 10;
-        
-        target_speed = dist / 7 * max_speed;
-    }
-
-    if (total_dist > 20 && m_Bot->GetEnergyPercent() > 80)
-        client->SetThrust(true);
-    else
-        client->SetThrust(false);
-
-    m_Bot->SetSpeed(target_speed);*/
 }
 
 BaseduelState::BaseduelState(api::Bot* bot)
@@ -489,7 +292,7 @@ void BaseduelState::Update(DWORD dt) {
 }
 
 FollowState::FollowState(api::Bot* bot, std::string follow)
-    : State(bot), m_StuckTimer(0)
+    : PathingState(bot)
 {
    api::PlayerList players = m_Bot->GetMemorySensor().GetPlayers();
 
@@ -523,6 +326,62 @@ void FollowState::Update(DWORD dt) {
     Vec2 pos = m_Bot->GetPos();
     bool near_wall = Util::NearWall(pos, m_Bot->GetGrid());
 
+    this->UpdatePath(target, dt);
+
+    if (m_Plan.size() == 0)
+        m_Plan.emplace_back(target.x, target.y);
+
+    Vec2 next = m_Plan.at(0);
+
+    int dx, dy;
+    double dist = 0.0;
+
+    Util::GetDistance(pos, next, &dx, &dy, &dist);
+
+    while (dist < 3 && m_Plan.size() > 1 && !near_wall) {
+        m_Plan.erase(m_Plan.begin());
+        next = m_Plan.at(0);
+        Util::GetDistance(pos, next, &dx, &dy, &dist);
+    }
+
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorSeek, true);
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorArrive, true);
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorAvoid, true);
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorPursuit, false);
+
+    m_Bot->GetSteering().Target(next);
+}
+
+void PathingState::SmoothPath(const Level& level, const Pathing::Plan& plan, std::vector<Vec2>& result) {
+    const double Intensity = 2.0;
+
+    // todo: use IsClearPath to remove unneeded nodes
+
+    result.resize(plan.size());
+    for (std::size_t i = 0; i < plan.size(); ++i) {
+        Pathing::JPSNode* node = plan[i];
+
+        //Vec2 closest = ClosestWall(level, node);
+        Vec2 current(node->x, node->y);
+        Vec2 new_pos(plan[i]->x, plan[i]->y);
+
+        /*if (closest != Vec2(0, 0))
+        new_pos = current + Vec2Normalize(current - closest) * Intensity;
+
+        if (current != new_pos) {
+        if (!Util::IsClearPath(current, new_pos, 1, level))
+        new_pos = current;
+        }*/
+
+        result[i] = new_pos;
+    }
+}
+
+void PathingState::UpdateStuckCheck(DWORD dt) {
+    ClientPtr client = m_Bot->GetClient();
+    Vec2 pos = m_Bot->GetPos();
+    bool near_wall = Util::NearWall(pos, m_Bot->GetGrid());
+
     m_StuckTimer += dt;
 
     // Check if stuck every 2.5 seconds
@@ -548,6 +407,10 @@ void FollowState::Update(DWORD dt) {
 
         m_StuckTimer = 0;
     }
+}
+
+void PathingState::UpdatePath(Vec2 target, DWORD dt) {
+    Vec2 pos = m_Bot->GetPos();
 
     if (!m_Bot->GetGrid().IsSolid((short)pos.x, (short)pos.y) && m_Bot->GetGrid().IsOpen((short)target.x, (short)target.y)) {
         static DWORD path_timer = 0;
@@ -557,71 +420,25 @@ void FollowState::Update(DWORD dt) {
         if (path_timer >= PathUpdateFrequency || m_Plan.size() == 0) {
             Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
 
-            m_Plan = jps((short)target.x, (short)target.y, (short)pos.x, (short)pos.y, m_Bot->GetGrid());
+            SmoothPath(m_Bot->GetLevel(), jps((short)target.x, (short)target.y, (short)pos.x, (short)pos.y, m_Bot->GetGrid()), m_Plan);
 
             path_timer = 0;
         }
     }
+}
 
-    if (m_Plan.size() == 0)
-        m_Plan.push_back(m_Bot->GetGrid().GetNode((short)target.x, (short)target.y));
+PathingState::PathingState(api::Bot* bot) 
+    : State(bot)
+{
 
-    Pathing::JPSNode* next_node = m_Plan.at(0);
-    Vec2 next(next_node->x, next_node->y);
-
-    int dx, dy;
-    double dist = 0.0;
-
-    Util::GetDistance(pos, next, &dx, &dy, &dist);
-
-    while (dist < 3 && m_Plan.size() > 1 && !near_wall) {
-        m_Plan.erase(m_Plan.begin());
-        next_node = m_Plan.at(0);
-        next = Vec2(next_node->x, next_node->y);
-        Util::GetDistance(pos, next, &dx, &dy, &dist);
-    }
-
-    int rot = client->GetRotation();
-    int target_rot = Util::GetTargetRotation(dx, dy);
-
-    Vec2 heading = m_Bot->GetHeading();
-    Vec2 target_heading = Util::ContRotToVec(target_rot);
-    bool clockwise = Util::GetRotationDirection(heading, target_heading) == Direction::Right;
-
-    if (rot != target_rot) {
-        client->Left(!clockwise);
-        client->Right(clockwise);
-    } else {
-        client->Left(false);
-        client->Right(false);
-    }
-
-    double target_speed = 100000.0;
-
-    if (dist <= 7 && dist > 0) {
-        int max_speed = m_Bot->GetMemorySensor().GetShipSettings(m_Bot->GetShip()).InitialSpeed / 16 / 10;
-
-        target_speed = dist / 7 * max_speed;
-    }
-
-    if (m_Bot->GetEnergyPercent() > 70)
-        client->SetThrust(true);
-    else
-        client->SetThrust(false);
-
-    m_Bot->SetSpeed(target_speed);
 }
 
 PatrolState::PatrolState(api::Bot* bot, std::vector<Vec2> waypoints, unsigned int close_distance)
-    : State(bot), 
+    : PathingState(bot), 
       m_LastBullet(timeGetTime()),
-      m_StuckTimer(0),
-      m_LastCoord(0, 0),
       m_CloseDistance(close_distance)
 {
     m_Bot->GetClient()->ReleaseKeys();
-
-    m_Bot->GetMovementManager()->SetEnabled(false);
 
     m_FullWaypoints = m_Bot->GetConfig().Waypoints;
 
@@ -632,7 +449,7 @@ PatrolState::PatrolState(api::Bot* bot, std::vector<Vec2> waypoints, unsigned in
 }
 
 PatrolState::~PatrolState() {
-    m_Bot->GetMovementManager()->SetEnabled(true);
+    
 }
 
 void PatrolState::ResetWaypoints(bool full) {
@@ -662,6 +479,32 @@ void PatrolState::ResetWaypoints(bool full) {
         m_Waypoints.erase(m_Waypoints.begin(), closest);
 }
 
+bool PatrolState::UpdateWaypoints() {
+    if (m_Waypoints.size() == 0) {
+        ResetWaypoints();
+        return true;
+    }
+
+    Vec2 target = m_Waypoints.front();
+    Vec2 pos = m_Bot->GetPos();
+
+    double closedist;
+    Util::GetDistance(pos, target, nullptr, nullptr, &closedist);
+
+    if (closedist <= m_CloseDistance) {
+        m_Waypoints.erase(m_Waypoints.begin());
+        if (m_Waypoints.size() == 0) return true;
+        target = m_Waypoints.front();
+    }
+
+    if (!m_Bot->GetGrid().IsOpen((short)target.x, (short)target.y)) {
+        m_Waypoints.erase(m_Waypoints.begin());
+        return true;
+    }
+
+    return false;
+}
+
 void PatrolState::Update(DWORD dt) {
     ClientPtr client = m_Bot->GetClient();
 
@@ -671,16 +514,15 @@ void PatrolState::Update(DWORD dt) {
         return;
     }
 
-    m_Bot->GetMovementManager()->SetEnabled(false);
+    m_Bot->GetMovementManager()->SetEnabled(true);
+
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorSeek, true);
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorArrive, true);
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorAvoid, true);
+    m_Bot->GetSteering().SetBehavior(api::SteeringBehavior::BehaviorPursuit, false);
 
     int energypct = m_Bot->GetEnergyPercent();
     client->SetXRadar(energypct > m_Bot->GetConfig().XPercent);
-
-    if (m_Waypoints.size() == 0) {
-        ResetWaypoints();
-        client->Up(false);
-        return;
-    }
 
     if (timeGetTime() >= m_LastBullet + 60000) {
         client->Gun(GunState::Tap);
@@ -688,65 +530,12 @@ void PatrolState::Update(DWORD dt) {
         m_LastBullet = timeGetTime();
     }
 
-    Vec2 target = m_Waypoints.front();
-    Vec2 pos = m_Bot->GetPos();
-    bool near_wall = Util::NearWall(pos, m_Bot->GetGrid());
+    UpdateStuckCheck(dt);
 
-    m_StuckTimer += dt;
-
-    // Check if stuck every 2.5 seconds
-    if (m_StuckTimer >= 2500) {
-        if (m_Bot->GetSpeed() < 1.0 && near_wall) {
-            // Stuck
-            client->Up(false);
-            client->Down(true);
-
-            int dir = Random::GetU32(0, 1) ? VK_LEFT : VK_RIGHT;
-
-            dir == VK_LEFT ? client->Left(true) : client->Right(true);
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(250));
-            dir == VK_LEFT ? client->Left(false) : client->Right(false);
-            std::this_thread::sleep_for(std::chrono::milliseconds(250));
-            dir == VK_LEFT ? client->Left(true) : client->Right(true);
-            std::this_thread::sleep_for(std::chrono::milliseconds(250));
-
-            client->Down(false);
-            dir == VK_LEFT ? client->Left(false) : client->Right(false);
-        }
-
-        m_LastCoord = pos;
-        m_StuckTimer = 0;
-    }
-
-    double closedist;
-    Util::GetDistance(pos, target, nullptr, nullptr, &closedist);
-
-    if (closedist <= m_CloseDistance) {
-        m_Waypoints.erase(m_Waypoints.begin());
-        if (m_Waypoints.size() == 0) return;
-        target = m_Waypoints.front();
-    }
-
-    if (!m_Bot->GetGrid().IsOpen((short)target.x, (short)target.y)) {
-        m_Waypoints.erase(m_Waypoints.begin());
+    if (UpdateWaypoints())
         return;
-    }
 
-
-    if (!m_Bot->GetGrid().IsSolid((short)pos.x, (short)pos.y) && m_Bot->GetGrid().IsOpen((short)target.x, (short)target.y)) {
-        static DWORD path_timer = 0;
-
-        path_timer += dt;
-
-        if (path_timer >= PathUpdateFrequency || m_Plan.size() == 0) {
-            Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
-
-            m_Plan = jps((short)target.x, (short)target.y, (short)pos.x, (short)pos.y, m_Bot->GetGrid());
-
-            path_timer = 0;
-        }
-    }
+    UpdatePath(m_Waypoints.at(0), dt);
 
     if (m_Plan.size() == 0) {
         m_Waypoints.erase(m_Waypoints.begin());
@@ -775,50 +564,21 @@ void PatrolState::Update(DWORD dt) {
         return;
     }
 
-    Pathing::JPSNode* next_node = m_Plan.at(0);
-    Vec2 next(next_node->x, next_node->y);
+    Vec2 next = m_Plan.at(0);
 
     int dx, dy;
     double dist = 0.0;
+    Vec2 pos = m_Bot->GetPos();
 
     Util::GetDistance(pos, next, &dx, &dy, &dist);
 
-    while (dist < 3 && m_Plan.size() > 1 && !near_wall) {
+    while (dist < 3 && m_Plan.size() > 1 && !Util::NearWall(pos, m_Bot->GetGrid())) {
         m_Plan.erase(m_Plan.begin());
-        next_node = m_Plan.at(0);
-        next = Vec2(next_node->x, next_node->y);
+        next = m_Plan.at(0);
         Util::GetDistance(pos, next, &dx, &dy, &dist);
     }
 
-    int rot = client->GetRotation();
-    int target_rot = Util::GetTargetRotation(dx, dy);
-
-    Vec2 heading = m_Bot->GetHeading();
-    Vec2 target_heading = Util::ContRotToVec(target_rot);
-    bool clockwise = Util::GetRotationDirection(heading, target_heading) == Direction::Right;
-
-    if (rot != target_rot) {
-        client->Left(!clockwise);
-        client->Right(clockwise);
-    } else {
-        client->Left(false);
-        client->Right(false);
-    }
-
-    double target_speed = 100000.0;
-
-    if (dist <= 7 && dist > 0) {
-        int max_speed = m_Bot->GetMemorySensor().GetShipSettings(m_Bot->GetShip()).InitialSpeed / 16 / 10;
-
-        target_speed = dist / 7 * max_speed;
-    }
-
-    if (m_Bot->GetEnergyPercent() > 70)
-        client->SetThrust(true);
-    else
-        client->SetThrust(false);
-
-    m_Bot->SetSpeed(target_speed);
+    m_Bot->GetSteering().Target(next);
 }
 
 bool PointingAtWall(int rot, unsigned x, unsigned y, const Level& level) {
