@@ -18,14 +18,11 @@
 #include <cmath>
 #include <limits>
 
-// TODO: Pull out all of the common state stuff like movement/unstuck. 
-// Maybe just put it right in the bot class.
-
 #define RADIUS 1
 
 namespace {
 
-const int PathUpdateFrequency = 250;
+const int PathUpdateDelay = 250;
 
 } // ns
 
@@ -100,26 +97,6 @@ void AttachState::Update(DWORD dt) {
     }
 
     client->MoveTicker(m_Direction);
-}
-
-
-// Returns the distance of an entire plan, used in chase state
-double GetPlanDistance(const Pathing::Plan& plan) {
-    if (plan.size() < 2) return 0.0;
-
-    Vec2 last(plan.at(0)->x, plan.at(0)->y);
-    double total_dist = 0.0;
-    
-    for (const auto& node : plan) {
-        Vec2 coord(node->x, node->y);
-        double dist = 0.0;
-
-        Util::GetDistance(last, coord, nullptr, nullptr, &dist);
-
-        total_dist += dist;
-        last = coord;
-    }
-    return total_dist;
 }
 
 Vec2 ClosestWall(const Level& level, Pathing::JPSNode* node) {
@@ -221,6 +198,26 @@ void ChaseState::Update(DWORD dt) {
     }
 
     steering.Target(next);
+
+    UpdateWeapons(dt);
+}
+
+void ChaseState::UpdateWeapons(DWORD dt) {
+    ClientPtr client = m_Bot->GetClient();
+
+    if (m_Bot->IsInSafe()) {
+        client->Gun(GunState::Off);
+        return;
+    }
+    
+    double total_dist = GetPlanDistance();
+    bool bouncing_bullets = client->HasBouncingBullets();
+    bool fire = (m_Bot->GetConfig().MinGunRange == 0 || total_dist <= m_Bot->GetConfig().MinGunRange * .8) && bouncing_bullets;
+
+    if (fire && !m_Bot->IsInSafe())
+        client->Gun(GunState::Tap, m_Bot->GetEnergyPercent());
+    else
+        client->Gun(GunState::Off);
 }
 
 BaseduelState::BaseduelState(api::Bot* bot)
@@ -377,6 +374,24 @@ void PathingState::SmoothPath(const Level& level, const Pathing::Plan& plan, std
     }
 }
 
+// Returns the distance of an entire plan
+double PathingState::GetPlanDistance() {
+    if (m_Plan.size() < 2) return 0.0;
+
+    Vec2 last = m_Plan.at(0);
+    double total_dist = 0.0;
+
+    for (const Vec2& coord : m_Plan) {
+        double dist = 0.0;
+
+        Util::GetDistance(last, coord, nullptr, nullptr, &dist);
+
+        total_dist += dist;
+        last = coord;
+    }
+    return total_dist + last.Distance(m_Bot->GetPos());
+}
+
 void PathingState::UpdateStuckCheck(DWORD dt) {
     ClientPtr client = m_Bot->GetClient();
     Vec2 pos = m_Bot->GetPos();
@@ -417,7 +432,7 @@ void PathingState::UpdatePath(Vec2 target, DWORD dt) {
 
         path_timer += dt;
 
-        if (path_timer >= PathUpdateFrequency || m_Plan.size() == 0) {
+        if (path_timer >= PathUpdateDelay || m_Plan.size() == 0) {
             Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
 
             SmoothPath(m_Bot->GetLevel(), jps((short)target.x, (short)target.y, (short)pos.x, (short)pos.y, m_Bot->GetGrid()), m_Plan);
