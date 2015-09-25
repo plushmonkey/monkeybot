@@ -54,7 +54,7 @@ void AttachState::Update(DWORD dt) {
     auto selected = client->GetSelectedPlayer();
     std::string attach_target = m_Bot->GetAttachTarget();
 
-    if (!m_Bot->IsInCenter()) {
+    if (!m_Bot->IsInSafe()) {
         // Detach if previous attach was successful
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
 

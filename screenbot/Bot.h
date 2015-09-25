@@ -200,6 +200,8 @@ public:
     api::StatePtr GetState() const { return m_StateMachine->GetState(); }
     SteeringBehavior& GetSteering() { return m_Steering; }
     std::shared_ptr<api::MovementManager> GetMovementManager() { return m_MovementManager; }
+
+    void SetAttachTarget(const std::string& target) { m_AttachTarget = target; }
 };
 
 #define RegisterBotUpdater(bot, function) (bot)->RegisterUpdater(std::bind(&function, this, std::placeholders::_1, std::placeholders::_2)); 

@@ -143,6 +143,7 @@ public:
     virtual std::shared_ptr<api::EnemySelectorFactory> GetEnemySelectors() = 0;
     virtual api::SteeringBehavior& GetSteering() = 0;
     virtual std::shared_ptr<api::MovementManager> GetMovementManager() = 0;
+    virtual void SetAttachTarget(const std::string& target) = 0;
 };
 
 } // ns

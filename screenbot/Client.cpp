@@ -578,6 +578,8 @@ void ScreenClient::SendString(const std::string& str, bool paste) {
     m_Keyboard.ReleaseAll();
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
+    
+    int maxEnergy = this->GetEnergy(m_MemorySensor.GetBotPlayer()->GetShip());
     // Clear anything that's in the chat already
     {
         m_Keyboard.Send(VK_SPACE);
@@ -587,6 +589,16 @@ void ScreenClient::SendString(const std::string& str, bool paste) {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
         m_Keyboard.Up(VK_BACK);
         m_Keyboard.Up(VK_LCONTROL);
+
+        if (!paste) {
+            int energy = 0;
+
+            do {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                this->Update(100);
+                energy = this->GetEnergy(m_MemorySensor.GetBotPlayer()->GetShip());
+            } while (energy != maxEnergy);
+        }
     }
 
     if (paste && SetClipboard(to_send)) {
@@ -756,19 +768,19 @@ void ScreenClient::SelectPlayer(const std::string& name) {
 
     if (!target.get()) {
         tcerr << "ScreenClient::SelectPlayer : "<< "Could not find " << name << " in player window. Scrolling up." << std::endl;;
+        api::PlayerPtr botPlayer = m_PlayerWindow.Find(m_MemorySensor.GetBotPlayer()->GetName());
 
-        // Page up the whole way in case it is off screen
+        int keycode = botPlayer ? VK_NEXT : VK_PRIOR;
+        // Page up/down because the player wasn't found in the window
         m_Keyboard.ReleaseAll();
 
-        for (int i = 0; i < 5; ++i) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            m_Keyboard.Down(VK_LSHIFT);
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            m_Keyboard.Down(VK_PRIOR);
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            m_Keyboard.Up(VK_LSHIFT);
-            m_Keyboard.Up(VK_PRIOR);
-        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        m_Keyboard.Down(VK_LSHIFT);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        m_Keyboard.Down(keycode);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        m_Keyboard.Up(VK_LSHIFT);
+        m_Keyboard.Up(keycode);
         return;
     }
 

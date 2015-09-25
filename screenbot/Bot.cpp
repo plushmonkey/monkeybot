@@ -245,6 +245,8 @@ void Bot::SelectShip() {
 }
 
 void Bot::CheckLancs(const std::string& line) {
+    return;
+
     // Only check the lancs if ?lancs was sent recently.
     if (m_LancTimer > 5000) return;
 
