@@ -7,6 +7,7 @@
 #include "Commands/Commands.h"
 #include "Tokenizer.h"
 
+#include <iostream>
 #include <thread>
 #include <regex>
 #include <sstream>
@@ -167,7 +168,9 @@ CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
     RegisterCommand("version", std::make_shared<VersionCommand>());
     RegisterCommand("owner", std::make_shared<OwnerCommand>());
 
+#ifdef _DEBUG
     RegisterCommand("energy", std::make_shared<EnergyCommand>());
+#endif
 
     RegisterCommand("reloadconf", std::make_shared<ReloadConfCommand>());
     RegisterCommand("pause", std::make_shared<PauseCommand>());
@@ -178,13 +181,13 @@ CommandHandler::CommandHandler(Bot* bot) : m_Bot(bot) {
     RegisterCommand("unload", std::make_shared<UnloadCommand>());
 
     RegisterCommand("ship", std::make_shared<ShipCommand>());
-    RegisterCommand("flag", std::make_shared<FlagCommand>());
+    //RegisterCommand("flag", std::make_shared<FlagCommand>()); // TODO: Fix and move into HS plugin
     RegisterCommand("freq", std::make_shared<FreqCommand>());
     RegisterCommand("target", std::make_shared<TargetCommand>());
 
     /* TODO: Pull into own plugins */
     RegisterCommand("commander", std::make_shared<CommanderCommand>());
-    RegisterCommand("revenge", std::make_shared<RevengeCommand>());
+    //RegisterCommand("revenge", std::make_shared<RevengeCommand>());
     RegisterCommand("taunt", std::make_shared<TauntCommand>());
 }
 

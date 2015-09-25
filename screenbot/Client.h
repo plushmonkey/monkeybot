@@ -55,8 +55,6 @@ private:
 
     bool m_Thrusting;
 
-    Ships::RotationStore* m_Rotations;
-
     MultiState DetermineMultiState() const;
     void GrabRadar();
 public:

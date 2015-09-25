@@ -133,6 +133,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../jsoncpp-0.8.0/lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>lib_jsond.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -241,7 +242,6 @@
     <ClCompile Include="Font.cpp" />
     <ClCompile Include="Keyboard.cpp" />
     <ClCompile Include="Level.cpp" />
-    <ClCompile Include="LogReader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="MemorySensor.cpp" />
@@ -253,7 +253,6 @@
     <ClCompile Include="plugin\PluginManager.cpp" />
     <ClCompile Include="Random.cpp" />
     <ClCompile Include="Revenge.cpp" />
-    <ClCompile Include="RotationStore.cpp" />
     <ClCompile Include="ScreenArea.cpp" />
     <ClCompile Include="ScreenGrabber.cpp" />
     <ClCompile Include="Selector.cpp" />
@@ -261,7 +260,6 @@
     <ClCompile Include="State.cpp" />
     <ClCompile Include="StateMachine.cpp" />
     <ClCompile Include="Steering.cpp" />
-    <ClCompile Include="Survivor.cpp" />
     <ClCompile Include="Taunter.cpp" />
     <ClCompile Include="Util.cpp" />
     <ClCompile Include="Version.cpp" />
@@ -292,7 +290,6 @@
     <ClInclude Include="Font.h" />
     <ClInclude Include="Keyboard.h" />
     <ClInclude Include="Level.h" />
-    <ClInclude Include="LogReader.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="Messages\ChatMessage.h" />
     <ClInclude Include="Messages\EnterMessage.h" />
@@ -309,14 +306,12 @@
     <ClInclude Include="ShipEnforcer.h" />
     <ClInclude Include="StateMachine.h" />
     <ClInclude Include="Steering.h" />
-    <ClInclude Include="Survivor.h" />
     <ClInclude Include="Taunter.h" />
     <ClInclude Include="Pathing.h" />
     <ClInclude Include="PlayerList.h" />
     <ClInclude Include="Random.h" />
     <ClInclude Include="ScreenArea.h" />
     <ClInclude Include="ScreenGrabber.h" />
-    <ClInclude Include="RotationStore.h" />
     <ClInclude Include="State.h" />
     <ClInclude Include="Tokenizer.h" />
     <ClInclude Include="Util.h" />

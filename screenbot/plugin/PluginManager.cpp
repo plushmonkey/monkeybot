@@ -2,6 +2,8 @@
 #include "../Bot.h"
 #include "../Util.h"
 
+#include <iostream>
+
 namespace {
 
 const std::string PluginFolder = "plugins";

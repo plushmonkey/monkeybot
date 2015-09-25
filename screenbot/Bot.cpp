@@ -43,7 +43,6 @@ Bot::Bot(int ship)
       m_Flagging(false),
       m_CommandHandler(this),
       m_Paused(false),
-      m_Survivor(this),
       m_MemorySensor(this),
       m_EnemySelector(new ClosestEnemySelector()),
       m_ShipEnforcer(new ShipEnforcer(this)),
@@ -189,7 +188,6 @@ void Bot::SendMessage(const std::string& str) {
 }
 
 void Bot::UpdateLog() {
-    m_LogReader->Update(0);
     MQueue.Dispatch();
 }
 
@@ -479,9 +477,6 @@ void Bot::Update(DWORD dt) {
     target_timer += dt;
 
     // todo: move commander stuff into plugin probably
-    if (m_Config.Commander && m_Config.Survivor)
-        m_Survivor.Update(dt);
-
     if (m_Config.Commander && target_timer >= 10000 && m_EnemyTarget != nullptr && m_EnemyTarget != m_LastTarget) {
         m_Client->SendString(";!target " + m_EnemyTarget->GetName());
         m_LastTarget = m_EnemyTarget;
@@ -526,9 +521,6 @@ int Bot::Run() {
     tcout << m_Config;
 
     m_CommandHandler.InitPermissions();
-
-    m_LogReader = std::make_shared<LogReader>(m_Config.LogFile, 500);
-    m_LogReader->Clear();
 
     if (!m_Level.Load(m_Config.Level)) {
         Util::ExitWithError("Could not load level " + m_Config.Level);

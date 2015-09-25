@@ -7,11 +7,9 @@
 #include "State.h"
 #include "Config.h"
 #include "Level.h"
-#include "LogReader.h"
 #include "CommandHandler.h"
 #include "Taunter.h"
 #include "MemorySensor.h"
-#include "Survivor.h"
 #include "Revenge.h"
 #include "plugin/PluginManager.h"
 #include "Version.h"
@@ -40,7 +38,6 @@ class Bot : public api::Bot, public MessageHandler<ChatMessage> {
 private:
     WindowFinder m_Finder;
     HWND m_Window;
-    //api::StatePtr m_State;
     api::StateMachinePtr m_StateMachine;
     api::Ship m_Ship;
     api::PlayerPtr m_EnemyTarget;
@@ -71,10 +68,8 @@ private:
     
     Config m_Config;
     ClientPtr m_Client;
-    SurvivorGame m_Survivor;
     Memory::MemorySensor m_MemorySensor;
     Taunter m_Taunter;
-    shared_ptr<LogReader> m_LogReader;
     CommandHandler m_CommandHandler;
     Version m_Version;
 
@@ -188,8 +183,6 @@ public:
     Memory::MemorySensor& GetMemorySensor() {
         return m_MemorySensor;
     }
-
-    SurvivorGame* GetSurvivorGame() { return &m_Survivor; }
 
     void UpdateLog();
 

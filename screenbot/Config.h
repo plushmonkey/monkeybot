@@ -18,9 +18,6 @@
 #include "api/Config.h"
 
 class Config  {
-public:
-    typedef std::vector<u64> RotationValues;
-
 private:
     Json::Value m_Root;
 
@@ -51,7 +48,6 @@ public:
     int RepelPercent;
     bool UseBurst;
     unsigned int DecoyDelay;
-    std::string LogFile;
     bool Taunt;
     unsigned int TauntCooldown;
     std::vector<std::string> Taunts;
@@ -62,7 +58,6 @@ public:
     std::string Zone;
     bool MultiFire;
     bool Revenge;
-    RotationValues ShipRotations[8];
     std::map<std::string, std::vector<std::string>> Permissions;
     std::string Owner;
     std::vector<std::string> Plugins;

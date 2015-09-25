@@ -4,7 +4,6 @@
 #include "ScreenArea.h"
 #include "ScreenGrabber.h"
 #include "Util.h"
-#include "RotationStore.h"
 #include "Level.h"
 #include "Memory.h"
 #include "MemorySensor.h"
@@ -24,7 +23,6 @@ ScreenClient::ScreenClient(HWND hwnd, Config& config, Memory::MemorySensor& mems
       m_Config(config),
       m_LastBomb(0),
       m_LastBullet(0),
-      m_Rotations(nullptr),
       m_EmpEnd(0),
       m_Thrusting(false),
       m_MemorySensor(memsensor),
@@ -47,8 +45,6 @@ ScreenClient::ScreenClient(HWND hwnd, Config& config, Memory::MemorySensor& mems
     m_EnergyArea[3] = m_Screen->GetArea(width - 46, 0, 16, 21);
     m_EnergyArea[4] = m_Screen->GetArea(width - 30, 0, 16, 21);
     m_PlayerWindow.SetScreenArea(m_Screen->GetArea(3, 3, 172, m_Screen->GetHeight() - 50));
-
-    m_Rotations = new Ships::RotationStore(m_Config);
 
     m_PixelHandlers[Pixel(255, 255, 255, 0)] = std::bind(&ScreenClient::EMPPixelHandler, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
 }

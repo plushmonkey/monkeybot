@@ -81,16 +81,10 @@
     <ClCompile Include="Client.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RotationStore.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="PlayerList.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Font.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="LogReader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MessageQueue.cpp">
@@ -103,9 +97,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MemorySensor.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Survivor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Revenge.cpp">
@@ -191,9 +182,6 @@
     <ClInclude Include="Client.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="RotationStore.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Tokenizer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -207,9 +195,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FileStream.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="LogReader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MessageQueue.h">
@@ -237,9 +222,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ClientSettings.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Survivor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Revenge.h">

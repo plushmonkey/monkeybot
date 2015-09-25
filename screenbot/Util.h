@@ -25,7 +25,6 @@ namespace Util {
     double ContRotToRads(int rot);
     Vec2 ContRotToVec(int rot);
     bool XRadarOn(const ScreenGrabberPtr& grabber);
-    int GetShip(const ScreenAreaPtr& ship);
     int GetShipRadius(int n);
     bool InShip(const ScreenGrabberPtr& grabber);
     Vec2 TraceVector(Vec2 from, Vec2 target, int radius, const Level& level);

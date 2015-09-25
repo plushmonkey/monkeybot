@@ -39,7 +39,6 @@ Config::Config()
       RepelPercent(25),
       UseBurst(true),
       DecoyDelay(0),
-      LogFile(""),
       Taunt(false),
       TauntCooldown(6000),
       Hyperspace(true),
@@ -88,8 +87,6 @@ void Config::LoadFromNode(const Json::Value& node) {
     
     if (node.isMember("Level"))
         Level   = node.get("Level", Level).asString();
-    if (node.isMember("LogFile"))
-        LogFile = node.get("LogFile", LogFile).asString();
     if (node.isMember("Owner"))
         Owner = node.get("Owner", Owner).asString();
 
@@ -153,20 +150,7 @@ void Config::LoadFromNode(const Json::Value& node) {
             ++player_iter;
         }
     }
-
-    const Json::Value rotations = node["Rotations"];
-
-    if (!rotations.isNull()) {
-        for (size_t ship = 0; ship < ShipNames.size(); ++ship) {
-            ShipRotations[ship].clear();
-
-            const Json::Value rot_values = rotations[ShipNames[ship]];
-
-            for (size_t i = 0; i < rot_values.size(); ++i)
-                ShipRotations[ship].push_back(rot_values[i].asInt64());
-        }
-    }
-    
+   
     const Json::Value plugins = node["Plugins"];
 
     if (!plugins.isNull()) {
@@ -248,7 +232,6 @@ std::ostream& operator<<(std::ostream& os, const Config& c) {
     OUTPUT(RepelPercent);
     OUTPUT(UseBurst);
     OUTPUT(DecoyDelay);
-    OUTPUT(LogFile);
     OUTPUT(Taunt);
     OUTPUT(TauntCooldown);
     OUTPUT(Hyperspace);

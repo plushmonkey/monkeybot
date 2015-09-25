@@ -57,16 +57,9 @@ using std::weak_ptr;
 typedef shared_ptr<ScreenGrabber> ScreenGrabberPtr;
 typedef shared_ptr<ScreenArea> ScreenAreaPtr;
 
-//namespace api { class Client; }
-//typedef shared_ptr<api::Client> ClientPtr;
-
 enum class Direction {
     Up, Down, Left, Right, None
 };
-
-namespace Ships {
-    extern const u64 Rotations[8][40];
-}
 
 struct Pixel {
     u8 b;

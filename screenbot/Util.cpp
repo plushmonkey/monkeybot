@@ -174,22 +174,6 @@ int GetTargetRotation(int dx, int dy) {
     return target;
 }
 
-int GetShip(const ScreenAreaPtr& ship) {
-    u64 val = 0;
-
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++)
-            val = ship->GetPixel(16 + j, 16 + i) + val;
-    }
-
-    for(int i = 0; i < 8; i++) {
-        for (int j = 0; j < 40; j++)
-            if (Ships::Rotations[i][j] == val) return i + 1;
-    }
-
-    return 1;
-}
-
 int GetShipRadius(int n) {
     return ShipRadius[n - 1];
 }

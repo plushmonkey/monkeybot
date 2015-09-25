@@ -5,6 +5,7 @@
 #include "Random.h"
 #include "Util.h"
 
+#include <iostream>
 #include <regex>
 #include <Windows.h>
 #include <algorithm>

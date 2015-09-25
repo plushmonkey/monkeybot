@@ -31,6 +31,7 @@ protected:
     void UpdateStuckCheck(DWORD dt);
     void SmoothPath(const Level& level, const Pathing::Plan& plan, std::vector<Vec2>& result);
     void UpdatePath(Vec2 target, DWORD dt);
+    double GetPlanDistance();
 
 public:
     PathingState(api::Bot* bot);
@@ -46,6 +47,7 @@ public:
     ChaseState(api::Bot* bot);
     ~ChaseState();
 
+    void UpdateWeapons(DWORD dt);
     virtual void Update(DWORD dt);
     virtual api::StateType GetType() const { return api::StateType::ChaseState; }
 };

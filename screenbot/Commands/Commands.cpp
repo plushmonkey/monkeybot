@@ -5,6 +5,7 @@
 #include "../Util.h"
 #include "../Selector.h"
 
+#include <iostream>
 #include <thread>
 
 std::string HelpCommand::GetPermission() const {
