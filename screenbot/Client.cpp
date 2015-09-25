@@ -582,6 +582,17 @@ void ScreenClient::SendString(const std::string& str, bool paste) {
     m_Keyboard.ReleaseAll();
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
+    // Clear anything that's in the chat already
+    {
+        m_Keyboard.Send(VK_SPACE);
+        m_Keyboard.Down(VK_LCONTROL);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        m_Keyboard.Down(VK_BACK);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        m_Keyboard.Up(VK_BACK);
+        m_Keyboard.Up(VK_LCONTROL);
+    }
+
     if (paste && SetClipboard(to_send)) {
         m_Keyboard.Down(VK_SPACE); 
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
