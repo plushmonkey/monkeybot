@@ -142,6 +142,7 @@ private:
         if (!GetFullEnergy()) return false;
 
         client->SendString("?createpriv " + Password);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         return true;
     }
@@ -154,8 +155,10 @@ private:
 
         if (!GetFullEnergy()) return false;
 
-        if (target)
+        if (target) {
             client->SendPM(target->GetName(), "?join " + Password);
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
 
         return target != nullptr;
     }
