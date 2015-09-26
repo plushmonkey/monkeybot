@@ -1,12 +1,21 @@
 #include "api/Api.h"
 #include "plugin/Plugin.h"
 #include "Vector.h"
+#include "Tokenizer.h"
+
+/**
+ * This has barely been tested. It might cause crashes or do random bad things.
+ *
+ * Flagging probably requires CenterOnly in config to be false.
+ * This plugin doesn't alter the config yet, so it needs to be done before turning on flagging.
+ */
 
 #undef max
 
 #include <iostream>
 #include <memory>
 #include <thread>
+#include <regex>
 
 namespace {
 
@@ -295,40 +304,271 @@ public:
     }
 };
 
+class AnchorSelector {
+private:
+    const unsigned long SendDelay = 1000 * 30;
+    const unsigned long LancsTimeout = 7500;
+    const unsigned long AnchorSyncTime = 1000;
+
+    api::Bot* m_Bot;
+    unsigned long m_SendTimer;
+    unsigned long m_AttachCheckTimer;
+    std::vector<std::string> m_Lancs;
+    std::vector<std::string> m_Evokers;
+    std::weak_ptr<api::Player> m_PrevAnchor;
+
+    void UpdateAnchors(const std::string& line) {
+        std::string regex_str = R"::(^\s*\(S|E\) (.+)$)::";
+
+        int ship_num = (int)m_Bot->GetShip() + 1;
+        if (ship_num > 6 || ship_num == 3 || ship_num == 4)
+            regex_str = R"::(^\s*\(S\) (.+)$)::";
+
+        std::regex summoner_regex(regex_str);
+        Util::Tokenizer tokenizer(line);
+
+        tokenizer(',');
+
+        for (const std::string& anchor : tokenizer) {
+            std::sregex_iterator begin(anchor.begin(), anchor.end(), summoner_regex);
+            std::sregex_iterator end;
+
+            if (begin != end) {
+                size_t pos = anchor.find("(S)");
+                if (pos != std::string::npos) {
+                    m_Lancs.emplace_back(anchor.substr(anchor.find("(S) ") + 4));
+                    continue;
+                }
+
+                pos = anchor.find("(E)");
+                if (pos == std::string::npos) continue;
+                m_Evokers.emplace_back(anchor.substr(anchor.find("(E) ") + 4));
+            }
+        }
+    }
+
+    api::PlayerPtr GetPlayerByName(const std::string& name) const {
+        api::PlayerList players = m_Bot->GetMemorySensor().GetPlayers();
+
+        auto iter = std::find_if(players.begin(), players.end(), [&](api::PlayerPtr player) -> bool {
+            return player->GetName().compare(name) == 0;
+        });
+
+        if (iter == players.end())
+            return nullptr;
+        return *iter;
+    }
+
+    bool IsLanc(api::PlayerPtr player) const {
+        return player->GetShip() == api::Ship::Lancaster;
+    }
+
+    bool IsEvoker(api::PlayerPtr player) const {
+        return (player->GetShip() == api::Ship::Spider || player->GetShip() == api::Ship::Leviathan);
+    }
+
+public:
+    AnchorSelector(api::Bot* bot) : m_Bot(bot), m_SendTimer(0), m_AttachCheckTimer(0), m_PrevAnchor() { }
+
+    api::PlayerPtr GetAnchor() {
+        api::PlayerPtr anchor;
+
+        // Do evokers before lancs so lancs have priority
+        for (const std::string& evoker : m_Evokers) {
+            api::PlayerPtr player = GetPlayerByName(evoker);
+            if (player && IsEvoker(player)) {
+                anchor = player;
+                break;
+            }
+        }
+
+        for (const std::string& lanc : m_Lancs) {
+            api::PlayerPtr player = GetPlayerByName(lanc);
+            if (player && IsLanc(player)) {
+                anchor = player;
+                break;
+            }
+        }
+
+        if (!anchor) {
+            api::PlayerPtr prev = m_PrevAnchor.lock();
+            // Only attach to previous anchor if they are still viable anchor
+            if (prev && prev->GetFreq() == m_Bot->GetFreq() && (IsLanc(prev) || IsEvoker(prev)))
+                anchor = prev;
+        } else {
+            m_PrevAnchor = anchor;
+        }
+
+        return anchor;
+    }
+
+    void ForceSend() {
+        m_SendTimer = SendDelay;
+    }
+
+    void OnUpdate(unsigned long dt) {
+        m_SendTimer += dt;
+
+        if (m_SendTimer >= SendDelay) {
+            std::cout << "Sending ?lancs" << std::endl;
+            m_Bot->GetClient()->SendString("?lancs");
+            m_Lancs.clear();
+            m_Evokers.clear();
+            m_SendTimer = 0;
+        }
+
+        api::PlayerPtr anchor = m_PrevAnchor.lock();
+
+        if (anchor && m_Bot->GetEnergyPercent() > 0) {
+            Vec2 botPos = m_Bot->GetMemorySensor().GetBotPlayer()->GetPosition();
+            Vec2 anchorPos = anchor->GetPosition();
+
+            // Detach bot from anchor if position has been in sync for some time
+            if (botPos == anchorPos && botPos != Vec2(0, 0)) {
+                m_AttachCheckTimer += dt;
+
+                if (m_AttachCheckTimer >= AnchorSyncTime) {
+                    m_Bot->GetClient()->Attach();
+                    m_AttachCheckTimer = 0;
+                }
+            }
+        }
+    }
+
+    void OnChatMessage(ChatMessage* mesg) {
+        if (mesg->GetType() == ChatMessage::Type::Arena && (m_Lancs.size() == 0 && m_Evokers.size() == 0) && m_SendTimer < LancsTimeout)
+            UpdateAnchors(mesg->GetMessage());
+    }
+};
+
+class HyperspacePlugin;
+
+class FlagCommand : public api::Command {
+private:
+    HyperspacePlugin* m_Plugin;
+
+public:
+    FlagCommand(HyperspacePlugin* plugin) : m_Plugin(plugin) {
+
+    }
+
+    std::string GetHelp() const { return "Makes the bot type ?flag and sets certain config options to make it work for flagging in hyperspace."; }
+    std::string GetPermission() const { return "default.flag"; }
+    void Invoke(api::Bot* bot, const std::string& sender, const std::string& args);
+};
+
 class HyperspacePlugin : public Plugin {
 private:
     api::Bot* m_Bot;
     std::shared_ptr<HyperspaceSelector> m_Selector;
     std::shared_ptr<PrivateFrequencyEnforcer> m_PrivEnforcer;
+    AnchorSelector m_AnchorSelector;
+    bool m_Flagging;
+
+    bool IsFlagging() const {
+        return m_Bot->GetFreq() == 90 || m_Bot->GetFreq() == 91;
+    }
 
 public:
     HyperspacePlugin(api::Bot* bot)
         : m_Bot(bot),
           m_Selector(new HyperspaceSelector()),
-          m_PrivEnforcer(new PrivateFrequencyEnforcer(m_Bot))
+          m_PrivEnforcer(new PrivateFrequencyEnforcer(m_Bot)),
+          m_Flagging(false),
+          m_AnchorSelector(m_Bot)
     {
+    }
+
+    bool IsFlaggingEnabled() const { return m_Flagging; }
+
+    void StartFlagging() {
+        ClientPtr client = m_Bot->GetClient();
+
+        m_Flagging = true;
+
+        client->ReleaseKeys();
+        client->SetXRadar(false);
+        while (!m_Bot->FullEnergy()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            client->Update(100);
+        }
+        client->SendString("?flag", false);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(750));
+        m_AnchorSelector.ForceSend();
+
+    }
+
+    void StopFlagging() {
+        ClientPtr client = m_Bot->GetClient();
+
+        m_Flagging = false;
+
+        client->ReleaseKeys();
+        client->SetXRadar(false);
+        while (!m_Bot->FullEnergy()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            client->Update(100);
+        }
+
+        client->Spec();
+
     }
 
     int OnCreate() {
         m_Bot->GetCommandHandler().RegisterCommand("joinfriends", api::CommandPtr(new JoinFriendsCommand(m_PrivEnforcer)));
+        m_Bot->GetCommandHandler().RegisterCommand("flag", api::CommandPtr(new FlagCommand(this)));
         return 0;
     }
 
     int OnUpdate(unsigned long dt) {
-        //m_Bot->SetEnemySelector(m_Selector);
-        m_PrivEnforcer->OnUpdate(dt);
+        if (!m_Flagging)
+            m_PrivEnforcer->OnUpdate(dt);
+        else
+            m_AnchorSelector.OnUpdate(dt);
+
+        if (m_Flagging && !IsFlagging() && m_Bot->IsInSafe())
+            StartFlagging();
+
+        if (m_Flagging && m_Bot->IsInSafe()) {
+            api::PlayerPtr anchor = m_AnchorSelector.GetAnchor();
+
+            if (anchor)
+                m_Bot->SetAttachTarget(anchor->GetName());
+            else
+                m_Bot->SetAttachTarget("");
+
+            auto stateType = m_Bot->GetState()->GetType();
+            if (stateType != api::StateType::AttachState)
+                m_Bot->SetState(api::StateType::AttachState);
+        }
 
         return 0;
     }
 
     int OnDestroy() {
-       // auto factory = m_Bot->GetEnemySelectors();
-       // m_Bot->SetEnemySelector(factory->CreateClosest());
         m_Bot->GetCommandHandler().UnregisterCommand("joinfriends");
+        m_Bot->GetCommandHandler().UnregisterCommand("flag");
         return 0;
     }
 
+    void OnChatMessage(ChatMessage* mesg) {
+        m_AnchorSelector.OnChatMessage(mesg);
+    }
 };
+
+void FlagCommand::Invoke(api::Bot* bot, const std::string& sender, const std::string& args) {
+    ClientPtr client = bot->GetClient();
+    bool flagging = !m_Plugin->IsFlaggingEnabled();
+
+    std::cout << "Flagging: " << std::boolalpha << flagging << std::endl;
+
+    if (flagging)
+        m_Plugin->StartFlagging();
+    else
+        m_Plugin->StopFlagging();
+
+}
 
 extern "C" {
     PLUGIN_FUNC Plugin* CreatePlugin(api::Bot* bot) {
