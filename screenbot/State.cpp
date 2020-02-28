@@ -10,6 +10,7 @@
 #include "Random.h"
 #include "Tokenizer.h"
 #include "MemorySensor.h"
+#include "RayCaster.h"
 
 #include <thread>
 #include <iostream>
@@ -99,30 +100,59 @@ void AttachState::Update(DWORD dt) {
     client->MoveTicker(m_Direction);
 }
 
-Vec2 ClosestWall(const Level& level, Pathing::JPSNode* node) {
-    static const std::vector<Vec2> directions = { Vec2(0, -1), Vec2(1, 0), Vec2(0, 1), Vec2(-1, 0) };
-    const int SearchLength = 5;
-    Vec2 closest;
-    double closest_dist = std::numeric_limits<double>::max();
+Vec2 ClosestWall(const Level& level, Vec2 pos, int SearchLength) {
+  double closest_dist = std::numeric_limits<double>::max();
+  Vec2 closest;
 
-    Vec2 node_pos(node->x, node->y);
+  for (int y = -SearchLength; y < SearchLength; ++y) {
+    for (int x = -SearchLength; x < SearchLength; ++x) {
+      Vec2 current = pos + Vec2(x, y);
 
-    for (const auto& dir : directions) {
-        for (int i = 0; i < SearchLength; ++i) {
-            Vec2 current = node_pos + dir * i;
-            if (level.IsSolid((short)current.x, (short)current.y)) {
-                double dist = node_pos.Distance(current);
-                if (dist < closest_dist) {
-                    closest_dist = dist;
-                    closest = current;
-                }
-                break;
-            }
-        }
+      if (!level.IsSolid((unsigned short)current.x, (unsigned short)current.y)) {
+        continue;
+      }
+
+      double dist = BoxPointDistance(current, Vec2(1, 1), pos);
+
+      if (dist < closest_dist) {
+        closest_dist = dist;
+        closest = current;
+      }
     }
+  }
 
-    return closest;
+#if 0
+  static const std::vector<Vec2> directions = { Vec2(0, -1), Vec2(1, 0), Vec2(0, 1), Vec2(-1, 0) };
+  
+  double closest_dist = std::numeric_limits<double>::max();
+
+  for (const auto& dir : directions) {
+    for (int i = 0; i < SearchLength; ++i) {
+      Vec2 current = pos + dir * i;
+
+      if (level.IsSolid((unsigned short)current.x, (unsigned short)current.y)) {
+        double dist = BoxPointDistance(current, Vec2(1, 1), pos);
+
+        if (dist < closest_dist) {
+          closest_dist = dist;
+          closest = current;
+        }
+        break;
+      }
+    }
+  }
+#endif
+
+  return closest;
+}
+
+Vec2 ClosestWall(const Level& level, Pathing::JPSNode* node, int SearchLength) {
+  return ClosestWall(level, Vec2(node->x, node->y), SearchLength);
 };
+
+bool IsNearWall(const Level& level, Vec2 pos, int search) {
+  return ClosestWall(level, pos, search) != Vec2(0, 0);
+}
 
 ChaseState::ChaseState(api::Bot* bot)
     : PathingState(bot), 
@@ -349,29 +379,119 @@ void FollowState::Update(DWORD dt) {
     m_Bot->GetSteering().Target(next);
 }
 
-void PathingState::SmoothPath(const Level& level, const Pathing::Plan& plan, std::vector<Vec2>& result) {
-    const double Intensity = 2.0;
+std::vector<Vec2> PerformCulling(const Level& level, const std::vector<Vec2>& input, double radius, double ship_radius) {
+  std::vector<Vec2> smoothed;
 
-    // todo: use IsClearPath to remove unneeded nodes
+  smoothed.reserve(input.size());
+
+  smoothed.push_back(input[0]);
+
+  // Attempt to smooth the path by removing unnecessary nodes that are common along stair-like edges.
+  for (std::size_t index = 2; index < input.size(); ++index) {
+    Vec2 from = input[index];
+    Vec2 to = smoothed.back();
+    Vec2 direction = to - from;
+    double length = direction.Length() + 1;
+
+    direction.Normalize();
+
+    if (IsNearWall(level, from, (int)radius + 1) || IsNearWall(level, to, (int)radius + 1)) {
+      smoothed.push_back(input[index - 1]);
+    } else {
+      Vec2 side(-direction.y, direction.x);
+      // Check if the current node is in line of sight of the previous node.
+      CastResult cast1 = RayCast(level, from + side * ship_radius, direction, length);
+      CastResult cast2 = RayCast(level, from - side * ship_radius, direction, length);
+      CastResult cast3 = RayCast(level, from, direction, length);
+
+      if (cast1.hit || cast2.hit || cast3.hit) {
+        smoothed.push_back(input[index - 1]);
+      }
+    }
+
+    ++index;
+  }
+
+  smoothed.push_back(input.back());
+
+  return smoothed;
+}
+
+void PathingState::SmoothPath(const Level& level, const Pathing::Plan& plan, std::vector<Vec2>& result) {
+    // How far away it should try to push the path from walls
+    double push_distance = 2.1;
+
+    int ship = (int)m_Bot->GetShip();
+    double radius = m_Bot->GetMemorySensor().GetClientSettings().ShipSettings[ship].Radius / 16.0;
+
+    push_distance += std::ceil(radius);
 
     result.resize(plan.size());
     for (std::size_t i = 0; i < plan.size(); ++i) {
         Pathing::JPSNode* node = plan[i];
 
-        //Vec2 closest = ClosestWall(level, node);
+        Vec2 closest = ClosestWall(level, node, (int)std::ceil(push_distance));
         Vec2 current(node->x, node->y);
         Vec2 new_pos(plan[i]->x, plan[i]->y);
 
-        /*if (closest != Vec2(0, 0))
-        new_pos = current + Vec2Normalize(current - closest) * Intensity;
+#if 1
+        if (closest != Vec2(0, 0)) {
+          // Attempt to push the path outward from the wall
+          double dist = BoxPointDistance(closest, Vec2(1, 1), current);
+          double force = std::abs(push_distance - dist);
+
+          new_pos = current + Vec2Normalize(current - closest) * force;
+        }
 
         if (current != new_pos) {
-        if (!Util::IsClearPath(current, new_pos, 1, level))
-        new_pos = current;
-        }*/
+          // Make sure the new node is in line of sight
+          if (!Util::IsClearPath(current, new_pos, 1, level)) {
+            new_pos = current;
+          }
+        }
+#endif
 
         result[i] = new_pos;
     }
+
+    if (result.size() <= 2) return;
+
+#if 0
+    for (int i = 0; i < 1; ++i) {
+      result = PerformCulling(level, result, push_distance, radius);
+    }
+#endif
+
+    std::vector<Vec2> minimum;
+    minimum.reserve(result.size());
+
+    minimum.push_back(result[0]);
+
+    Vec2 prev = minimum[0] + Vec2(0.5, 0.5);
+
+    for (std::size_t i = 1; i < result.size(); ++i) {
+      Vec2 curr = result[i] + Vec2(0.5, 0.5);
+      Vec2 direction = Vec2Normalize(curr - prev);
+      Vec2 side = Vec2Perp(direction) * radius * 0.5;
+
+      CastResult cast_center = RayCast(level, prev, direction, prev.Distance(curr));
+      CastResult cast_side1 = RayCast(level, prev + side, direction, prev.Distance(curr));
+      CastResult cast_side2 = RayCast(level, prev - side, direction, prev.Distance(curr));
+
+      if (cast_center.hit || cast_side1.hit || cast_side2.hit) {
+        if (minimum.size() > result.size()) {
+          minimum = result;
+          break;
+        }
+        minimum.push_back(result[i - 1]);
+        prev = minimum.back() + Vec2(0.5, 0.5);
+        i--;
+      }
+    }
+
+    minimum.push_back(result.back());
+
+    result = minimum;
 }
 
 // Returns the distance of an entire plan
@@ -395,7 +515,9 @@ double PathingState::GetPlanDistance() {
 void PathingState::UpdateStuckCheck(DWORD dt) {
     ClientPtr client = m_Bot->GetClient();
     Vec2 pos = m_Bot->GetPos();
-    bool near_wall = Util::NearWall(pos, m_Bot->GetGrid());
+
+    int ship_radius = (int)((m_Bot->GetMemorySensor().GetClientSettings().ShipSettings[(int)m_Bot->GetShip()].Radius / 16.0) + 1.0);
+    bool near_wall = Util::NearWall(pos, m_Bot->GetGrid(), ship_radius + 1);
 
     m_StuckTimer += dt;
 
@@ -433,7 +555,7 @@ void PathingState::UpdatePath(Vec2 target, DWORD dt) {
         path_timer += dt;
 
         if (path_timer >= PathUpdateDelay || m_Plan.size() == 0) {
-            Pathing::JumpPointSearch jps(Pathing::Heuristic::Manhattan<short>);
+            Pathing::JumpPointSearch jps(Pathing::Heuristic::Euclidean<short>);
 
             SmoothPath(m_Bot->GetLevel(), jps((short)target.x, (short)target.y, (short)pos.x, (short)pos.y, m_Bot->GetGrid()), m_Plan);
 
@@ -587,7 +709,25 @@ void PatrolState::Update(DWORD dt) {
 
     Util::GetDistance(pos, next, &dx, &dy, &dist);
 
-    while (dist < 3 && m_Plan.size() > 1 && !Util::NearWall(pos, m_Bot->GetGrid())) {
+    double ship_radius = m_Bot->GetMemorySensor().GetClientSettings().ShipSettings[(int)m_Bot->GetShip()].Radius / 16.0;
+    int radius = (int)std::ceil(ship_radius);
+
+    while (dist < 3 && m_Plan.size() > 1 && !Util::NearWall(pos, m_Bot->GetGrid(), radius + 1)) {
+        Vec2 after = m_Plan.at(1);
+        Vec2 direction = Vec2Normalize(after - pos);
+        Vec2 side = Vec2Perp(direction) * ship_radius;
+
+        // Cast 3 rays from center and two sides in the direction of the next node.
+        //CastResult result1 = RayCast(m_Bot->GetLevel(), pos + side, direction, 3.0);
+        CastResult result2 = RayCast(m_Bot->GetLevel(), pos, direction, 3.0);
+        //CastResult result3 = RayCast(m_Bot->GetLevel(), pos - side, direction, 3.0);
+
+        //if (result1.hit || result2.hit || result3.hit) {
+        if (result2.hit) {
+            // If any rays hit a wall then the ship isn't moved up enough to get around the wall.
+            break;
+        }
+
         m_Plan.erase(m_Plan.begin());
         next = m_Plan.at(0);
         Util::GetDistance(pos, next, &dx, &dy, &dist);

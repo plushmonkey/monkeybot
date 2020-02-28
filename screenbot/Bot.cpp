@@ -516,7 +516,7 @@ int Bot::Run() {
     tcout << "Loading config file config.json" << std::endl;
 
     if (!m_Config.Load("config.json"))
-        Util::ExitWithError("Could not load config.json");
+      Util::ExitWithError("Could not load config.json");
 
     m_Config.LoadShip(GetShip());
     

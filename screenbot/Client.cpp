@@ -64,7 +64,7 @@ void ScreenClient::Update(DWORD dt) {
         EnableMulti(m_Multi);
     }
 
-    Scan();
+    //Scan();
 }
 
 MultiState ScreenClient::DetermineMultiState() const {

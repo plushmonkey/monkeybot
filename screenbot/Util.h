@@ -33,7 +33,7 @@ namespace Util {
     Direction GetRotationDirection(Vec2 heading, Vec2 target);
     void str_replace(std::string& str, const std::string& from, const std::string& to);
 
-    bool NearWall(Vec2 pos, Pathing::Grid<short>& grid);
+    bool NearWall(Vec2 pos, Pathing::Grid<short>& grid, int SearchLength = 2);
 
     inline std::string strtolower(std::string str) {
         std::transform(str.begin(), str.end(), str.begin(), tolower);

@@ -70,7 +70,7 @@ private:
     bool UpdateWaypoints();
 
 public:
-    PatrolState(api::Bot* bot, std::vector<Vec2> waypoints = std::vector<Vec2>(), unsigned int close_distance = 25);
+    PatrolState(api::Bot* bot, std::vector<Vec2> waypoints = std::vector<Vec2>(), unsigned int close_distance = 10);
     ~PatrolState();
 
     virtual void Update(DWORD dt);

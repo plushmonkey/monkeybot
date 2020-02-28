@@ -41,8 +41,8 @@ bool strtobool(const std::string& str) {
     return lower.compare("true") == 0;
 }
 
-bool NearWall(Vec2 pos, Pathing::Grid<short>& grid) {
-    const int SearchLength = 2;
+bool NearWall(Vec2 pos, Pathing::Grid<short>& grid, int SearchLength) {
+    //const int SearchLength = 2;
 
     for (Vec2 dir : directions) {
         for (int i = 0; i < SearchLength; ++i) {

@@ -157,6 +157,10 @@ inline Vec2 Vec2Normalize(const Vec2& vec) {
     return normalized;
 }
 
+inline Vec2 Vec2Perp(const Vec2& vec) {
+  return Vec2(-vec.y, vec.x);
+}
+
 inline Vec2 Vec2Rotate(const Vec2& vec, double rads) {
     double cosA = std::cos(rads);
     double sinA = std::sin(rads);

@@ -53,7 +53,7 @@ Config::Config()
 }
 
 void Config::LoadFromNode(const Json::Value& node) {
-    #define NODELOAD(x) if (node.isMember(#x)) x = node.get(#x, std::to_string(x))
+    #define NODELOAD(x) if (node.isMember(#x)) x = node.get(#x, x)
 
     NODELOAD(XPercent).asInt();
     NODELOAD(RunPercent).asInt();
@@ -84,7 +84,7 @@ void Config::LoadFromNode(const Json::Value& node) {
     NODELOAD(Survivor).asBool();
     NODELOAD(MultiFire).asBool();
     NODELOAD(Revenge).asBool();
-    
+
     if (node.isMember("Level"))
         Level   = node.get("Level", Level).asString();
     if (node.isMember("Owner"))
@@ -95,7 +95,7 @@ void Config::LoadFromNode(const Json::Value& node) {
     if (!waypoints.isNull()) {
         Waypoints.clear();
 
-        for (size_t i = 0; i < waypoints.size(); ++i) {
+        for (int i = 0; i < waypoints.size(); ++i) {
             std::string waypoint = waypoints[i].asString();
 
             std::sregex_iterator begin(waypoint.begin(), waypoint.end(), VecRE);
@@ -116,22 +116,24 @@ void Config::LoadFromNode(const Json::Value& node) {
     if (!taunts.isNull()) {
         Taunts.clear();
 
-        for (size_t i = 0; i < taunts.size(); ++i)
+        for (int i = 0; i < taunts.size(); ++i)
             Taunts.push_back(taunts[i].asString());
     }
+
 
     const Json::Value whitelist = node["TauntWhitelist"];
 
     if (!whitelist.isNull()) {
         TauntWhitelist.clear();
 
-        for (size_t i = 0; i < whitelist.size(); ++i) {
+        for (int i = 0; i < whitelist.size(); ++i) {
             std::string name = whitelist[i].asString();
 
             std::transform(name.begin(), name.end(), name.begin(), tolower);
             TauntWhitelist.push_back(name);
         }
     }
+
 
     const Json::Value permissions = node["Permissions"];
     if (!permissions.isNull()) {
@@ -144,7 +146,7 @@ void Config::LoadFromNode(const Json::Value& node) {
             std::string player = *player_iter;
             Json::Value player_perms = permissions[player];
 
-            for (std::size_t i = 0; i < player_perms.size(); ++i)
+            for (int i = 0; i < player_perms.size(); ++i)
                 Permissions[player].push_back(player_perms[i].asString());
 
             ++player_iter;
@@ -156,7 +158,7 @@ void Config::LoadFromNode(const Json::Value& node) {
     if (!plugins.isNull()) {
         Plugins.clear();
 
-        for (size_t i = 0; i < plugins.size(); ++i)
+        for (int i = 0; i < plugins.size(); ++i)
             Plugins.push_back(plugins[i].asString());
     }
 }
@@ -183,6 +185,7 @@ Json::Value Config::GetZoneConfig() const {
 
 bool Config::Load(const std::string& jsonfile) {
     std::ifstream input(jsonfile, std::ios::binary);
+
     if (!input.is_open()) return false;
 
     Json::Reader reader;

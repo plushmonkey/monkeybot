@@ -139,6 +139,15 @@ int Chebyshev(typename Grid<IntType>::Node* a, typename Grid<IntType>::Node* b) 
     return std::max(dx, dy);
 }
 
+template <typename IntType>
+int Euclidean(typename Grid<IntType>::Node* a, typename Grid<IntType>::Node* b) {
+  double dx = std::abs(a->x - b->x);
+  double dy = std::abs(a->y - b->y);
+
+  double r = std::sqrt(dx * dx + dy * dy);
+  return (int)r;
+}
+
 
 } // ns
 

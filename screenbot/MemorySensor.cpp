@@ -115,7 +115,7 @@ void MemorySensor::DetectName() {
 void MemorySensor::DetectPosition() {
     const unsigned int PosStructID = 0x4AC7C0;
 
-    std::vector<uintptr_t> found = Memory::FindU32(m_ProcessHandle, PosStructID);
+    std::vector<unsigned int> found = Memory::FindU32(m_ProcessHandle, PosStructID);
     uintptr_t address = 0;
 
     if (found.size() == 1) {

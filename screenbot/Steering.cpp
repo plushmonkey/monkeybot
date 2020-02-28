@@ -1,6 +1,8 @@
 #include "Steering.h"
 
 #include "Util.h"
+#include "RayCaster.h"
+#include "Level.h"
 #include <iostream>
 
 SteeringBehavior::SteeringBehavior(api::Bot* bot)
@@ -8,7 +10,7 @@ SteeringBehavior::SteeringBehavior(api::Bot* bot)
       m_WeightSeek(0.8),
       m_WeightArrive(1.0),
       m_WeightPursuit(1.0),
-      m_WeightAvoid(2.5),
+      m_WeightAvoid(3.5),
       m_TargetType(TargetNone)
 {
 
@@ -53,25 +55,64 @@ Vec2 SteeringBehavior::Pursuit(api::PlayerPtr target) {
 }
 
 Vec2 SteeringBehavior::AvoidWalls() {
-    const double MaxSpeed = m_Bot->GetMemorySensor().GetShipSettings(m_Bot->GetShip()).MaximumSpeed / 10 / 16;
-    const double SpeedPercent = (m_Bot->GetVelocity().Length() / MaxSpeed);
-    const double MinLookAhead = 7.0;
-    const double lookAhead = MinLookAhead + SpeedPercent * MinLookAhead;
+    const double kDegToRad = M_PI / 180.0;
+    const double kMinLookAhead = 7.0;
+    const double kMaxLookAhead = 25.0;
+    const double kImmediateMultiplier = 1.5;
 
-    Vec2 ahead = m_Bot->GetPos() + Vec2Normalize(m_Bot->GetVelocity()) * lookAhead;
-    //Vec2 ahead = m_Bot->GetPos() + m_Bot->GetHeading() * lookAhead;
-    Vec2 collidable = Util::TraceVector(m_Bot->GetPos(), ahead, 1, m_Bot->GetLevel());
+    const double max_speed = m_Bot->GetMemorySensor().GetShipSettings(m_Bot->GetShip()).MaximumSpeed / 10.0 / 16.0;
+    const double speed_percent = (m_Bot->GetVelocity().Length() / max_speed);
+    const double lookAhead = kMinLookAhead + speed_percent * (kMaxLookAhead - kMinLookAhead);
+    const Level& level = m_Bot->GetLevel();
 
-    ahead.x = std::floor(ahead.x);
-    ahead.y = std::floor(ahead.y);
+    Vec2 pos = m_Bot->GetPos();
+    int ship_num = (int)m_Bot->GetShip();
+    const ShipSettings& ship_settings = m_Bot->GetMemorySensor().GetClientSettings().ShipSettings[ship_num];
+    // Radius in tiles
+    double radius = ship_settings.Radius / 16.0;
 
-    if (collidable == ahead) return Vec2(0, 0);
-
-    double dist = m_Bot->GetPos().Distance(collidable);
     Vec2 avoidance;
-    if (dist != 0.0) {
-        double multiplier = 1.0 + (lookAhead - dist) / lookAhead;
-        avoidance = Vec2Normalize(collidable - ahead) * multiplier;
+
+#if 0
+    // Search around the ship for immediate collisions and push back against them
+    int check_radius = (int)std::ceil(radius + 1);
+    for (int x = -check_radius; x < check_radius; ++x) {
+      for (int y = -check_radius; y < check_radius; ++y) {
+        Vec2 check = pos + Vec2(x, y);
+
+        if (level.IsSolid((unsigned short)check.x, (unsigned short)check.y)) {
+          Vec2 tile_center = Vec2(x + 0.5, y + 0.5);
+          Vec2 push_direction = Vec2Normalize(-tile_center);
+          avoidance = avoidance + push_direction * kImmediateMultiplier;
+        }
+      }
+    }
+#endif
+
+    Vec2 velocity = m_Bot->GetVelocity();
+    Vec2 direction = Vec2Normalize(velocity);
+
+    std::vector<Vec2> rays;
+
+    // Create look-ahead rays in front of the bot and two rotated away
+    rays.push_back(direction * lookAhead);
+    rays.push_back(Vec2Rotate(rays[0], -30.0 * kDegToRad) * 0.75);
+    rays.push_back(Vec2Rotate(rays[0], 30.0 * kDegToRad) * 0.75);
+
+    for (Vec2& ray : rays) {
+      double length = ray.Length();
+      CastResult result = RayCast(level, pos, Vec2Normalize(ray), length);
+
+      if (result.hit) {
+        double dist = result.position.Distance(pos);
+
+        if (dist != 0.0) {
+          double multiplier = 1.0 + (lookAhead - dist) / lookAhead;
+
+          avoidance = avoidance + Vec2Normalize(pos - result.hit) * multiplier;
+          //avoidance = avoidance + result.normal * multiplier;
+        }
+      }
     }
 
     return avoidance;
