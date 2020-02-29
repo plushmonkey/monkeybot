@@ -27,7 +27,7 @@ bool GetDebugPrivileges() {
 
 std::vector<WritableArea> GetWritableAreas(HANDLE handle) {
     MEMORY_BASIC_INFORMATION meminfo;
-    DWORD pos = 0;
+    std::size_t pos = 0;
     const int Writable = (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY);
     std::vector<WritableArea> areas;
 
@@ -124,7 +124,7 @@ std::string GetString(HANDLE handle, const unsigned int address, size_t len) {
 
 ULONG GetModuleBase(char *name, ULONG pid) {
     MODULEENTRY32 me = { 0 };
-    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, pid);
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE|TH32CS_SNAPMODULE32, pid);
 
     me.dwSize = sizeof(me);
     if (snap == INVALID_HANDLE_VALUE) return 0;

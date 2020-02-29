@@ -35,7 +35,7 @@
 
     /** Level file to use for pathfinding.
      *  Check %LocalAppData%\VirtualStore\Program Files (x86)\Continuum\zones if UAC is enabled. */
-    "Level": "C:\\Program Files (x86)\\Continuum\\zones\\SSCE Hyperspace\\pub20140727.lvl",
+    "Level": "C:\\Program Files (x86)\\Continuum\\zones\\SSCE Hyperspace\\jun2018.lvl",
 
     /** Auto warp if the bot leaves center. */
     "CenterOnly": true,

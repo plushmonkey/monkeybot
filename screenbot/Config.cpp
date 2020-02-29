@@ -1,21 +1,21 @@
 #include "Config.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
-#include <algorithm>
 #include <regex>
 
 namespace {
 
-const std::vector<std::string> ShipNames = { 
-    "Warbird", "Javelin", "Spider", "Leviathan", "Terrier", "Weasel", "Lancaster", "Shark"
-};
+const std::vector<std::string> ShipNames = {"Warbird",   "Javelin", "Spider",
+                                            "Leviathan", "Terrier", "Weasel",
+                                            "Lancaster", "Shark"};
 
 std::regex VecRE(R"::(\(([0-9]+),\s*?([0-9]+)\))::");
 
-} // ns
+}  // namespace
 
-Config::Config() 
+Config::Config()
     : XPercent(75),
       RunPercent(30),
       TargetDistance(10),
@@ -47,222 +47,264 @@ Config::Config()
       MultiFire(true),
       Revenge(false),
       Zone("Hyperspace"),
-      Owner("")
-{
+      Owner("") {}
 
-}
+void Config::LoadFromNode(const json& root) {
+#define NODELOAD(x, type) \
+  if (exists(root, #x)) x = root[#x].get<type>()
 
-void Config::LoadFromNode(const Json::Value& node) {
-    #define NODELOAD(x) if (node.isMember(#x)) x = node.get(#x, x)
+  NODELOAD(XPercent, int);
+  NODELOAD(RunPercent, int);
+  NODELOAD(TargetDistance, int);
+  NODELOAD(RunDistance, int);
+  NODELOAD(StopBombing, int);
+  NODELOAD(BombDelay, int);
+  NODELOAD(FireBombs, bool);
+  NODELOAD(FireGuns, bool);
+  NODELOAD(BulletDelay, int);
+  NODELOAD(ScaleDelay, bool);
+  NODELOAD(CenterOnly, bool);
+  NODELOAD(Patrol, bool);
+  NODELOAD(Attach, bool);
+  NODELOAD(MinGunRange, int);
+  NODELOAD(SpawnX, int);
+  NODELOAD(SpawnY, int);
+  NODELOAD(Baseduel, bool);
+  NODELOAD(CenterRadius, int);
+  NODELOAD(IgnoreDelayDistance, int);
+  NODELOAD(RepelPercent, int);
+  NODELOAD(UseBurst, bool);
+  NODELOAD(DecoyDelay, int);
+  NODELOAD(Taunt, bool);
+  NODELOAD(TauntCooldown, int);
+  NODELOAD(Hyperspace, bool);
+  NODELOAD(Commander, bool);
+  NODELOAD(Survivor, bool);
+  NODELOAD(MultiFire, bool);
+  NODELOAD(Revenge, bool);
 
-    NODELOAD(XPercent).asInt();
-    NODELOAD(RunPercent).asInt();
-    NODELOAD(TargetDistance).asInt();
-    NODELOAD(RunDistance).asInt();
-    NODELOAD(StopBombing).asInt();
-    NODELOAD(BombDelay).asInt();
-    NODELOAD(FireBombs).asBool();
-    NODELOAD(FireGuns).asBool();
-    NODELOAD(BulletDelay).asInt();
-    NODELOAD(ScaleDelay).asBool();
-    NODELOAD(CenterOnly).asBool();
-    NODELOAD(Patrol).asBool();
-    NODELOAD(Attach).asBool();
-    NODELOAD(MinGunRange).asInt();
-    NODELOAD(SpawnX).asInt();
-    NODELOAD(SpawnY).asInt();
-    NODELOAD(Baseduel).asBool();
-    NODELOAD(CenterRadius).asInt();
-    NODELOAD(IgnoreDelayDistance).asInt();
-    NODELOAD(RepelPercent).asInt();
-    NODELOAD(UseBurst).asBool();
-    NODELOAD(DecoyDelay).asInt();
-    NODELOAD(Taunt).asBool();
-    NODELOAD(TauntCooldown).asInt();
-    NODELOAD(Hyperspace).asBool();
-    NODELOAD(Commander).asBool();
-    NODELOAD(Survivor).asBool();
-    NODELOAD(MultiFire).asBool();
-    NODELOAD(Revenge).asBool();
+  if (exists(root, "Level")) {
+    Level = root["Level"].get<std::string>();
+  }
 
-    if (node.isMember("Level"))
-        Level   = node.get("Level", Level).asString();
-    if (node.isMember("Owner"))
-        Owner = node.get("Owner", Owner).asString();
+  if (exists(root, "Owner")) {
+    Owner = root["Owner"].get<std::string>();
+  }
 
-    const Json::Value waypoints = node["Waypoints"];
+  if (exists(root, "Waypoints")) {
+    Waypoints.clear();
+    json wp_nodes = root.value("Waypoints", json());
 
-    if (!waypoints.isNull()) {
-        Waypoints.clear();
+    for (json wp_node : wp_nodes) {
+      std::string waypoint = wp_node.get<std::string>();
 
-        for (int i = 0; i < waypoints.size(); ++i) {
-            std::string waypoint = waypoints[i].asString();
+      std::sregex_iterator begin(waypoint.begin(), waypoint.end(), VecRE);
+      std::sregex_iterator end;
 
-            std::sregex_iterator begin(waypoint.begin(), waypoint.end(), VecRE);
-            std::sregex_iterator end;
+      if (begin == end) continue;
+      std::smatch match = *begin;
 
-            if (begin == end) continue;
-            std::smatch match = *begin;
+      int x = atoi(std::string(match[1]).c_str());
+      int y = atoi(std::string(match[2]).c_str());
 
-            int x = atoi(std::string(match[1]).c_str());
-            int y = atoi(std::string(match[2]).c_str());
-
-            Waypoints.push_back(Vec2(x, y));
-        }
+      Waypoints.push_back(Vec2(x, y));
     }
+  }
 
-    const Json::Value taunts = node["Taunts"];
+  if (exists(root, "Taunts")) {
+    Taunts.clear();
 
-    if (!taunts.isNull()) {
-        Taunts.clear();
+    json taunt_nodes = root["Taunts"];
 
-        for (int i = 0; i < taunts.size(); ++i)
-            Taunts.push_back(taunts[i].asString());
+    for (json taunt_node : taunt_nodes) {
+      Taunts.push_back(taunt_node.get<std::string>());
     }
+  }
 
+  if (exists(root, "TauntWhitelist")) {
+    json whitelist_node = root["TauntWhitelist"];
 
-    const Json::Value whitelist = node["TauntWhitelist"];
+    TauntWhitelist.clear();
 
-    if (!whitelist.isNull()) {
-        TauntWhitelist.clear();
+    for (json name_node : whitelist_node) {
+      std::string name = name_node.get<std::string>();
 
-        for (int i = 0; i < whitelist.size(); ++i) {
-            std::string name = whitelist[i].asString();
-
-            std::transform(name.begin(), name.end(), name.begin(), tolower);
-            TauntWhitelist.push_back(name);
-        }
+      std::transform(name.begin(), name.end(), name.begin(), tolower);
+      TauntWhitelist.push_back(name);
     }
+  }
 
+  if (exists(root, "Permissions")) {
+    json permissions_node = root["Permissions"];
 
-    const Json::Value permissions = node["Permissions"];
-    if (!permissions.isNull()) {
-        Permissions.clear();
+    Permissions.clear();
 
-        Json::Value::Members members = permissions.getMemberNames();
+    for (json::iterator it = permissions_node.begin();
+         it != permissions_node.end(); ++it) {
+      std::string name = it.key();
 
-        Json::Value::Members::const_iterator player_iter = members.begin();
-        while (player_iter != members.end()) {
-            std::string player = *player_iter;
-            Json::Value player_perms = permissions[player];
-
-            for (int i = 0; i < player_perms.size(); ++i)
-                Permissions[player].push_back(player_perms[i].asString());
-
-            ++player_iter;
-        }
+      for (json perm_node : *it) {
+        Permissions[name].push_back(perm_node.get<std::string>());
+      }
     }
-   
-    const Json::Value plugins = node["Plugins"];
+  }
 
-    if (!plugins.isNull()) {
-        Plugins.clear();
+  if (exists(root, "Plugins")) {
+    json plugins_node = root["Plugins"];
 
-        for (int i = 0; i < plugins.size(); ++i)
-            Plugins.push_back(plugins[i].asString());
+    Plugins.clear();
+
+    for (json plugin_node : plugins_node) {
+      Plugins.push_back(plugin_node.get<std::string>());
     }
+  }
 }
 
 void Config::LoadShip(api::Ship ship) {
-    std::string name = ShipNames[(int)ship];
-    Json::Value zone_node = m_Root[Zone];
-    Json::Value ship_node = zone_node[name];
-    
-    if (ship_node.isNull()) return;
-    
-    LoadFromNode(ship_node);
+  std::string name = ShipNames[(int)ship];
+
+  if (exists(root_, Zone.c_str())) {
+    json zone_node = root_.value(Zone, json());
+
+    if (exists(zone_node, name.c_str())) {
+      LoadFromNode(zone_node.value(name.c_str(), json()));
+    }
+  }
 }
 
-Json::Value Config::GetRoot() const {
-    return m_Root;
+json Config::GetRoot() const { return root_; }
+
+json Config::GetZoneConfig() const {
+  std::string zone = root_.value(Zone, "Hyperspace");
+
+  return root_.value(zone, json());
 }
 
-Json::Value Config::GetZoneConfig() const {
-    std::string zone = m_Root.get("Zone", "Hyperspace").asString();
+std::string ReadAndStripComments(std::ifstream& input) {
+  input.seekg(0, std::ios::end);
+  std::ifstream::pos_type file_size = input.tellg();
+  input.seekg(0, std::ios::beg);
 
-    return m_Root[zone];
+  std::string data;
+
+  data.resize(static_cast<std::size_t>(file_size));
+
+  input.read(&data[0], file_size);
+  input.close();
+
+  std::string result;
+  result.reserve(static_cast<std::size_t>(file_size));
+
+  bool parsing_comment = false;
+
+  for (std::size_t i = 0; i < data.size(); ++i) {
+    char c = data[i];
+
+    if (parsing_comment && i >= data.size() - 1) break;
+
+    char next_c = data[i + 1];
+
+    if (parsing_comment && c == '*' && next_c == '/') {
+      parsing_comment = false;
+      ++i;
+      continue;
+    }
+
+    if (!parsing_comment && c == '/' && next_c == '*') {
+      parsing_comment = true;
+      ++i;
+      continue;
+    }
+
+    if (!parsing_comment) {
+      result.append(&c, 1);
+    }
+  }
+
+  return result;
 }
 
 bool Config::Load(const std::string& jsonfile) {
-    std::ifstream input(jsonfile, std::ios::binary);
+  std::ifstream input(jsonfile, std::ios::binary);
 
-    if (!input.is_open()) return false;
+  if (!input.is_open()) return false;
 
-    Json::Reader reader;
+  std::string input_data = ReadAndStripComments(input);
 
-    if (!reader.parse(input, m_Root)) {
-        std::cerr << reader.getFormattedErrorMessages() << std::endl;
-        return false;
-    }
+  try {
+    root_ = json::parse(input_data);
+  } catch (json::parse_error& e) {
+    std::cerr << e.what() << std::endl;
+    return false;
+  }
 
-    Zone = m_Root.get("Zone", "Hyperspace").asString();
+  Zone = root_.value("Zone", "Hyperspace");
 
-    Json::Value zone_node = m_Root[Zone];
+  json zone_node = root_.value(Zone, json());
 
-    if (!zone_node.isNull()) {
-        LoadFromNode(zone_node);
-    } else {
-        std::cerr << "Zone " << Zone <<  " not found in config." << std::endl;
-        return false;
-    }
-    
-    return true;
+  if (!zone_node.is_null()) {
+    LoadFromNode(zone_node);
+  } else {
+    std::cerr << "Zone " << Zone << " not found in config." << std::endl;
+    return false;
+  }
+
+  return true;
 }
 
 std::ostream& operator<<(std::ostream& os, const Config& c) {
-    #define OUTPUT(x) os << #x << ": " << std::boolalpha << c.x << std::endl
+#define OUTPUT(x) os << #x << ": " << std::boolalpha << c.x << std::endl
 
-    OUTPUT(XPercent);
-    OUTPUT(RunPercent);
-    OUTPUT(TargetDistance);
-    OUTPUT(RunDistance);
-    OUTPUT(StopBombing);
-    OUTPUT(BombDelay);
-    OUTPUT(FireBombs);
-    OUTPUT(FireGuns);
-    OUTPUT(Level);
-    OUTPUT(BulletDelay);
-    OUTPUT(ScaleDelay);
-    OUTPUT(CenterOnly);
-    OUTPUT(Patrol);
-    OUTPUT(Attach);
-    OUTPUT(MinGunRange);
-    OUTPUT(SpawnX);
-    OUTPUT(SpawnY);
-    OUTPUT(Baseduel);
-    OUTPUT(CenterRadius);
-    OUTPUT(IgnoreDelayDistance);
-    OUTPUT(RepelPercent);
-    OUTPUT(UseBurst);
-    OUTPUT(DecoyDelay);
-    OUTPUT(Taunt);
-    OUTPUT(TauntCooldown);
-    OUTPUT(Hyperspace);
-    OUTPUT(Commander);
-    OUTPUT(Survivor);
-    OUTPUT(MultiFire);
-    OUTPUT(Revenge);
-    OUTPUT(Zone);
-    OUTPUT(Owner);
+  OUTPUT(XPercent);
+  OUTPUT(RunPercent);
+  OUTPUT(TargetDistance);
+  OUTPUT(RunDistance);
+  OUTPUT(StopBombing);
+  OUTPUT(BombDelay);
+  OUTPUT(FireBombs);
+  OUTPUT(FireGuns);
+  OUTPUT(Level);
+  OUTPUT(BulletDelay);
+  OUTPUT(ScaleDelay);
+  OUTPUT(CenterOnly);
+  OUTPUT(Patrol);
+  OUTPUT(Attach);
+  OUTPUT(MinGunRange);
+  OUTPUT(SpawnX);
+  OUTPUT(SpawnY);
+  OUTPUT(Baseduel);
+  OUTPUT(CenterRadius);
+  OUTPUT(IgnoreDelayDistance);
+  OUTPUT(RepelPercent);
+  OUTPUT(UseBurst);
+  OUTPUT(DecoyDelay);
+  OUTPUT(Taunt);
+  OUTPUT(TauntCooldown);
+  OUTPUT(Hyperspace);
+  OUTPUT(Commander);
+  OUTPUT(Survivor);
+  OUTPUT(MultiFire);
+  OUTPUT(Revenge);
+  OUTPUT(Zone);
+  OUTPUT(Owner);
 
-    os << "Waypoints: ";
-    for (size_t i = 0; i < c.Waypoints.size(); ++i) {
-        if (i != 0) os << ", ";
-        os << c.Waypoints[i];
-    }
-    os << std::endl;
+  os << "Waypoints: ";
+  for (size_t i = 0; i < c.Waypoints.size(); ++i) {
+    if (i != 0) os << ", ";
+    os << c.Waypoints[i];
+  }
+  os << std::endl;
 
-    os << "Taunt count: " << c.Taunts.size() << std::endl;
-    os << "Taunt whitelist count: " << c.TauntWhitelist.size() << std::endl;
-    
-    os << "Plugins: ";
+  os << "Taunt count: " << c.Taunts.size() << std::endl;
+  os << "Taunt whitelist count: " << c.TauntWhitelist.size() << std::endl;
 
-    for (auto iter = c.Plugins.begin(); iter != c.Plugins.end(); ++iter) {
-        if (iter != c.Plugins.begin())
-            os << ", ";
-        os << *iter;
-    }
-    os << std::endl;
-    
-    return os;
+  os << "Plugins: ";
+
+  for (auto iter = c.Plugins.begin(); iter != c.Plugins.end(); ++iter) {
+    if (iter != c.Plugins.begin()) os << ", ";
+    os << *iter;
+  }
+  os << std::endl;
+
+  return os;
 }

@@ -31,6 +31,12 @@
     <Filter Include="Source Files\Commands">
       <UniqueIdentifier>{a2dc776d-643a-4a55-8741-e6a1e7d6f994}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\json">
+      <UniqueIdentifier>{995e208b-31f9-4e29-9b52-86af381aa131}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\json\lib">
+      <UniqueIdentifier>{a2bec1b7-f6af-4ad7-8893-a7cf3da6e01e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -300,6 +306,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="RayCaster.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\lib\json.hpp">
+      <Filter>Header Files\json\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="json\Json.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\lib\json_fwd.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\JsonFwd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

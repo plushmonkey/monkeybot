@@ -1,5 +1,60 @@
 #include "MovementManager.h"
 
+#include <cmath>
+#include <iostream>
+#include <memory>
+
+class ProportionalIntegralDerivativeController {
+public:
+  ProportionalIntegralDerivativeController(double p_coeff, double i_coeff, double d_coeff) :
+    p_coeff_(p_coeff), i_coeff_(i_coeff), d_coeff_(d_coeff),
+    p_error_(0), i_error_(0), d_error_(0),
+    total_steps_(0) { }
+
+  double Control(double cross_track_error, double dt) {
+    UpdateError(cross_track_error, dt);
+    total_steps_++;
+
+    double v = p_coeff_ * p_error_ + i_coeff_ * i_error_ + d_coeff_ * d_error_;
+
+    return std::max(-1.0, std::min(1.0, v));
+  }
+
+  void Reset() {
+    p_error_ = i_error_ = d_error_ = 0;
+  }
+
+private:
+  void UpdateError(double cross_track_error, double dt) {
+    double prev_error = p_error_;
+
+    p_error_ = cross_track_error;
+    i_error_ += p_error_ * dt;
+    d_error_ = (p_error_ - prev_error) / dt;
+  }
+
+  double p_coeff_;
+  double i_coeff_;
+  double d_coeff_;
+
+  double p_error_;
+  double i_error_;
+  double d_error_;
+
+  double total_steps_;
+};
+
+double sign(double v) {
+  return std::signbit(v) ? -1 : 1;
+}
+
+// Prevent acos from turning x into nan because it handles 1.0 boundary poorly
+double safe_acos(double x) {
+  if (x < -1.0) x = -1.0;
+  if (x > 1.0) x = 1.0;
+  return std::acos(x);
+}
+
 MovementManager::MovementManager(ClientPtr client, api::SteeringBehavior* steering)
     : m_Client(client), m_Steering(steering), m_Enabled(true), m_Reverse(false)
 {
